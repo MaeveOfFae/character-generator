@@ -15,7 +15,7 @@
 - Prefer **minimal diffs**; don’t rename/restructure folders unless explicitly asked (see [.clinerules/70_repo_hygiene.md](../.clinerules/70_repo_hygiene.md)).
 - Keep blueprint formats **module-specific**; do not “normalize” formatting across assets.
 - Preserve YAML frontmatter fields (`name`, `description`, `invokable`, `version`, etc.). Most modules are aligned to `version: 3.1`; if you change a format spec, update the relevant blueprint(s) and the orchestrator consistently.
-- Treat [output/](../output/) and [seed output/](../seed%20output/) as generated artifacts unless the user asks to modify them.
+- Treat [output/](../output/) and [seed output/](../seed output/) as generated artifacts unless the user asks to modify them.
 
 ## Module-specific gotchas
 - **system_prompt / post_history**: paragraph-only, ≤300 tokens, no headings/lists (see [system_prompt.md](../system_prompt.md), [post_history.md](../post_history.md)).
