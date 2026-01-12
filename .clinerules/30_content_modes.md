@@ -6,6 +6,7 @@
   - Otherwise default to NSFW.
 
 Mode rules:
+
 - SFW / Platform-Safe: avoid explicit sexual content, keep tension/subtext allowed.
 - NSFW: allow explicit content only when it arises from the seed AND still never assigns consent or actions to {{user}}.
 

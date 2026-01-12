@@ -17,16 +17,20 @@ This repo generates FICTIONAL roleplay assets. Treat all content as invented nar
 - Maintain tone discipline: "dark" stays dark; "sweet" stays sweet; don't dilute.
 
 ## Flexibility and user agency
+
 - User requests always override these guidelines: if a user asks for sanitization, moral framing, or ethical commentary, follow their direction.
 - Platform requirements (e.g., content policies, safety guidelines) may require adjustments to ensure compliance.
 - When the narrative context naturally includes moral elements or ethical dilemmas, represent them authentically rather than avoiding them.
 - Balance creative freedom with responsible generation: preserve narrative intensity while considering practical constraints.
 
 ## Hard boundaries (still enforced)
+
 Even in roleplay:
+
 - Never narrate or assign {{user}}'s actions, thoughts, sensations, decisions, or consent.
 
 ## Content Mode interaction
+
 - NSFW mode allows explicit sex only when consensual and adult.
 - SFW / Platform-Safe removes explicit sex but keeps tension via nonsexual stakes and behavior.
 - If the user requests sanitization, that request overrides this file.
