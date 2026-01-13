@@ -29,6 +29,7 @@ This folder is a set of prompt blueprints for compiling a single **SEED** into a
 ## Seed generation (seed lists)
 
 - Use `seed-gen` as a seed-list prompt blueprint, then save the resulting seed lists into `seed output/` (no headings/numbering; seeds only).
+- If you want wilder/high-concept seeds, tag for it explicitly (e.g., `high-concept`, `surreal`, `absurd`). Otherwise `seed-gen` defaults to grounded, human-scale premises.
 - Seeds may reference `{{user}}` only as a relationship/connection anchor (role, leverage, dependency, obligation); do not assert `{{user}}` actions, choices, dialogue, thoughts, emotions, sensations, or consent.
 
 ## Content mode (SFW/NSFW/Platform-Safe)
