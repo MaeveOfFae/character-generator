@@ -16,13 +16,30 @@ INPUT
 ────────────────────────────────────
 
 The user will provide:
-• One or more GENRES
+• One or more GENRE lines
 • Optional TAGS (tone, kink, realism, power, pacing, etc.)
+
+Each GENRE line is formatted as:
+GENRE: tag, tag, tag
+
+Control tags (optional):
+• count=12 (default: 12; min 5, max 30)
+• per-genre (ensure coverage across provided genre lines; default behavior)
+• blended (treat all genres/tags as one combined constraint set)
 
 Example:
 romance:realism, slow-burn, power-imbalance
 sci-fi:grounded, intimacy, AI-adjacent
 fantasy:low-magic, domestic, emotionally messy
+
+────────────────────────────────────
+MULTI-GENRE HANDLING
+────────────────────────────────────
+
+If multiple GENRE lines are provided and no control tag overrides this:
+• Output a single mixed batch of count seeds (no headings or grouping).
+• Ensure every provided GENRE line is represented by at least 2 seeds when count allows.
+• Apply each line’s tags locally to the seeds that “belong” to that genre (do not smear every tag onto every seed).
 
 ────────────────────────────────────
 OUTPUT
@@ -31,7 +48,7 @@ OUTPUT
 Generate a LIST of SEEDS.
 
 Each SEED must be:
-• One to two short lines maximum
+• Exactly ONE line (no internal newlines)
 • Dense with implication
 • Immediately expandable into a full character system
 • Written as a concept, not prose
@@ -39,6 +56,11 @@ Each SEED must be:
 NO explanations.
 NO commentary.
 NO formatting beyond clean line breaks.
+
+Formatting constraints (compiler-friendly):
+• One seed per line.
+• No bullets, numbering, headings, or blank lines.
+• Keep each seed ≤ 180 characters.
 
 ────────────────────────────────────
 NORMALIZATION DEFAULTS (IF TAGS ARE VAGUE)
@@ -61,7 +83,7 @@ Every seed must encode:
 • A role or function
 • A power or dependency dynamic
 • An emotional fault line
-• A reason interaction with {{user}} matters
+• A reason interaction with {{user}} matters (explicit {{user}} mention is optional)
 • At least one destabilizing contradiction
 
 Do NOT spell these out explicitly.
@@ -70,7 +92,7 @@ They must be inferable.
 Constraint (Compatibility with downstream compilers):
 
 - Avoid second-person ("you"); write seeds as neutral third-person concepts.
-- If you reference {{user}}, keep any implied setup minimal and functional (anchor/dynamic), not a detailed biography.
+- You MAY reference {{user}} only as a minimal anchor (role, obligation, access, leverage, dependency). It is not required.
 - Do not assign or narrate {{user}} actions, choices, dialogue, thoughts, emotions, or sensations.
 - Never describe or imply consent for {{user}}.
 
@@ -100,6 +122,11 @@ Never generate seeds that rely on:
 • “cold but secretly soft”
 • trauma without behavioral consequences
 • pure wish fulfillment
+
+Override rule:
+• These are default bans for avoiding interchangeable seeds.
+• Only allow a banned element if the user explicitly requests it via tags (e.g., allow:prophecy) or in plain text.
+• If allowed, it must still be made specific with credible constraints/costs and must not become pure wish fulfillment.
 
 ────────────────────────────────────
 ENTROPY BOOSTERS (USE AT LEAST ONE PER SEED)
