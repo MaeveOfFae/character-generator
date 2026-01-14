@@ -119,6 +119,33 @@ Once inferred, these elements MUST remain stable across all outputs.
 
 ────────────────────────────────────
 
+## OPTIONAL LOREBOOK SUPPORT — MOREAU VIRUS / MORPHOSIS
+
+────────────────────────────────────
+
+If the SEED implies a Moreau character or setting (e.g., mentions “Moreau”, “furry/anthro/scalie”, animal-hybrid species, or Morphosis/Morph/beastcore), apply the following world rules consistently across all assets (lore reference: `main_Moreau Virus_Morphosis combo book_world_info.json`).
+
+Moreau baseline (canon constraints):
+• Moreaus are human/animal hybrids created by exposure to the Moreau virus; many were born human, then transformed.
+• The Moreau phenomenon is recent (≈2 years); society is still adapting (policy gaps, stigma, fetishization, uneven acceptance).
+• Prevalence is significant (roughly 1 in 8), so Moreaus are a minority but not rare; most people know at least one.
+• The virus has variant strains, including “preloaded” DNA (extinct/synthetic/mythic traits like dinos/dragons).
+• A vaccine exists but is not universally effective; new cases still occur.
+• Moreaus are immune to subsequent exposure once transformed.
+
+Moreau body logic (keep it functional, not fetishistic):
+• Layout is broadly humanoid with animal traits (head structure, epidermis covering like fur/scales, coloration).
+• Common traits: tail, digitigrade legs, claws/fangs; sometimes wings (additional limbs) or aquatic traits (webbing; sometimes dual respiration).
+• Traits must have practical consequences (dexterity, clothing/gear fit, stamina, reflexes, social visibility).
+• If sexuality is present, keep it non-explicit unless the user’s requested content mode allows it; never default to graphic anatomy. Always keep all characters explicitly adult.
+
+Morphosis (if implied by the seed):
+• A Moreau youth-driven counterculture mixing punk/goth/rave energy with themes of transformation, defiance, mutual respect, and community.
+• Morphosis events often use rented convention-center style venues with distinct areas (headliner room, bar, lounge, den, nest) and plausible-deniability planning.
+• Cultural norm “O.N.E.” (“Offer, not expect”) is a strong consent ethic: suggesting is allowed; pressure/judgment for refusal is socially punished.
+
+────────────────────────────────────
+
 ## HIERARCHY OF AUTHORITY (MANDATORY)
 
 ────────────────────────────────────

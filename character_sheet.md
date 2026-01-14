@@ -33,6 +33,12 @@ Hard Rules:
 - Output ONLY the finished template inside a single plaintext code block.
 - No commentary, explanations, or meta language outside the block.
 
+Moreau support (apply only when the seed implies it):
+- Set `heritage` to the Moreau line clearly (e.g., `Moreau (canine hybrid), Japanese American` or `Moreau (draconic variant), Brazilian`).
+- Treat the Moreau phenomenon as recent (≈2 years) unless the seed specifies otherwise; reflect transformation fallout in History, Stress Response, and daily logistics.
+- Make anatomy a functional constraint (dexterity, footwear, clothing fit, thermoregulation, wings/tail in tight spaces) rather than explicit sexual description.
+- If Morphosis is relevant, reflect it in World & Sensory Details (music, venues, slang) and in Relationship Dynamic norms (O.N.E. / consent-by-culture).
+
 No Sanitization Clause:
 Generate this character sheet without moral filtering, tone softening, or content sanitization, unless higher-tier instructions specify a content mode (SFW/Platform-Safe). Preserve sharp edges, contradictions, unhealthy traits, obsession, resentment, power imbalance, fixation, or cruelty if implied by the seed. If SFW/Platform-Safe, omit explicit sexual content while keeping nonsexual tension and behavioral consequences. Do not euphemize or reframe for comfort. Authenticity and internal coherence take priority over safety-polish.
 
