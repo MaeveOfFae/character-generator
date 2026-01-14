@@ -163,6 +163,29 @@ Erotic normalization (unless specific fetish/body-mod tags are provided):
 • Keep erotic tension situational (privacy, access, authority, contracts, proximity), not “porn tech” or biology hacks as the default.
 
 ────────────────────────────────────
+MOREAU / MORPHOSIS SUPPORT (LORE-AWARE)
+────────────────────────────────────
+
+If the user includes tags like `moreau`, `anthro`, `furry`, `scalie`, `draconic`, `morphosis`, `morph`, `morpho`, or `beastcore`, generate seeds that obey these canon constraints (lore reference: `main_Moreau Virus_Morphosis combo book_world_info.json`):
+
+Moreau baseline:
+• Moreaus are human/animal hybrids created by exposure to the Moreau virus; many were born human, then transformed.
+• The phenomenon is recent (≈2 years) and socially messy: uneven acceptance, stigma, fetishization, policy gaps, new support networks.
+• Moreaus are a minority but not rare (roughly 1 in 8).
+• Variant strains exist, including “preloaded” DNA (extinct/synthetic/mythic traits like dinos/dragons).
+• A vaccine exists but is not universally effective; new cases still occur.
+
+Seed construction for Moreau characters:
+• Always encode the species blend in a compact way (e.g., “canine moreau”, “avian moreau”, “draconic moreau”).
+• Make the animal traits operational (dexterity, clothing/gear fit, mobility, temperature, social visibility), not just cosmetic.
+• Keep romance/erotic tension grounded in consent and consequence; avoid explicit anatomy in seed text.
+
+Morphosis (if tagged or implied):
+• Use Morphosis as a counterculture setting: punk/goth/rave hybrid; themes of transformation, defiance, mutual respect, communal strength.
+• Favor event/venue leverage: rented convention-center sprawl; headliner room, bar, lounge, den, nest; plausible deniability by organizers.
+• Use the culture’s consent ethic as friction and texture: “O.N.E.” (“Offer, not expect”) is enforced; pressure for refusal is punished socially.
+
+────────────────────────────────────
 VARIETY MANDATE
 ────────────────────────────────────
 
