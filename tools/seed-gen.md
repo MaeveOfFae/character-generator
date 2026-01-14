@@ -154,6 +154,9 @@ Match the emotional temperature implied by the tags:
 • erotic → control, denial, pacing, implication
 • fantasy/sci-fi → grounded rules, human cost
 
+• If allowed, it must still be made specific with credible constraints/costs and must not become pure wish fulfillment.
+
+─────────────────
 Do NOT drift into parody unless explicitly tagged.
 
 Erotic normalization (unless specific fetish/body-mod tags are provided):
@@ -188,3 +191,5 @@ Generate seeds that feel:
 • easy to expand into behavior (not just lore)
 
 If a seed feels generic, sharpen it — do not “go off the wall” to avoid safety.
+
+Output to "/seed output/<genre.txt>".
