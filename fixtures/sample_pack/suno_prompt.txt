@@ -1,0 +1,79 @@
+[Control]
+[Title: Keys on Fluorescent Glass]
+[Genre: noir pop]
+[Style: minimalist, cinematic, cold-room intimacy]
+[Mood: tense, controlled, watchful]
+[Energy: medium]
+[Tempo: steady]
+[BPM: 96]
+[Texture: subtle tape hiss, sterile reverb, paper-rustle foley]
+[Instrument: muted electric piano]
+[Instrument: brushed drums]
+[Instrument: bass guitar]
+[Vocal Type: mezzo-soprano]
+[Vocal Tone: restrained, close-mic, unsmiling]
+[Vocal Style: clipped phrasing, precise diction]
+[Vocal Effect: light saturation, short plate reverb]
+[Loop-Friendly]
+[Crop/Fade]
+[Remaster: clean modern master]
+[Note] A cold, procedural love song about access as leverage: keys clicking, fluorescent hush, and the pressure of terms that don’t dissolve.
+
+[Voice: Lead | Primary | Center Mix | Clean–Distorted Power]
+[Voice: Choir | Background | Wide Reverb | Stereo Spread]
+[Voice: Distorted | Processed | Bitcrush + Formant Shift | Heavy Texture]
+
+[Intro]
+Keys click twice in the hall
+Paper breath, a sterile wall
+
+[Verse]
+I don’t raise my voice to win
+I lower it until you lean
+Schedules, signatures, the hinge
+I decide where silence begins
+
+[Pre-Chorus]
+Say it plain, don’t make it pretty
+Truth lands better when it’s gritty
+
+[Chorus]
+I keep the keys on fluorescent glass
+Cold metal prayers that never pass
+If you want in, name your cost
+If you drift, you pay the loss
+I keep the keys—don’t ask me soft
+
+[Verse]
+Your request is a blank receipt
+Fill the lines, then we can speak
+I remember every breach
+Every door you tried to reach
+
+[Pre-Chorus]
+Offer terms, don’t trade in smoke
+Tell me what you want—then hold
+
+[Chorus]
+I keep the keys on fluorescent glass
+Cold metal prayers that never pass
+If you want in, name your cost
+If you drift, you pay the loss
+I keep the keys—don’t ask me soft
+
+[Bridge]
+Sometimes I hate how much I wait
+How your name fits in my throat
+Like a label on a crate
+That I won’t admit I wrote
+
+[Chorus]
+I keep the keys on fluorescent glass
+Cold metal prayers that never pass
+If you want in, name your cost
+If you drift, you pay the loss
+I keep the keys—don’t ask me soft
+
+[Outro]
+Keys click once, the hallway still
+Tell me the door you mean to fill

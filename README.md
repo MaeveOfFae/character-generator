@@ -9,8 +9,9 @@ This folder is a set of prompt blueprints for compiling a single **SEED** into a
 - `post_history.md`: Post-history behavior layer (≤300 tokens, paragraph-only).
 - `character_sheet.md`: Structured character sheet (blueprint fields + lists).
 - `intro_scene.md`: Second-person intro scene (ends with an open loop to {{user}}).
-- `intro_page.md`: HTML intro page (self-contained styling; no external assets/CSS).
+- `intro_page.md`: Markdown intro page (platform-agnostic; no HTML/CSS).
 - `a1111.md`: Modular A1111 image prompt layout.
+- `a1111_sdxl_comfyui.md`: SDXL-first alternate image prompt layout (AUTOMATIC1111 + ComfyUI).
 - `suno.md`: Suno V5 song prompt layout.
 - `chub_rules.md`: Reference notes about Chub AI character fields and macros.
 
@@ -24,7 +25,7 @@ This folder is a set of prompt blueprints for compiling a single **SEED** into a
 
 2) Invoke the orchestrator (`rpbotgenerator.md`) with the SEED.
 
-3) Paste each generated asset into the relevant destination (system prompt, post history, greeting/scene, HTML intro page, etc.).
+3) Paste each generated asset into the relevant destination (system prompt, post history, greeting/scene, intro page markdown, etc.).
 
 ## Seed generation (seed lists)
 
@@ -44,6 +45,22 @@ If the seed is thin or a constraint must be bent, the orchestrator may emit a fi
 ## Export helper
 
 - `tools/export_character.sh` can export from files: `./tools/export_character.sh "character_name" "source_dir" [llm_model]`
+
+### Export contract (expected filenames)
+
+When exporting from files, `source_dir/` is expected to contain:
+
+- `system_prompt.txt`
+- `post_history.txt`
+- `character_sheet.txt`
+- `intro_scene.txt`
+- `intro_page.md`
+- `a1111_prompt.txt`
+- `suno_prompt.txt`
+
+Optional alternate image prompt:
+
+- `a1111_sdxl_prompt.txt`
 
 ## SEED examples
 

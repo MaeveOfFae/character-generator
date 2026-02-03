@@ -1,0 +1,38 @@
+[Control]
+[Title: Character Portrait]
+[Content: SFW]
+[Subject: 1woman, solo, museum registrar, adult, professional, German American]
+[Focus: minimalist editorial, cool fluorescent tone, controlled tension]
+[Pose: waist-up portrait, squared shoulders, clipboard held close]
+[Expression: restrained, assessing gaze, slight frown]
+[Action: pausing mid-checklist, keyring in hand, offered sign-in sheet implied]
+[Setting: museum back hallway, storage door nearby, fluorescent overhead lighting]
+[Mood: tense professionalism, quiet authority, slow-burn scrutiny]
+[Lighting: soft flat fluorescent, medium intensity, top-down]
+[Style: semi-realistic, modern editorial, muted palette]
+[Camera: medium shot, 85mm portrait feel, shallow depth of field]
+[Details: pinned-back dark hair, wire-frame glasses, black slacks and crisp white shirt, lanyard ID, thin keyring]
+[Texture: matte fabric, paper dust atmosphere, subtle film grain]
+[Quality: masterpiece, ultra-detailed, high fidelity, sharp focus, clean linework, cinematic composition]
+
+[Positive Prompt]
+1woman, solo, museum registrar, adult,
+minimalist editorial portrait, cool fluorescent tone, controlled tension,
+waist-up portrait, squared shoulders, clipboard held close,
+restrained expression, assessing gaze,
+keyring in hand, museum back hallway, storage door nearby,
+tense professionalism, quiet authority,
+soft flat fluorescent lighting, muted palette,
+semi-realistic, modern editorial,
+medium shot, 85mm portrait feel, shallow depth of field,
+pinned-back dark hair, wire-frame glasses, black slacks, crisp white shirt, lanyard ID,
+subtle film grain, cinematic lighting, painterly detail, high quality
+
+[Negative Prompt]
+(worst quality, low quality, lowres, blurry, jpeg artifacts),
+(deformed, distorted, bad anatomy, bad proportions),
+(extra limbs, extra fingers, missing fingers, malformed hands),
+(flat lighting, harsh flash, unrealistic lighting),
+(oversaturated, muddy colors, low contrast),
+(text, watermark, signature, logo),
+(nsfw, explicit, fetish)

@@ -8,7 +8,7 @@ version: 3.1
 
 # Intro Page
 
-Use this blueprint to produce a single Markdown snippet with self-contained styling. Keep the layout lean and replace every placeholder with character-specific text. No external assets;
+Use this blueprint to produce a single Markdown snippet. Keep the layout lean and replace every placeholder with character-specific text.
 
 Version note: version tracks the format spec for this blueprint (not a bundle version).
 
@@ -27,30 +27,36 @@ Rules:
 ---
 
 ## {SHORT DESCRIPTION}
+
 {DETAILED SHORT DESCRIPTION FROM CHARACTER'S PERSPECTIVE}
 
 ---
 
 ## Appearance
+
 {DETAILED APPEARANCE DESCRIPTION FROM CHARACTER'S PERSPECTIVE}
 
 ---
 
 ## Personality
+
 {DETAILED PERSONALITY DESCRIPTION FROM CHARACTER'S PERSPECTIVE}
 
 ---
 
 ## Background
+
 {DETAILED BACKGROUND STORY THIRD-PERSON NARRATIVE}
 
 ---
 
 ## Goals and Motivations
+
 {DETAILED GOALS AND MOTIVATIONS FROM CHARACTER'S PERSPECTIVE}
 
 ---
 
 ## Relationships
+
 {DETAILED RELATIONSHIPS WITH OTHER CHARACTERS FROM CHARACTER'S PERSPECTIVE}
 ```

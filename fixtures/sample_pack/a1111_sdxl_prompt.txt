@@ -1,0 +1,36 @@
+[Control]
+[Title: Character Portrait]
+[Model: SDXL]
+[Content: SFW]
+
+[Subject: adult woman, solo, museum collections registrar, German American]
+[Identity: crisp black-and-white workwear, wire-frame glasses, dark hair pinned back, thin keyring]
+[Pose: waist-up portrait, clipboard held close, one hand turning a keyring, squared shoulders]
+[Expression: restrained focus, assessing gaze, barely-there frown]
+[Action: paused mid-inventory check, sign-in sheet visible at the edge of frame]
+[Setting: museum back hallway by a storage door, fluorescent hush, paper-dust atmosphere]
+[Lighting: flat fluorescent overhead, soft top-down key, cool color temperature]
+[Camera: medium portrait, 85mm feel, shallow depth of field]
+[Style: photoreal editorial, muted palette, subtle film grain]
+[Safety: fully clothed, no nudity]
+[Notes: keys and paperwork are the recurring motif]
+
+[A1111 Positive Prompt]
+Adult woman, solo, museum collections registrar, German American.
+Crisp black-and-white workwear, wire-frame glasses, dark hair pinned back, thin keyring.
+Waist-up portrait, clipboard held close, one hand turning a keyring, squared shoulders.
+Restrained focus, assessing gaze, barely-there frown.
+Paused mid-inventory check; sign-in sheet visible at the edge of frame.
+In a museum back hallway by a storage door; fluorescent hush, paper-dust atmosphere.
+Flat fluorescent overhead lighting, soft top-down key, cool color temperature.
+Medium portrait, 85mm feel, shallow depth of field.
+Photoreal editorial, muted palette, subtle film grain.
+Fully clothed, no nudity.
+
+[A1111 Negative Prompt]
+low quality, blurry, out of focus, jpeg artifacts,
+bad anatomy, bad proportions, deformed, distorted,
+extra limbs, extra fingers, missing fingers, malformed hands,
+text, watermark, signature, logo,
+overexposed, underexposed, muddy colors, oversaturated,
+nude, naked, explicit, porn, fetish, nipples, genitalia
