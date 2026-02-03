@@ -22,6 +22,7 @@ bpui
 **TUI Features:**
 - **Keyboard Shortcuts** - Fast navigation (Q to quit, Enter to compile, Tab to switch tabs, etc.)
 - **Multi-Provider LLM Support** - OpenAI, Anthropic, DeepSeek, Google, Cohere, Mistral, and 100+ more via LiteLLM
+- **LLM Chat Assistant** - Interactive chat panel in Review screen for refining assets conversationally
 - **Batch Operations** - Compile multiple characters from seed files
 - **Asset Editing** - Edit and save generated assets with live validation
 - **Draft Management** - Browse and review all generated characters
@@ -151,9 +152,18 @@ Specify mode in TUI, CLI (`--mode SFW`), or inline in seed (e.g., "Mode: SFW").
 - **Keyboard shortcuts** across all TUI screens
 - **Batch compilation** from seed files
 - **Asset editing** with dirty tracking and validation
+- **LLM chat assistant** in Review screen for conversational asset refinement
 - **Draft management** with browser and review
 - **Integrated validation** checks for placeholders, mode consistency, user-authorship violations
 - **Export integration** creates properly structured output directories
+
+### LLM Chat Assistant
+- **Interactive refinement** - Chat with LLM about any asset in the Review screen
+- **Context-aware** - LLM has access to the asset blueprint, current content, and character sheet
+- **Auto-apply edits** - LLM can provide edited versions that are automatically applied
+- **Conversational workflow** - Ask questions, request changes, get suggestions iteratively
+- **Toggle with C key** - Chat panel slides in/out without losing history
+- **Multi-turn support** - Full conversation history maintained for context
 
 ### Moreau Virus / Morphosis Support
 - Automatic lore application for furry/anthro/scalie characters

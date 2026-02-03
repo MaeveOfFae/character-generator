@@ -1,17 +1,26 @@
 #!/bin/bash
 # Launcher script for Blueprint UI
 
+set -e  # Exit on error
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VENV_PYTHON="$SCRIPT_DIR/.venv/bin/python"
-BPUI_CLI="$SCRIPT_DIR/bpui-cli"
+VENV_DIR="$SCRIPT_DIR/.venv"
+VENV_PYTHON="$VENV_DIR/bin/python"
 
 # Check if venv exists
 if [ ! -f "$VENV_PYTHON" ]; then
     echo "Virtual environment not found. Setting up..."
-    python3 -m venv "$SCRIPT_DIR/.venv"
-    source "$SCRIPT_DIR/.venv/bin/activate"
+    python3 -m venv "$VENV_DIR"
+    source "$VENV_DIR/bin/activate"
+    
+    echo "Installing dependencies..."
+    pip install --quiet --upgrade pip
     pip install --quiet textual rich tomli-w httpx setuptools wheel
+    
+    echo "Installing bpui in editable mode..."
+    pip install --quiet -e "$SCRIPT_DIR"
 fi
 
-# Run bpui using direct CLI script (workaround for Python 3.13 editable install issues)
-exec "$VENV_PYTHON" "$BPUI_CLI" "$@"
+# Activate venv and run bpui
+source "$VENV_DIR/bin/activate"
+exec python -m bpui.cli "$@"

@@ -132,34 +132,34 @@ class ReviewScreen(Screen):
             with Horizontal(id="main-split"):
                 with Vertical(id="left-panel"):
                     with TabbedContent(id="tabs"):
-                with TabPane("System Prompt"):
-                    yield TextArea(
-                        id="system_prompt_area",
-                    )
-                with TabPane("Post History"):
-                    yield TextArea(
-                        id="post_history_area",
-                    )
-                with TabPane("Character Sheet"):
-                    yield TextArea(
-                        id="character_sheet_area",
-                    )
-                with TabPane("Intro Scene"):
-                    yield TextArea(
-                        id="intro_scene_area",
-                    )
-                with TabPane("Intro Page"):
-                    yield TextArea(
-                        id="intro_page_area",
-                    )
-                with TabPane("A1111"):
-                    yield TextArea(
-                        id="a1111_area",
-                    )
-                with TabPane("Suno"):
-                    yield TextArea(
-                        id="suno_area",
-                    )
+                        with TabPane("System Prompt"):
+                            yield TextArea(
+                                id="system_prompt_area",
+                            )
+                        with TabPane("Post History"):
+                            yield TextArea(
+                                id="post_history_area",
+                            )
+                        with TabPane("Character Sheet"):
+                            yield TextArea(
+                                id="character_sheet_area",
+                            )
+                        with TabPane("Intro Scene"):
+                            yield TextArea(
+                                id="intro_scene_area",
+                            )
+                        with TabPane("Intro Page"):
+                            yield TextArea(
+                                id="intro_page_area",
+                            )
+                        with TabPane("A1111"):
+                            yield TextArea(
+                                id="a1111_area",
+                            )
+                        with TabPane("Suno"):
+                            yield TextArea(
+                                id="suno_area",
+                            )
 
                     with Vertical(classes="button-row"):
                         yield Button("✏️  [E] Edit Mode", id="toggle_edit", variant="default")
