@@ -1,33 +1,93 @@
 # Character Generator (Blueprint Pack)
 
-This folder is a set of prompt blueprints for compiling a single **SEED** into a consistent suite of character assets for roleplay tooling (RPBotGenerator/Chub-style setups), plus optional A1111 and Suno prompts.
+A comprehensive prompt blueprint system for compiling consistent character assets from a single **SEED**. Includes an interactive terminal UI (bpui) with keyboard shortcuts, batch operations, and multi-provider LLM support.
 
 ## Quick Start
 
 ### Option 1: Terminal UI (Recommended)
 
-Install and launch the interactive TUI:
+Launch the interactive TUI with full keyboard navigation:
 
 ```bash
 # Using the provided launcher (recommended - auto-creates venv)
 ./run_bpui.sh
 
-# Or install manually in the existing venv
+# Or install manually
 source .venv/bin/activate
+pip install textual rich tomli-w httpx
 pip install litellm  # optional, for 100+ providers
 bpui
 ```
 
-**New in TUI**: Provider-specific API key management - store keys for OpenAI, Anthropic, DeepSeek, Google, etc. directly in Settings. The system automatically selects the right key based on your model choice.
+**TUI Features:**
+- **Keyboard Shortcuts** - Fast navigation (Q to quit, Enter to compile, Tab to switch tabs, etc.)
+- **Multi-Provider LLM Support** - OpenAI, Anthropic, DeepSeek, Google, Cohere, Mistral, and 100+ more via LiteLLM
+- **Batch Operations** - Compile multiple characters from seed files
+- **Asset Editing** - Edit and save generated assets with live validation
+- **Draft Management** - Browse and review all generated characters
+- **Seed Generator** - Generate seed lists from genre/theme inputs
+- **Real-time Streaming** - Watch generation progress in real-time
 
-See [bpui/README.md](bpui/README.md) for full TUI documentation.
+See [bpui/README.md](bpui/README.md) for complete TUI documentation and keyboard shortcuts reference.
 
-### Option 2: Direct LLM invocation
+### Option 2: CLI Mode (Scriptable)
+
+Compile characters from the command line for automation:
+
+```bash
+# Single character compilation
+bpui compile --seed "Noir detective with psychic abilities" --mode NSFW
+
+# Batch compilation from file
+bpui batch --input seeds.txt --mode NSFW --continue-on-error
+
+# Generate seeds
+bpui seed-gen --input genres.txt --out "seed output/noir.txt"
+
+# Validate a character pack
+bpui validate drafts/20240203_150000_character_name
+
+# Export to output directory
+bpui export "Character Name" drafts/20240203_150000_character_name --model gpt4
+```
+
+### Option 3: Direct LLM invocation
 
 1. Pick a SEED (see examples below)
 2. Invoke the orchestrator (`blueprints/rpbotgenerator.md`) with the SEED
 3. Parse the 7-codeblock output
 4. Export using `tools/export_character.sh`
+
+## Repository Structure
+
+```
+character-generator/
+├── blueprints/          # All prompt blueprints (orchestrator + asset specs)
+│   ├── rpbotgenerator.md       # Main orchestrator
+│   ├── system_prompt.md        # ≤300 token system prompt
+│   ├── post_history.md         # ≤300 token behavior layer
+│   ├── character_sheet.md      # Structured character data
+│   ├── intro_scene.md          # Opening scene
+│   ├── intro_page.md           # Markdown intro page
+│   ├── a1111.md                # AUTOMATIC1111 image prompt
+│   ├── a1111_sdxl_comfyui.md   # SDXL alternate layout
+│   └── suno.md                 # Suno V5 song prompt
+├── bpui/                # Terminal UI application (Python package)
+│   ├── cli.py                  # CLI entry point
+│   ├── config.py               # Configuration management
+│   ├── prompting.py            # Blueprint loading
+│   ├── parse_blocks.py         # 7-codeblock parser
+│   ├── llm/                    # LLM adapters (LiteLLM + OpenAI-compatible)
+│   └── tui/                    # Textual screens (home, compile, review, etc.)
+├── tools/               # Shell scripts (export, validation)
+│   ├── export_character.sh     # Export compiled characters
+│   ├── validate_pack.py        # Validation script
+│   └── seed-gen.md             # Seed generator blueprint
+├── output/              # Exported character packs
+├── drafts/              # Auto-saved generation drafts
+├── fixtures/            # Test fixtures and samples
+└── tests/               # Unit tests
+```
 
 ## Files (what each blueprint produces)
 
@@ -65,7 +125,41 @@ All blueprints are in the `blueprints/` folder:
 
 ## Content mode (SFW/NSFW/Platform-Safe)
 
-The orchestrator supports an optional content mode. If you care about output boundaries, include the mode in your request and keep it consistent across all assets.
+The orchestrator supports optional content mode specification:
+
+- **SFW**: No explicit sexual content; "fade to black" if sexuality implied
+- **NSFW**: Explicit content allowed if implied by seed
+- **Platform-Safe**: Avoid explicit content and platform-risky extremes; use nonsexual tension
+
+Specify mode in TUI, CLI (`--mode SFW`), or inline in seed (e.g., "Mode: SFW").
+
+## Key Features
+
+### Asset Generation
+- **7-asset suite** from single SEED: system_prompt, post_history, character_sheet, intro_scene, intro_page, a1111_prompt, suno_prompt
+- **Strict hierarchy** ensures consistency across all assets
+- **Asset isolation** prevents downstream contradictions
+- **Deterministic output** for reproducible results
+
+### LLM Support
+- **LiteLLM integration** supports 100+ providers (OpenAI, Anthropic, DeepSeek, Google, Cohere, Mistral, etc.)
+- **OpenAI-compatible** local models (Ollama, LM Studio, vLLM, etc.)
+- **Provider-specific API keys** auto-selected based on model
+- **Streaming support** for real-time feedback
+
+### Workflow Tools
+- **Keyboard shortcuts** across all TUI screens
+- **Batch compilation** from seed files
+- **Asset editing** with dirty tracking and validation
+- **Draft management** with browser and review
+- **Integrated validation** checks for placeholders, mode consistency, user-authorship violations
+- **Export integration** creates properly structured output directories
+
+### Moreau Virus / Morphosis Support
+- Automatic lore application for furry/anthro/scalie characters
+- Functional trait handling (anatomy, clothing, social context)
+- Morphosis counterculture integration
+- Respects canon constraints (2-year timeline, vaccine, prevalence)
 
 ## Adjustment Note
 
@@ -93,9 +187,44 @@ Optional alternate image prompt:
 
 ## SEED examples
 
-- “Strict museum curator who hates being noticed, but can’t stop watching {{user}}”
-- “Street medic with a savior complex, protective toward {{user}}, terrified of abandonment”
-- “Corporate fixer: polite menace, offers {{user}} a deal they can’t afford to accept”
+Good seeds imply power dynamic, emotional temperature, tension axis, and why {{user}} matters:
+
+- "Strict museum curator who hates being noticed, but can't stop watching {{user}}"
+- "Street medic with a savior complex, protective toward {{user}}, terrified of abandonment"
+- "Corporate fixer: polite menace, offers {{user}} a deal they can't afford to accept"
+- "Moreau (canine) bartender at Morphosis venue, knows everyone's secrets, protective of {{user}}"
+- "Exhausted single parent, attracted to {{user}}, guilt about wanting something for themselves"
+
+## Testing
+
+Run the test suite:
+
+```bash
+# All tests
+pytest
+
+# Specific test file
+pytest tests/unit/test_batch.py
+
+# With coverage
+pytest --cov=bpui tests/
+```
+
+## Development
+
+```bash
+# Install in development mode
+pip install -e .
+
+# Run TUI from source
+python -m bpui.cli
+
+# Format code
+black bpui/ tests/
+
+# Type checking
+mypy bpui/
+```
 
 ## Genre quickstart
 
