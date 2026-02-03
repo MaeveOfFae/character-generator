@@ -32,7 +32,7 @@ Given one SEED, generate the following assets as discrete, standalone outputs:
 2. Post History
 3. Character Sheet
 4. Intro Scene
-5. Intro Page (HTML/CSS)
+5. Intro Page (Markdown)
 6. A1111 Image Prompt
 7. Suno Music Prompt
 

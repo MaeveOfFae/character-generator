@@ -34,7 +34,7 @@ mkdir -p "$OUTPUT_DIR"
 
 if [ "$#" -eq 2 ] || [ "$#" -eq 3 ]; then
     SOURCE_DIR="$2"
-    for f in system_prompt.txt post_history.txt character_sheet.txt intro_scene.txt a1111_prompt.txt suno_prompt.txt intro_page.html; do
+    for f in system_prompt.txt post_history.txt character_sheet.txt intro_scene.txt a1111_prompt.txt suno_prompt.txt intro_page.md; do
         if [ ! -f "${SOURCE_DIR}/${f}" ]; then
             echo "Error: Missing ${SOURCE_DIR}/${f}"
             exit 1
@@ -45,9 +45,14 @@ if [ "$#" -eq 2 ] || [ "$#" -eq 3 ]; then
     cp "${SOURCE_DIR}/post_history.txt" "$OUTPUT_DIR/post_history.txt"
     cp "${SOURCE_DIR}/character_sheet.txt" "$OUTPUT_DIR/character_sheet.txt"
     cp "${SOURCE_DIR}/intro_scene.txt" "$OUTPUT_DIR/intro_scene.txt"
-    cp "${SOURCE_DIR}/intro_page.html" "$OUTPUT_DIR/intro_page.html"
+    cp "${SOURCE_DIR}/intro_page.md" "$OUTPUT_DIR/intro_page.md"
     cp "${SOURCE_DIR}/a1111_prompt.txt" "$OUTPUT_DIR/a1111_prompt.txt"
     cp "${SOURCE_DIR}/suno_prompt.txt" "$OUTPUT_DIR/suno_prompt.txt"
+
+    # Optional alternate prompt (SDXL-first / ComfyUI)
+    if [ -f "${SOURCE_DIR}/a1111_sdxl_prompt.txt" ]; then
+        cp "${SOURCE_DIR}/a1111_sdxl_prompt.txt" "$OUTPUT_DIR/a1111_sdxl_prompt.txt"
+    fi
 else
     SYSTEM_PROMPT="$2"
     POST_HISTORY="$3"
@@ -61,7 +66,7 @@ else
     echo "$POST_HISTORY" > "$OUTPUT_DIR/post_history.txt"
     echo "$CHARACTER_SHEET" > "$OUTPUT_DIR/character_sheet.txt"
     echo "$INTRO_SCENE" > "$OUTPUT_DIR/intro_scene.txt"
-    echo "$INTRO_PAGE" > "$OUTPUT_DIR/intro_page.html"
+    echo "$INTRO_PAGE" > "$OUTPUT_DIR/intro_page.md"
     echo "$A1111_PROMPT" > "$OUTPUT_DIR/a1111_prompt.txt"
     echo "$SUNO_PROMPT" > "$OUTPUT_DIR/suno_prompt.txt"
 fi
@@ -71,6 +76,10 @@ echo "  - system_prompt.txt"
 echo "  - post_history.txt"
 echo "  - character_sheet.txt"
 echo "  - intro_scene.txt"
-echo "  - intro_page.html"
+echo "  - intro_page.md"
 echo "  - a1111_prompt.txt"
 echo "  - suno_prompt.txt"
+
+if [ -f "$OUTPUT_DIR/a1111_sdxl_prompt.txt" ]; then
+    echo "  - a1111_sdxl_prompt.txt"
+fi

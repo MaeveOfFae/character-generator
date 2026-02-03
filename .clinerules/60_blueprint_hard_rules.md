@@ -31,12 +31,12 @@ These are non-negotiable.
 - Must end with an open loop inviting a response from {{user}} (without narrating what {{user}} does next).
 - Output ONLY inside a single plaintext code block. No commentary.
 
-## intro_page (HTML)
+## intro_page (Markdown)
 
-- Single HTML snippet with self-contained styling (no external assets/CSS).
+- Single Markdown snippet (no HTML/CSS).
 - Replace every {PLACEHOLDER} token with concrete values; leave none.
 - Hard-ban: never emit example/prior character names.
-- Output must be immediately usable as pasted HTML.
+- Output ONLY inside a single plaintext code block. No commentary.
 
 ## a1111
 

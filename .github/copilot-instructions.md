@@ -21,12 +21,12 @@
 - **system_prompt / post_history**: paragraph-only, ≤300 tokens, no headings/lists (see [system_prompt.md](../system_prompt.md), [post_history.md](../post_history.md)).
 - **post_history**: if `{{original}}` is present, extend/refine it; never overwrite/negate it.
 - **character_sheet**: field order and names are strict; no bracket placeholders left unfilled in generated output (see [character_sheet.md](../character_sheet.md)).
-- **intro_page**: blueprint contains many `{PLACEHOLDER}` tokens that must remain in the blueprint; generated output must replace them all and stay self-contained HTML/CSS (see [intro_page.md](../intro_page.md)).
+- **intro_page**: blueprint contains many `{PLACEHOLDER}` tokens that must remain in the blueprint; generated output must replace them all and be a single Markdown snippet (no HTML/CSS) (see [intro_page.md](../intro_page.md)).
 - **a1111**: blueprint uses `((...))` slots; generated output must replace all of them and set `[Content: SFW|NSFW]` to match mode (see [a1111.md](../a1111.md)).
 - **suno**: keep the exact `[Control]` block structure and section headers; no `{TITLE}` placeholders left in generated output (see [suno.md](../suno.md)).
 
 ## Developer workflows you can run
-- Export a generated suite (expects these files in `source_dir`: `system_prompt.txt`, `post_history.txt`, `character_sheet.txt`, `intro_scene.txt`, `intro_page.html`, `a1111_prompt.txt`, `suno_prompt.txt`):
+- Export a generated suite (expects these files in `source_dir`: `system_prompt.txt`, `post_history.txt`, `character_sheet.txt`, `intro_scene.txt`, `intro_page.md`, `a1111_prompt.txt`, `suno_prompt.txt`; optional: `a1111_sdxl_prompt.txt`):
   - `./tools/export_character.sh "Character Name" "source_dir" "llm_model"` (see [tools/export_character.sh](../tools/export_character.sh)).
   - Outputs to `output/<sanitized_name>(<sanitized_model>)/`.
 - Validate outputs for common failures (placeholders, mode mismatches, user-authorship violations): follow [.clinerules/workflows/validate-placeholders.md](../.clinerules/workflows/validate-placeholders.md).
