@@ -41,6 +41,22 @@ class LLMEngine(ABC):
         pass
 
     @abstractmethod
+    async def generate_chat(
+        self,
+        messages: list[dict],
+    ) -> str:
+        """Generate completion from full messages list (multi-turn chat)."""
+        pass
+
+    @abstractmethod
+    def generate_chat_stream(
+        self,
+        messages: list[dict],
+    ) -> AsyncIterator[str]:
+        """Generate completion from full messages list with streaming."""
+        pass
+
+    @abstractmethod
     async def test_connection(self) -> Dict[str, Any]:
         """Test connection and return status."""
         pass

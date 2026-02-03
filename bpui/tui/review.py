@@ -1,9 +1,9 @@
 """Review and save screen for Blueprint UI."""
 
 from textual.app import ComposeResult
-from textual.containers import Container, Vertical, VerticalScroll
+from textual.containers import Container, Vertical, VerticalScroll, Horizontal
 from textual.screen import Screen
-from textual.widgets import Button, Static, TabbedContent, TabPane, TextArea, RichLog, Footer
+from textual.widgets import Button, Static, TabbedContent, TabPane, TextArea, RichLog, Footer, Input
 from pathlib import Path
 
 
@@ -15,6 +15,7 @@ class ReviewScreen(Screen):
         ("e", "toggle_edit", "Edit Mode"),
         ("ctrl+s", "save_changes", "Save"),
         ("tab", "next_tab", "Next Tab"),
+        ("c", "toggle_chat", "Chat"),
     ]
 
     CSS = """
@@ -79,6 +80,36 @@ class ReviewScreen(Screen):
     .dirty {
         color: $warning;
     }
+
+    #main-split {
+        width: 100%;
+        height: 1fr;
+    }
+
+    #left-panel {
+        width: 70%;
+    }
+
+    #chat-panel {
+        width: 30%;
+        border-left: solid $primary;
+        padding: 1;
+    }
+
+    #chat-panel.hidden {
+        display: none;
+    }
+
+    #chat-log {
+        height: 1fr;
+        border: solid $accent;
+        margin-bottom: 1;
+    }
+
+    #chat-input {
+        width: 100%;
+        margin-bottom: 1;
+    }
     """
 
     def __init__(self, config, draft_dir: Path, assets: dict):
@@ -89,13 +120,18 @@ class ReviewScreen(Screen):
         self.assets = assets
         self.edit_mode = False
         self.dirty_assets = set()  # Track which assets have unsaved changes
+        self.chat_visible = False
+        self.chat_messages: list[dict] = []  # Chat history
+        self.chat_generating = False
 
     def compose(self) -> ComposeResult:
         """Compose review screen."""
         with Container(id="review-container"):
             yield Static(f"📝 Review: {self.draft_dir.name}", classes="title")
 
-            with TabbedContent(id="tabs"):
+            with Horizontal(id="main-split"):
+                with Vertical(id="left-panel"):
+                    with TabbedContent(id="tabs"):
                 with TabPane("System Prompt"):
                     yield TextArea(
                         id="system_prompt_area",
@@ -125,15 +161,27 @@ class ReviewScreen(Screen):
                         id="suno_area",
                     )
 
-            with Vertical(classes="button-row"):
-                yield Button("✏️  [E] Edit Mode", id="toggle_edit", variant="default")
-                yield Button("💾 [Ctrl+S] Save Changes", id="save", variant="success", disabled=True)
-                yield Button("✓ Validate", id="validate", variant="primary")
-                yield Button("📦 Export", id="export", variant="success")
-                yield Button("⬅️  [Q] Back to Home", id="home")
+                    with Vertical(classes="button-row"):
+                        yield Button("✏️  [E] Edit Mode", id="toggle_edit", variant="default")
+                        yield Button("💾 [Ctrl+S] Save Changes", id="save", variant="success", disabled=True)
+                        yield Button("✓ Validate", id="validate", variant="primary")
+                        yield Button("📦 Export", id="export", variant="success")
+                        yield Button("💬 [C] Chat", id="chat_toggle", variant="default")
+                        yield Button("⬅️  [Q] Back to Home", id="home")
 
-            yield RichLog(id="validation-log", highlight=True, markup=True)
-            yield Static("", id="status", classes="status")
+                    yield RichLog(id="validation-log", highlight=True, markup=True)
+                    yield Static("", id="status", classes="status")
+
+                # Chat panel (initially hidden)
+                with Vertical(id="chat-panel", classes="hidden"):
+                    yield Static("💬 Asset Chat", classes="title")
+                    yield RichLog(id="chat-log", highlight=True, markup=True)
+                    yield Input(
+                        placeholder="Ask about or request changes to the current asset...",
+                        id="chat-input",
+                    )
+                    yield Button("Send", id="chat-send", variant="primary")
+
             yield Footer()
 
     async def on_mount(self) -> None:
@@ -149,6 +197,11 @@ class ReviewScreen(Screen):
         """Handle worker state changes."""
         if event.worker.name == "load_text" and event.state == "SUCCESS":
             self.run_worker(self.validate_pack, exclusive=True)
+    
+    async def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Handle Enter key in chat input."""
+        if event.input.id == "chat-input":
+            await self.send_chat_message()
     
     async def _load_text(self) -> None:
         """Load text into TextAreas after refresh."""
@@ -213,6 +266,12 @@ class ReviewScreen(Screen):
 
         elif event.button.id == "export":
             await self.export_pack()
+
+        elif event.button.id == "chat_toggle":
+            self.toggle_chat()
+
+        elif event.button.id == "chat-send":
+            await self.send_chat_message()
 
     async def validate_pack(self) -> None:
         """Validate the pack."""
@@ -446,3 +505,229 @@ class ReviewScreen(Screen):
         except (ValueError, IndexError):
             # Default to first tab if something goes wrong
             tabs.active = tab_ids[0]
+    
+    def action_toggle_chat(self) -> None:
+        """Toggle chat panel (C key)."""
+        self.toggle_chat()
+    
+    def toggle_chat(self) -> None:
+        """Show or hide chat panel."""
+        self.chat_visible = not self.chat_visible
+        chat_panel = self.query_one("#chat-panel")
+        
+        if self.chat_visible:
+            chat_panel.remove_class("hidden")
+            left_panel = self.query_one("#left-panel")
+            left_panel.styles.width = "70%"
+        else:
+            chat_panel.add_class("hidden")
+            left_panel = self.query_one("#left-panel")
+            left_panel.styles.width = "100%"
+    
+    async def send_chat_message(self) -> None:
+        """Send user message to chat and get LLM response."""
+        if self.chat_generating:
+            return
+        
+        chat_input = self.query_one("#chat-input", Input)
+        chat_log = self.query_one("#chat-log", RichLog)
+        
+        user_message = chat_input.value.strip()
+        if not user_message:
+            return
+        
+        # Clear input
+        chat_input.value = ""
+        
+        # Display user message
+        chat_log.write(f"[bold cyan]You:[/] {user_message}")
+        
+        # Add to history
+        self.chat_messages.append({"role": "user", "content": user_message})
+        
+        # Mark as generating
+        self.chat_generating = True
+        chat_log.write("[dim]Assistant is typing...[/dim]")
+        
+        try:
+            # Build system prompt with asset context
+            system_prompt = await self.build_chat_system_prompt()
+            
+            # Build full messages list
+            messages = [{"role": "system", "content": system_prompt}] + self.chat_messages
+            
+            # Get LLM engine
+            from ..llm.litellm_engine import LiteLLMEngine
+            from ..llm.openai_compat_engine import OpenAICompatEngine
+            
+            if self.config.engine == "litellm":
+                engine = LiteLLMEngine(
+                    model=self.config.model,
+                    api_key=self.config.api_key,
+                    temperature=self.config.temperature,
+                    max_tokens=self.config.max_tokens,
+                )
+            else:
+                engine = OpenAICompatEngine(
+                    model=self.config.model,
+                    api_key=self.config.api_key,
+                    base_url=self.config.base_url,
+                    temperature=self.config.temperature,
+                    max_tokens=self.config.max_tokens,
+                )
+            
+            # Stream response
+            assistant_response = ""
+            chat_log.write("[bold green]Assistant:[/] ", end="")
+            
+            stream = engine.generate_chat_stream(messages)
+            async for chunk in stream:
+                assistant_response += chunk
+                chat_log.write(chunk, end="")
+                chat_log.refresh()
+            
+            chat_log.write("")  # Newline
+            
+            # Add assistant response to history
+            self.chat_messages.append({"role": "assistant", "content": assistant_response})
+            
+            # Check if response contains edited asset
+            await self.parse_edit_from_response(assistant_response)
+            
+        except Exception as e:
+            chat_log.write(f"[bold red]Error:[/] {e}")
+        finally:
+            self.chat_generating = False
+    
+    async def build_chat_system_prompt(self) -> str:
+        """Build system prompt for chat with asset context."""
+        # Get active tab name
+        tabs = self.query_one("#tabs", TabbedContent)
+        active_tab = str(tabs.active)
+        
+        # Map tab IDs to asset names
+        tab_to_asset = {
+            "system-prompt": "system_prompt",
+            "post-history": "post_history",
+            "character-sheet": "character_sheet",
+            "intro-scene": "intro_scene",
+            "intro-page": "intro_page",
+            "a1111": "a1111",
+            "suno": "suno",
+        }
+        
+        asset_name = tab_to_asset.get(active_tab, "system_prompt")
+        
+        # Get current asset content
+        asset_areas = {
+            "system_prompt": "system_prompt_area",
+            "post_history": "post_history_area",
+            "character_sheet": "character_sheet_area",
+            "intro_scene": "intro_scene_area",
+            "intro_page": "intro_page_area",
+            "a1111": "a1111_area",
+            "suno": "suno_area",
+        }
+        
+        area_id = asset_areas.get(asset_name, "system_prompt_area")
+        area = self.query_one(f"#{area_id}", TextArea)
+        current_content = area.text
+        
+        # Get character sheet for context
+        sheet_area = self.query_one("#character_sheet_area", TextArea)
+        character_sheet = sheet_area.text
+        
+        # Build prompt
+        from ..prompting import build_refinement_chat_system
+        
+        return build_refinement_chat_system(
+            asset_name=asset_name,
+            current_content=current_content,
+            character_sheet=character_sheet,
+        )
+    
+    async def parse_edit_from_response(self, response: str) -> None:
+        """Check if response contains edited asset and apply it."""
+        # Look for codeblock in response
+        if "```" not in response:
+            return
+        
+        # Extract codeblock content
+        lines = response.split("\n")
+        in_block = False
+        block_lines = []
+        
+        for line in lines:
+            if line.startswith("```"):
+                if in_block:
+                    # End of block
+                    break
+                else:
+                    # Start of block
+                    in_block = True
+                    continue
+            
+            if in_block:
+                block_lines.append(line)
+        
+        if not block_lines:
+            return
+        
+        edited_content = "\n".join(block_lines)
+        
+        # Apply to current asset
+        await self.apply_edit_to_asset(edited_content)
+    
+    async def apply_edit_to_asset(self, new_content: str) -> None:
+        """Apply edited content to current asset TextArea."""
+        # Get active tab
+        tabs = self.query_one("#tabs", TabbedContent)
+        active_tab = str(tabs.active)
+        
+        # Map tab IDs to area IDs
+        tab_to_area = {
+            "system-prompt": "system_prompt_area",
+            "post-history": "post_history_area",
+            "character-sheet": "character_sheet_area",
+            "intro-scene": "intro_scene_area",
+            "intro-page": "intro_page_area",
+            "a1111": "a1111_area",
+            "suno": "suno_area",
+        }
+        
+        tab_to_asset = {
+            "system-prompt": "system_prompt",
+            "post-history": "post_history",
+            "character-sheet": "character_sheet",
+            "intro-scene": "intro_scene",
+            "intro-page": "intro_page",
+            "a1111": "a1111",
+            "suno": "suno",
+        }
+        
+        area_id = tab_to_area.get(active_tab)
+        asset_name = tab_to_asset.get(active_tab)
+        
+        if not area_id or not asset_name:
+            return
+        
+        # Update TextArea
+        area = self.query_one(f"#{area_id}", TextArea)
+        area.text = new_content
+        
+        # Mark as dirty
+        self.dirty_assets.add(asset_name)
+        
+        # Enable save button
+        save_button = self.query_one("#save", Button)
+        save_button.disabled = False
+        
+        # Update status
+        status = self.query_one("#status", Static)
+        status.update(f"✏️  Chat applied edits to {asset_name} (unsaved)")
+        status.add_class("dirty")
+        
+        # Log to chat
+        chat_log = self.query_one("#chat-log", RichLog)
+        chat_log.write(f"[bold yellow]✓ Applied edits to {asset_name}[/bold yellow]")
+
