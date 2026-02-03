@@ -3,11 +3,17 @@
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical, VerticalScroll
 from textual.screen import Screen
-from textual.widgets import Button, TextArea, Static, Label, ListView, ListItem
+from textual.widgets import Button, TextArea, Static, Label, ListView, ListItem, Footer
 
 
 class SeedGeneratorScreen(Screen):
     """Seed generator screen."""
+    
+    BINDINGS = [
+        ("escape,q", "go_back", "Back"),
+        ("enter", "generate_seeds", "Generate"),
+        ("ctrl+s", "save_output", "Save Output"),
+    ]
 
     CSS = """
     SeedGeneratorScreen {
@@ -79,13 +85,14 @@ class SeedGeneratorScreen(Screen):
             )
 
             with Vertical(classes="button-row"):
-                yield Button("✨ Generate Seeds", id="generate", variant="primary")
-                yield Button("⬅️  Back", id="back")
+                yield Button("✨ [Enter] Generate Seeds", id="generate", variant="primary")
+                yield Button("⬅️  [Q] Back", id="back")
 
             yield Label("Generated Seeds:")
             yield ListView(id="seeds-list")
 
             yield Static("", id="status", classes="status")
+            yield Footer()
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""
@@ -164,3 +171,23 @@ class SeedGeneratorScreen(Screen):
         except Exception as e:
             status.update(f"✗ Error: {e}")
             status.add_class("error")
+    
+    def action_go_back(self) -> None:
+        """Go back to home screen."""
+        from .home import HomeScreen
+        self.app.switch_screen(HomeScreen(self.config))
+    
+    def action_generate_seeds(self) -> None:
+        """Generate seeds (Enter key)."""
+        self.run_worker(self.generate_seeds, exclusive=False)
+    
+    def action_save_output(self) -> None:
+        """Save seeds output (Ctrl+S)."""
+        if not self.seeds:
+            status = self.query_one("#status", Static)
+            status.update("No seeds to save")
+            return
+        
+        # TODO: Implement save-to-file dialog
+        status = self.query_one("#status", Static)
+        status.update("Save functionality coming soon...")

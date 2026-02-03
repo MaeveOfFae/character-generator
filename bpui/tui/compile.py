@@ -3,11 +3,18 @@
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical, VerticalScroll
 from textual.screen import Screen
-from textual.widgets import Button, Input, Select, Static, Label, RichLog
+from textual.widgets import Button, Input, Select, Static, Label, RichLog, Footer
+from textual.worker import Worker, WorkerState
 
 
 class CompileScreen(Screen):
     """Compilation screen."""
+    
+    BINDINGS = [
+        ("escape,q", "go_back", "Back"),
+        ("ctrl+c", "cancel_generation", "Cancel"),
+        ("enter", "start_compile", "Compile"),
+    ]
 
     CSS = """
     CompileScreen {
@@ -105,13 +112,14 @@ class CompileScreen(Screen):
             )
 
             with Vertical(classes="button-row"):
-                yield Button("▶️  Compile", id="compile", variant="primary")
-                yield Button("⬅️  Back", id="back")
+                yield Button("▶️  [Enter] Compile", id="compile", variant="primary")
+                yield Button("⬅️  [Q] Back", id="back")
 
             yield Label("Output:")
             yield RichLog(id="output-log", highlight=True, markup=True, auto_scroll=True)
 
             yield Static("", id="status", classes="status")
+        yield Footer()
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""
@@ -120,7 +128,34 @@ class CompileScreen(Screen):
                 self.app.pop_screen()
 
         elif event.button.id == "compile":
-            await self.compile_character()
+            # Show immediate feedback
+            status = self.query_one("#status", Static)
+            status.update("⏳ Starting compilation...")
+            status.refresh()
+            
+            # Run compilation in background to avoid blocking UI
+            self.run_worker(self.compile_character(), exclusive=True, name="compile")
+    
+    def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
+        """Handle worker state changes."""
+        if event.worker.name == "compile":
+            status = self.query_one("#status", Static)
+            output_log = self.query_one("#output-log", RichLog)
+            
+            if event.state == WorkerState.ERROR:
+                error = event.worker.error
+                output_log.write(f"\n[bold red]✗ Worker error: {error}[/]")
+                output_log.refresh()
+                status.update(f"✗ Error: {error}")
+                status.add_class("error")
+                status.refresh()
+                self.is_generating = False
+            elif event.state == WorkerState.CANCELLED:
+                output_log.write(f"\n[bold yellow]⚠ Compilation cancelled[/]")
+                output_log.refresh()
+                status.update("⚠ Cancelled")
+                status.refresh()
+                self.is_generating = False
 
     async def compile_character(self) -> None:
         """Compile character from seed."""
@@ -129,19 +164,31 @@ class CompileScreen(Screen):
 
         status = self.query_one("#status", Static)
         output_log = self.query_one("#output-log", RichLog)
+        
+        # Clear and show initial message
+        output_log.clear()
+        output_log.write("[bold cyan]Initializing compilation...[/]")
+        output_log.refresh()
+        
         status.update("⏳ Compiling character...")
         status.remove_class("error")
-        output_log.clear()
+        status.refresh()
 
         self.is_generating = True
 
         try:
+            output_log.write("[dim]Importing modules...[/dim]")
+            output_log.refresh()
+            
             from ..llm.litellm_engine import LiteLLMEngine
             from ..llm.openai_compat_engine import OpenAICompatEngine
             from ..prompting import build_asset_prompt
             from ..parse_blocks import extract_single_asset, extract_character_name, ASSET_ORDER
             from ..pack_io import create_draft_dir
 
+            output_log.write("[dim]Modules imported ✓[/dim]")
+            output_log.refresh()
+            
             seed_input = self.query_one("#seed", Input)
             mode_select = self.query_one("#mode", Select)
             model_override = self.query_one("#model-override", Input)
@@ -150,6 +197,7 @@ class CompileScreen(Screen):
             if not seed:
                 status.update("✗ Please enter a seed")
                 status.add_class("error")
+                status.refresh()
                 self.is_generating = False
                 return
 
@@ -157,10 +205,26 @@ class CompileScreen(Screen):
             mode = None if mode_value == "auto" or mode_value is None else str(mode_value)
             model = model_override.value.strip() or self.config.model
 
-            output_log.write(f"[bold cyan]Seed:[/] {seed}")
-            output_log.write(f"[bold cyan]Mode:[/] {mode or 'Auto'}")
-            output_log.write(f"[bold cyan]Model:[/] {model}")
-            output_log.write("[bold cyan]Starting sequential generation...[/]\n")
+            output_log.write(f"\n[bold cyan]Configuration:[/]")
+            output_log.write(f"[bold cyan]  Seed:[/] {seed}")
+            output_log.write(f"[bold cyan]  Mode:[/] {mode or 'Auto'}")
+            output_log.write(f"[bold cyan]  Model:[/] {model}")
+            output_log.write(f"[bold cyan]  Engine:[/] {self.config.engine}")
+            output_log.refresh()
+            
+            # Check API key availability
+            if not self.config.api_key:
+                output_log.write("\n[bold red]✗ No API key found![/]")
+                output_log.write("[dim]Configure API key in Settings screen[/dim]")
+                output_log.refresh()
+                status.update("✗ No API key configured")
+                status.add_class("error")
+                status.refresh()
+                self.is_generating = False
+                return
+            
+            output_log.write("[dim]  API key: configured ✓[/dim]")
+            output_log.write("\n[bold cyan]Starting sequential generation...[/]\n")
             output_log.refresh()
 
             # Create engine
@@ -171,11 +235,17 @@ class CompileScreen(Screen):
                 "max_tokens": self.config.max_tokens,
             }
 
+            output_log.write("[dim]Creating LLM engine...[/dim]")
+            output_log.refresh()
+
             if self.config.engine == "litellm":
                 engine = LiteLLMEngine(**engine_config)
             else:
                 engine_config["base_url"] = self.config.base_url
                 engine = OpenAICompatEngine(**engine_config)
+            
+            output_log.write("[dim]Engine created successfully[/dim]")
+            output_log.refresh()
 
             # Generate each asset sequentially
             assets = {}
@@ -194,16 +264,51 @@ class CompileScreen(Screen):
 
                 # Stream generation
                 raw_output = ""
-                stream = engine.generate_stream(system_prompt, user_prompt)
-                async for chunk in stream:
-                    raw_output += chunk
-                    output_log.write(chunk)
+                chunk_count = 0
+                try:
+                    output_log.write(f"[dim]Sending request to LLM...[/dim]")
+                    output_log.refresh()
+                    
+                    stream = engine.generate_stream(system_prompt, user_prompt)
+                    
+                    # Add timeout wrapper
+                    import asyncio
+                    timeout_seconds = 300  # 5 minutes max per asset
+                    
+                    async def stream_with_timeout():
+                        nonlocal raw_output, chunk_count
+                        async for chunk in stream:
+                            raw_output += chunk
+                            chunk_count += 1
+                            
+                            # Write and refresh every 10 chunks to show progress
+                            if chunk_count % 10 == 0:
+                                output_log.write(chunk)
+                                output_log.refresh()
+                            else:
+                                output_log.write(chunk)
+                        
+                        # Final refresh to show all content
+                        output_log.refresh()
+                    
+                    try:
+                        await asyncio.wait_for(stream_with_timeout(), timeout=timeout_seconds)
+                    except asyncio.TimeoutError:
+                        output_log.write(f"\n[bold red]✗ Timeout after {timeout_seconds}s[/]")
+                        output_log.refresh()
+                        raise TimeoutError(f"Generation timeout after {timeout_seconds}s")
+                    
+                except Exception as stream_error:
+                    output_log.write(f"\n[bold red]✗ Streaming error: {stream_error}[/]")
+                    output_log.write(f"[dim]Error type: {type(stream_error).__name__}[/dim]")
+                    output_log.refresh()
+                    raise
 
                 # Parse this asset
                 try:
                     asset_content = extract_single_asset(raw_output, asset_name)
                     assets[asset_name] = asset_content
-                    output_log.write(f"\n[bold green]✓ {asset_name} complete[/]")
+                    output_log.write(f"\n[bold green]✓ {asset_name} complete ({len(asset_content)} chars)[/]")
                     output_log.refresh()
 
                     # Extract character name from character_sheet once available
@@ -215,6 +320,7 @@ class CompileScreen(Screen):
 
                 except Exception as e:
                     output_log.write(f"\n[bold red]✗ Failed to parse {asset_name}: {e}[/]")
+                    output_log.write(f"[dim]Raw output length: {len(raw_output)} chars[/dim]")
                     output_log.refresh()
                     raise
 
@@ -246,3 +352,22 @@ class CompileScreen(Screen):
 
         finally:
             self.is_generating = False
+    
+    def action_go_back(self) -> None:
+        """Go back to home screen."""
+        if not self.is_generating:
+            self.app.pop_screen()
+    
+    def action_cancel_generation(self) -> None:
+        """Cancel ongoing generation."""
+        if self.is_generating:
+            self.is_generating = False
+            status = self.query_one("#status", Static)
+            status.update("⚠️  Cancelled by user")
+    
+    def action_start_compile(self) -> None:
+        """Start compilation (Enter key)."""
+        if not self.is_generating:
+            # Trigger the compile button
+            compile_button = self.query_one("#compile", Button)
+            self.post_message(Button.Pressed(compile_button))

@@ -4,14 +4,66 @@ A terminal TUI application for compiling RPBotGenerator character assets.
 
 ## Features
 
-- **Terminal UI**: Interactive Textual-based interface
+- **Terminal UI**: Interactive Textual-based interface with keyboard shortcuts
 - **Any LLM Support**: LiteLLM (most providers) or OpenAI-compatible API
 - **Streaming Output**: Real-time generation feedback
 - **Draft Management**: Save, browse, and review generated assets
+- **Asset Editing**: Edit and save changes to generated assets
+- **Batch Operations**: Compile multiple seeds in sequence
 - **Validation**: Integrated validator for generated packs
 - **Export**: Direct integration with export scripts
 - **Seed Generator**: Generate seed lists from genre/theme inputs
 - **CLI Mode**: Scriptable commands for automation
+- **Keyboard Shortcuts**: Fast navigation and actions across all screens
+
+## Keyboard Shortcuts
+
+All screens display available shortcuts in the footer. Press the indicated keys for quick actions:
+
+### Home Screen
+- **Q** - Quit application
+- **1** - Single Compile
+- **2** - Batch Compile
+- **3** - Seed Generator
+- **4** - Browse Drafts
+- **5** - Validate Pack
+- **6** - Settings
+
+### Compile Screen
+- **Q / Escape** - Back to home
+- **Enter** - Start compilation
+- **Ctrl+C** - Cancel generation
+
+### Batch Compile Screen
+- **Q / Escape** - Back to home
+- **L** - Load seeds file
+- **Enter** - Start batch
+- **Ctrl+C** - Cancel batch
+
+### Review Screen
+- **Q / Escape** - Back to home
+- **E** - Toggle edit mode
+- **Ctrl+S** - Save changes
+- **Tab** - Next asset tab
+
+### Settings Screen
+- **Q / Escape** - Back to home
+- **T** - Test connection
+- **Enter** - Save settings
+
+### Drafts Screen
+- **Q / Escape** - Back to home
+- **Enter** - Open selected draft
+- **D** - Delete draft (coming soon)
+
+### Seed Generator Screen
+- **Q / Escape** - Back to home
+- **Enter** - Generate seeds
+- **Ctrl+S** - Save output (coming soon)
+
+### Validate Screen
+- **Q / Escape** - Back to home
+- **Enter** - Run validation
 
 ## Installation
 
@@ -81,11 +133,18 @@ bpui
    - Choose content mode (Auto/SFW/NSFW/Platform-Safe)
    - Streams output in real-time
    - Auto-saves to `drafts/`
-5. **Review**: View all 7 assets in tabs
+5. **Batch Compile**: Generate multiple characters from seed file
+   - Load seeds from file (one per line)
+   - Choose content mode for all seeds
+   - Shows progress counter (X/Y completed)
+   - Continues on error with summary at end
+6. **Review**: View and edit all 7 assets in tabs
+   - Toggle edit mode to modify assets
+   - Save changes back to files
    - Auto-validates on open
    - Export to `output/`
-6. **Drafts**: Browse previously generated drafts
-7. **Validate**: Validate any directory
+7. **Drafts**: Browse previously generated drafts
+8. **Validate**: Validate any directory
 
 ### CLI Mode (Scriptable)
 
@@ -94,6 +153,13 @@ bpui
 ```bash
 bpui compile --seed "Noir detective with psychic abilities" --mode NSFW
 bpui compile --seed "..." --mode SFW --out custom/dir --model openai/gpt-4
+```
+
+**Batch compile:**
+
+```bash
+bpui batch --input seeds.txt --mode NSFW
+bpui batch --input seeds.txt --continue-on-error --out-dir output_batch/
 ```
 
 **Generate seeds:**

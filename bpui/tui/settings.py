@@ -3,12 +3,18 @@
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical, VerticalScroll
 from textual.screen import Screen
-from textual.widgets import Button, Input, Select, Static, Label
+from textual.widgets import Button, Input, Select, Static, Label, Footer
 from textual.validation import Function
 
 
 class SettingsScreen(Screen):
     """Settings configuration screen."""
+    
+    BINDINGS = [
+        ("escape,q", "go_back", "Back"),
+        ("t", "test_connection", "Test Connection"),
+        ("enter", "save_settings", "Save"),
+    ]
 
     CSS = """
     SettingsScreen {
@@ -143,11 +149,12 @@ class SettingsScreen(Screen):
             )
 
             with Vertical(classes="button-row"):
-                yield Button("💾 Save", id="save", variant="success")
-                yield Button("🔌 Test Connection", id="test", variant="primary")
-                yield Button("⬅️  Back", id="back")
+                yield Button("💾 [Enter] Save", id="save", variant="success")
+                yield Button("🔌 [T] Test Connection", id="test", variant="primary")
+                yield Button("⬅️  [Q] Back", id="back")
 
             yield Static("", id="status", classes="status")
+            yield Footer()
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""
@@ -230,3 +237,16 @@ class SettingsScreen(Screen):
         except Exception as e:
             status.update(f"✗ Error: {e}")
             status.add_class("error")
+    
+    def action_go_back(self) -> None:
+        """Go back to home screen."""
+        from .home import HomeScreen
+        self.app.switch_screen(HomeScreen(self.config))
+    
+    def action_test_connection(self) -> None:
+        """Test connection (T key)."""
+        self.run_worker(self.test_connection, exclusive=False)
+    
+    def action_save_settings(self) -> None:
+        """Save settings (Enter key)."""
+        self.run_worker(self.save_settings, exclusive=False)

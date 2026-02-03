@@ -42,6 +42,18 @@ def main():
     export_parser.add_argument("source_dir", help="Source directory")
     export_parser.add_argument("--model", help="Model name for output directory")
 
+    # Batch command
+    batch_parser = subparsers.add_parser("batch", help="Batch compile from seed file")
+    batch_parser.add_argument("--input", required=True, help="File with seeds (one per line)")
+    batch_parser.add_argument(
+        "--mode",
+        choices=["SFW", "NSFW", "Platform-Safe"],
+        help="Content mode for all seeds (default: auto)",
+    )
+    batch_parser.add_argument("--out-dir", help="Output directory (default: drafts/)")
+    batch_parser.add_argument("--model", help="Model override")
+    batch_parser.add_argument("--continue-on-error", action="store_true", help="Continue if a seed fails")
+
     args = parser.parse_args()
 
     # Default to TUI if no command
@@ -49,6 +61,8 @@ def main():
         run_tui()
     elif args.command == "compile":
         asyncio.run(run_compile(args))
+    elif args.command == "batch":
+        asyncio.run(run_batch(args))
     elif args.command == "seed-gen":
         asyncio.run(run_seedgen(args))
     elif args.command == "validate":
@@ -235,6 +249,111 @@ def run_export(args):
         print(f"\nErrors:\n{result['errors']}")
 
     sys.exit(result["exit_code"])
+
+
+async def run_batch(args):
+    """Run batch compilation from CLI."""
+    from .config import Config
+    from .llm.litellm_engine import LiteLLMEngine
+    from .llm.openai_compat_engine import OpenAICompatEngine
+    from .prompting import build_orchestrator_prompt
+    from .parse_blocks import parse_blueprint_output, extract_character_name, ASSET_FILENAMES
+    from .pack_io import create_draft_dir
+
+    config = Config()
+
+    # Load seeds
+    input_path = Path(args.input)
+    if not input_path.exists():
+        print(f"✗ Input file not found: {input_path}")
+        sys.exit(1)
+
+    seeds_raw = input_path.read_text().strip().split("\n")
+    seeds = [s.strip() for s in seeds_raw if s.strip()]
+
+    if not seeds:
+        print("✗ No seeds found in file")
+        sys.exit(1)
+
+    print(f"📦 Batch compiling {len(seeds)} seeds")
+    print(f"   Mode: {args.mode or 'Auto'}")
+    print(f"   Model: {args.model or config.model}")
+    print(f"   Continue on error: {args.continue_on_error}")
+
+    # Create engine
+    model = args.model or config.model
+    engine_config = {
+        "model": model,
+        "api_key": config.api_key,
+        "temperature": config.temperature,
+        "max_tokens": config.max_tokens,
+    }
+
+    if config.engine == "litellm":
+        engine = LiteLLMEngine(**engine_config)
+    else:
+        engine_config["base_url"] = config.base_url
+        engine = OpenAICompatEngine(**engine_config)
+
+    # Compile each seed
+    successful = 0
+    failed = []
+
+    for i, seed in enumerate(seeds, 1):
+        print(f"\n[{i}/{len(seeds)}] {seed}")
+
+        try:
+            # Build prompt
+            system_prompt, user_prompt = build_orchestrator_prompt(seed, args.mode)
+
+            # Generate
+            output = ""
+            async for chunk in engine.generate_stream(system_prompt, user_prompt):
+                output += chunk
+                print(".", end="", flush=True)
+
+            print()  # newline
+
+            # Parse
+            assets = parse_blueprint_output(output)
+            
+            # Extract character name
+            character_name = extract_character_name(assets.get("character_sheet", ""))
+            if not character_name:
+                character_name = f"character_{i:03d}"
+
+            # Save
+            if args.out_dir:
+                draft_dir = Path(args.out_dir) / f"{character_name}"
+                draft_dir.mkdir(parents=True, exist_ok=True)
+                for asset_name, content in assets.items():
+                    filename = ASSET_FILENAMES.get(asset_name)
+                    if filename:
+                        (draft_dir / filename).write_text(content)
+            else:
+                draft_dir = create_draft_dir(assets, character_name)
+
+            print(f"✓ Saved to {draft_dir.name}")
+            successful += 1
+
+        except Exception as e:
+            print(f"✗ Failed: {e}")
+            failed.append((seed, str(e)))
+            if not args.continue_on_error:
+                print("\n✗ Stopping due to error (use --continue-on-error to continue)")
+                break
+
+    # Summary
+    print(f"\n{'='*60}")
+    print(f"✓ Batch complete: {successful}/{len(seeds)} successful")
+    if failed:
+        print(f"\n✗ Failed ({len(failed)}):")
+        for seed, error in failed:
+            print(f"  • {seed[:60]}... → {error}")
+
+    sys.exit(0 if successful == len(seeds) else 1)
+
+    sys.exit(0 if successful == len(seeds) else 1)
 
 
 if __name__ == "__main__":

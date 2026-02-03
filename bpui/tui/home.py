@@ -3,11 +3,21 @@
 from textual.app import ComposeResult
 from textual.containers import Container, VerticalScroll
 from textual.screen import Screen
-from textual.widgets import Button, Static
+from textual.widgets import Button, Static, Footer
 
 
 class HomeScreen(Screen):
     """Home screen with main menu."""
+    
+    BINDINGS = [
+        ("q", "quit", "Quit"),
+        ("1", "action_compile", "Compile"),
+        ("2", "action_batch", "Batch"),
+        ("3", "action_seed_gen", "Seed Gen"),
+        ("4", "action_drafts", "Drafts"),
+        ("5", "action_validate", "Validate"),
+        ("6", "action_settings", "Settings"),
+    ]
 
     CSS = """
     HomeScreen {
@@ -50,12 +60,14 @@ class HomeScreen(Screen):
         with Container(id="home-container"):
             yield Static("🎭 Blueprint UI", classes="title")
             yield Static("RPBotGenerator Character Compiler", classes="subtitle")
-            yield Button("🌱 Compile from Seed", id="compile", variant="primary")
-            yield Button("🎲 Seed Generator", id="seed-gen")
-            yield Button("📁 Open Drafts", id="drafts")
-            yield Button("✓ Validate Directory", id="validate")
-            yield Button("⚙️  Settings", id="settings")
-            yield Button("❌ Quit", id="quit", variant="error")
+            yield Button("🌱 [1] Compile from Seed", id="compile", variant="primary")
+            yield Button("📦 [2] Batch Compile", id="batch")
+            yield Button("🎲 [3] Seed Generator", id="seed-gen")
+            yield Button("📁 [4] Open Drafts", id="drafts")
+            yield Button("✓ [5] Validate Directory", id="validate")
+            yield Button("⚙️  [6] Settings", id="settings")
+            yield Button("❌ [Q] Quit", id="quit", variant="error")
+        yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""
@@ -64,6 +76,9 @@ class HomeScreen(Screen):
         elif event.button.id == "compile":
             from .compile import CompileScreen
             self.app.push_screen(CompileScreen(self.config))
+        elif event.button.id == "batch":
+            from .batch import BatchScreen
+            self.app.push_screen(BatchScreen(self.config))
         elif event.button.id == "seed-gen":
             from .seed_generator import SeedGeneratorScreen
             self.app.push_screen(SeedGeneratorScreen(self.config))
@@ -76,3 +91,37 @@ class HomeScreen(Screen):
         elif event.button.id == "validate":
             from .validate_screen import ValidateScreen
             self.app.push_screen(ValidateScreen(self.config))
+    
+    def action_quit(self) -> None:
+        """Quit the application."""
+        self.app.exit()
+    
+    def action_compile(self) -> None:
+        """Open compile screen."""
+        from .compile import CompileScreen
+        self.app.push_screen(CompileScreen(self.config))
+    
+    def action_batch(self) -> None:
+        """Open batch compile screen."""
+        from .batch import BatchScreen
+        self.app.push_screen(BatchScreen(self.config))
+    
+    def action_seed_gen(self) -> None:
+        """Open seed generator screen."""
+        from .seed_generator import SeedGeneratorScreen
+        self.app.push_screen(SeedGeneratorScreen(self.config))
+    
+    def action_drafts(self) -> None:
+        """Open drafts screen."""
+        from .drafts import DraftsScreen
+        self.app.push_screen(DraftsScreen(self.config))
+    
+    def action_validate(self) -> None:
+        """Open validate screen."""
+        from .validate_screen import ValidateScreen
+        self.app.push_screen(ValidateScreen(self.config))
+    
+    def action_settings(self) -> None:
+        """Open settings screen."""
+        from .settings import SettingsScreen
+        self.app.push_screen(SettingsScreen(self.config))
