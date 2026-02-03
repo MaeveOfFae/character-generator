@@ -46,7 +46,8 @@ PLACEHOLDER_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("Suno other {..}", re.compile(r"\{GENRE\}|\{STYLE\}|\{MOOD\}|\{ENERGY\}|\{TEMPO\}|\{BPM\}|\{TEXTURE\}|\{Remaster Style\}")),
     ("A1111 slot ((...))", re.compile(r"\(\(\.\.\.\)\)")),
     ("A1111 any slot ((...something...)) left", re.compile(r"\(\([^\)]*\.\.\.[^\)]*\)\)")),
-    ("Character sheet bracket placeholders", re.compile(r"\[[^\]]+\]")),
+    # Character sheet: only flag standalone bracket placeholders like [Age], [Name], not arrays like ["item"]
+    ("Character sheet bracket placeholders", re.compile(r"\[(?![\"'])[A-Z][^\]]*\]")),
 ]
 
 
@@ -148,7 +149,7 @@ def main(argv: list[str]) -> int:
     # Only run content checks if the required set exists.
     if not any(f.message.startswith("Missing required file") for f in findings):
         findings.extend(validate_placeholders(base_dir))
-        findings.extend(validate_a1111_mode(base_dir))
+        # Note: validate_a1111_mode removed - [Content: SFW|NSFW] is now optional
 
     if findings:
         print("VALIDATION FAILED")

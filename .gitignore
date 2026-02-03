@@ -1,3 +1,11 @@
-/chub preset
-/output
-/seed output
+/chub preset/
+/output/
+/seed output/
+/drafts/
+.venv/
+.bpui.toml
+__pycache__
+*.pyc
+*.egg-info
+dist/
+build/
