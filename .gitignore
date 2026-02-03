@@ -1,11 +1,60 @@
-/chub preset/
+# Generated character packs
 /output/
 /seed output/
 /drafts/
-.venv/
-.bpui.toml
-__pycache__
-*.pyc
-*.egg-info
+
+# Chub presets (user-specific)
+/chub preset/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
 dist/
 build/
+wheels/
+pip-wheel-metadata/
+*.manifest
+*.spec
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Configuration files (may contain API keys)
+.bpui.toml
+.env
+*.env
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+*.cover
+.hypothesis/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# Jupyter
+.ipynb_checkpoints
+*.ipynb

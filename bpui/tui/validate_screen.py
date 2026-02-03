@@ -3,12 +3,17 @@
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Static, Input, Label, RichLog
+from textual.widgets import Button, Static, Input, Label, RichLog, Footer
 from pathlib import Path
 
 
 class ValidateScreen(Screen):
     """Validate any directory screen."""
+    
+    BINDINGS = [
+        ("escape,q", "go_back", "Back"),
+        ("enter", "run_validation", "Validate"),
+    ]
 
     CSS = """
     ValidateScreen {
@@ -84,13 +89,14 @@ class ValidateScreen(Screen):
             )
 
             with Vertical(classes="button-row"):
-                yield Button("✓ Validate", id="validate", variant="primary")
-                yield Button("⬅️  Back", id="back")
+                yield Button("✓ [Enter] Validate", id="validate", variant="primary")
+                yield Button("⬅️  [Q] Back", id="back")
 
             yield Label("Validation Results:")
             yield RichLog(id="validation-log", highlight=True, markup=True)
 
             yield Static("", id="status", classes="status")
+            yield Footer()
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""
@@ -170,3 +176,12 @@ class ValidateScreen(Screen):
             validation_log.write(f"[bold red]✗ Error: {e}[/]")
             status.update(f"✗ Error: {e}")
             status.add_class("error")
+    
+    def action_go_back(self) -> None:
+        """Go back to home screen."""
+        from .home import HomeScreen
+        self.app.switch_screen(HomeScreen(self.config))
+    
+    def action_run_validation(self) -> None:
+        """Run validation (Enter key)."""
+        self.run_worker(self.run_validation, exclusive=False)

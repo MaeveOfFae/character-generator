@@ -3,11 +3,17 @@
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Static, ListView, ListItem
+from textual.widgets import Button, Static, ListView, ListItem, Footer
 
 
 class DraftsScreen(Screen):
     """Browse saved drafts screen."""
+    
+    BINDINGS = [
+        ("escape,q", "go_back", "Back"),
+        ("enter", "open_draft", "Open"),
+        ("d", "delete_draft", "Delete"),
+    ]
 
     CSS = """
     DraftsScreen {
@@ -65,9 +71,10 @@ class DraftsScreen(Screen):
 
             with Vertical(classes="button-row"):
                 yield Button("🔄 Refresh", id="refresh", variant="primary")
-                yield Button("⬅️  Back", id="back")
+                yield Button("⬅️  [Q] Back", id="back")
 
             yield Static("", id="status", classes="status")
+            yield Footer()
 
     async def on_mount(self) -> None:
         """Handle mount - load drafts."""
@@ -123,3 +130,22 @@ class DraftsScreen(Screen):
         except Exception as e:
             status = self.query_one("#status", Static)
             status.update(f"Error loading draft: {e}")
+    
+    def action_go_back(self) -> None:
+        """Go back to home screen."""
+        from .home import HomeScreen
+        self.app.switch_screen(HomeScreen(self.config))
+    
+    def action_open_draft(self) -> None:
+        """Open selected draft (Enter key)."""
+        drafts_list = self.query_one("#drafts-list", ListView)
+        if drafts_list.index is not None and self.drafts:
+            idx = drafts_list.index
+            if 0 <= idx < len(self.drafts):
+                self.run_worker(self.open_draft, self.drafts[idx], exclusive=False)
+    
+    def action_delete_draft(self) -> None:
+        """Delete selected draft (D key)."""
+        # TODO: Implement delete functionality with confirmation
+        status = self.query_one("#status", Static)
+        status.update("Delete functionality coming soon...")

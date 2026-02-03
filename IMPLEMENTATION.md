@@ -182,20 +182,23 @@ INSTALL.md               # Installation & quick start guide
 
 ### Current Limitations
 
-- No in-TUI editing of assets (read-only tabs in Review screen)
+- ✅ ~~No in-TUI editing of assets~~ **RESOLVED in Phase 2** - Full edit mode with save/dirty tracking
 - No draft deletion from TUI (can be added to Drafts screen)
 - No batch compilation (one seed at a time)
 - No progress bars for long operations (Textual limitation with async streaming)
 
 ### Future Enhancement Ideas
 
-- Asset editing in Review screen (add edit mode to TextArea widgets)
+- ✅ ~~Asset editing in Review screen~~ **COMPLETE** - Edit mode toggle, auto-save, navigation protection
 - Batch compilation queue
 - Draft comparison view (side-by-side diff)
 - Export preview before writing
 - Custom blueprint paths (currently expects repo root)
 - Settings profiles (multiple configs)
 - Generation history with re-run capability
+- Draft deletion from Drafts screen
+- Undo/redo for asset edits
+- Asset-specific syntax highlighting
 
 ## Security Considerations
 
