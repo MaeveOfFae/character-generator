@@ -1,0 +1,5 @@
+include README.md
+include bpui/README.md
+recursive-include blueprints *.md
+recursive-include tools *.sh *.py *.md
+include run_bpui.sh

@@ -22,6 +22,12 @@ litellm = ["litellm>=1.0.0"]
 [project.scripts]
 bpui = "bpui.cli:main"
 
+[tool.setuptools]
+include-package-data = true
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["bpui*"]
+
+[tool.setuptools.package-data]
+bpui = ["../blueprints/*.md", "../tools/*.sh", "../tools/*.py", "../tools/*.md"]
