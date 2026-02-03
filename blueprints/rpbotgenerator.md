@@ -196,7 +196,33 @@ Adjustment Note: {one-line note}
 ## OUTPUT RULES (STRICT)
 
 ────────────────────────────────────
+**CRITICAL: BLUEPRINT FORMAT COMPLIANCE IS MANDATORY**
 
+Each asset has a specific blueprint with EXACT formatting requirements. You must follow these formats PRECISELY—every section header, every field name, every structural element must match the blueprint specification.
+
+**DO NOT:**
+- Simplify or "streamline" blueprint formats
+- Omit required sections or headers
+- Rename fields or sections
+- Change the structure "for readability"
+- Output simplified versions when complex formats are specified
+
+**YOU MUST:**
+- Output EVERY section specified in the blueprint
+- Use EXACT field names and headers as shown
+- Include ALL required control blocks, tags, and metadata
+- Preserve the COMPLETE structure even if it seems verbose
+
+**Examples of FATAL failures:**
+- A1111: Outputting a simple prompt instead of the full [Control] template with all metadata sections
+- Suno: Omitting the [Control] block or section headers like [Verse], [Chorus]
+- Character Sheet: Using different field names or skipping sections
+
+────────────────────────────────────
+
+## OUTPUT FORMAT RULES
+
+────────────────────────────────────
 • Each asset must be output in its OWN CODEBLOCK/FILE
 • Follow each asset’s blueprint formatting exactly (do not “normalize” formats across assets)
 • Do not output anything outside the codeblocks/files

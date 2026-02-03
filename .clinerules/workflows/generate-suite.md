@@ -10,10 +10,10 @@ Goal: compile ONE seed into the full asset suite using rpbotgenerator.md, with s
      b) write files to /output/<character_name>(<llm_model>) if supported
 
 2) Open and read:
-   - rpbotgenerator.md
-   - system_prompt.md, post_history.md, character_sheet.md, intro_scene.md, intro_page.md, a1111.md, suno.md
+   - blueprints/rpbotgenerator.md
+   - blueprints/system_prompt.md, blueprints/post_history.md, blueprints/character_sheet.md, blueprints/intro_scene.md, blueprints/intro_page.md, blueprints/a1111.md, blueprints/suno.md
 
-3) Validate the seed per rpbotgenerator.md:
+3) Validate the seed per blueprints/rpbotgenerator.md:
    - Must imply: power dynamic, emotional temperature, tension axis, why {{user}} matters (as anchor, not actor)
 
 4) Compile the suite in EXACT order:

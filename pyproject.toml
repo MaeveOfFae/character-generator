@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_backend"
+
+[project]
+name = "bpui"
+version = "1.0.0"
+description = "Blueprint UI - Terminal TUI for RPBotGenerator character compilation"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "textual>=0.47.0",
+    "rich>=13.7.0",
+    "tomli>=2.0.1; python_version<'3.11'",
+    "tomli-w>=1.0.0",
+    "httpx>=0.26.0",
+]
+
+[project.optional-dependencies]
+litellm = ["litellm>=1.0.0"]
+
+[project.scripts]
+bpui = "bpui.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["bpui*"]

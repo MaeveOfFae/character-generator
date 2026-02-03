@@ -1,0 +1,5 @@
+# Optional dependencies for extended functionality
+# Install with: pip install -r requirements-optional.txt
+
+# LiteLLM support (100+ providers)
+litellm>=1.0.0

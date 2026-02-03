@@ -2,18 +2,47 @@
 
 This folder is a set of prompt blueprints for compiling a single **SEED** into a consistent suite of character assets for roleplay tooling (RPBotGenerator/Chub-style setups), plus optional A1111 and Suno prompts.
 
+## Quick Start
+
+### Option 1: Terminal UI (Recommended)
+
+Install and launch the interactive TUI:
+
+```bash
+# Using the provided launcher (recommended - auto-creates venv)
+./run_bpui.sh
+
+# Or install manually in the existing venv
+source .venv/bin/activate
+pip install litellm  # optional, for 100+ providers
+bpui
+```
+
+**New in TUI**: Provider-specific API key management - store keys for OpenAI, Anthropic, DeepSeek, Google, etc. directly in Settings. The system automatically selects the right key based on your model choice.
+
+See [bpui/README.md](bpui/README.md) for full TUI documentation.
+
+### Option 2: Direct LLM invocation
+
+1. Pick a SEED (see examples below)
+2. Invoke the orchestrator (`blueprints/rpbotgenerator.md`) with the SEED
+3. Parse the 7-codeblock output
+4. Export using `tools/export_character.sh`
+
 ## Files (what each blueprint produces)
 
-- `rpbotgenerator.md`: Orchestrator spec that coordinates all outputs from one SEED.
-- `system_prompt.md`: Character system prompt (≤300 tokens, paragraph-only).
-- `post_history.md`: Post-history behavior layer (≤300 tokens, paragraph-only).
-- `character_sheet.md`: Structured character sheet (blueprint fields + lists).
-- `intro_scene.md`: Second-person intro scene (ends with an open loop to {{user}}).
-- `intro_page.md`: Markdown intro page (platform-agnostic; no HTML/CSS).
-- `a1111.md`: Modular A1111 image prompt layout.
-- `a1111_sdxl_comfyui.md`: SDXL-first alternate image prompt layout (AUTOMATIC1111 + ComfyUI).
-- `suno.md`: Suno V5 song prompt layout.
-- `chub_rules.md`: Reference notes about Chub AI character fields and macros.
+All blueprints are in the `blueprints/` folder:
+
+- `blueprints/rpbotgenerator.md`: Orchestrator spec that coordinates all outputs from one SEED.
+- `blueprints/system_prompt.md`: Character system prompt (≤300 tokens, paragraph-only).
+- `blueprints/post_history.md`: Post-history behavior layer (≤300 tokens, paragraph-only).
+- `blueprints/character_sheet.md`: Structured character sheet (blueprint fields + lists).
+- `blueprints/intro_scene.md`: Second-person intro scene (ends with an open loop to {{user}}).
+- `blueprints/intro_page.md`: Markdown intro page (platform-agnostic; no HTML/CSS).
+- `blueprints/a1111.md`: Modular A1111 image prompt layout.
+- `blueprints/a1111_sdxl_comfyui.md`: SDXL-first alternate image prompt layout (AUTOMATIC1111 + ComfyUI).
+- `blueprints/suno.md`: Suno V5 song prompt layout.
+- `blueprints/chub_rules.md`: Reference notes about Chub AI character fields and macros.
 
 ## Minimal workflow
 
@@ -23,7 +52,7 @@ This folder is a set of prompt blueprints for compiling a single **SEED** into a
    - a tension axis.
    - why {{user}} matters (relationship/connection), without narrating {{user}} actions
 
-2) Invoke the orchestrator (`rpbotgenerator.md`) with the SEED.
+2) Invoke the orchestrator (`blueprints/rpbotgenerator.md`) with the SEED.
 
 3) Paste each generated asset into the relevant destination (system prompt, post history, greeting/scene, intro page markdown, etc.).
 

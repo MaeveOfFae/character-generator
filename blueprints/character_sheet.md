@@ -22,13 +22,14 @@ Token Constraint (Mandatory):
 
 Hard Rules:
 
-- Follow the section order and field names exactly.
+- **Follow the section order and field names EXACTLY. Do not rename or skip sections.**
+- **Do not leave any bracketed placeholders (e.g., "[Age]") unfilled.**
 - Populate every section logically and coherently from the seed.
 - Maintain internal consistency across psychology, history, behavior, and relationship dynamics.
 - Treat {{user}} as an external anchor; never assign or narrate {{user}} actions, dialogue, thoughts, emotions, sensations, decisions, or consent.
 - Show traits through behavior and consequence, not labels.
 - Respect the orchestrator content mode when present (SFW/NSFW/Platform-Safe).
-- Do not leave any bracketed placeholders (e.g., "[Age]") unfilled.
+- Do not leave any bracketed placeholders (e.g., "[Age]", "[Name]") unfilled.
 - Plaintext only.
 - Output ONLY the finished template inside a single plaintext code block.
 - No commentary, explanations, or meta language outside the block.

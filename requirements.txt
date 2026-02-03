@@ -1,0 +1,24 @@
+# Blueprint UI - Core Dependencies
+# Install with: pip install -r requirements.txt
+
+# Core dependencies (required)
+textual>=0.47.0
+rich>=13.7.0
+tomli-w>=1.0.0
+httpx>=0.26.0
+setuptools>=61.0
+wheel
+
+# Python 3.10 compatibility
+tomli>=2.0.1; python_version<'3.11'
+
+# Optional dependencies
+# Install with: pip install -r requirements.txt -r requirements-optional.txt
+# litellm>=1.0.0  # For 100+ LLM providers support
+
+# Development dependencies (for contributors)
+# pytest>=7.0.0
+# pytest-asyncio>=0.21.0
+# mypy>=1.0.0
+# black>=23.0.0
+# ruff>=0.1.0
