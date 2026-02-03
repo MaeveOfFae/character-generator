@@ -45,6 +45,7 @@ All screens display available shortcuts in the footer. Press the indicated keys 
 - **E** - Toggle edit mode
 - **Ctrl+S** - Save changes
 - **Tab** - Next asset tab
+- **C** - Toggle chat panel (LLM assistant for refining assets)
 
 ### Settings Screen
 - **Q / Escape** - Back to home

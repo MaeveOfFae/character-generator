@@ -89,6 +89,55 @@ class LiteLLMEngine(LLMEngine):
             if chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
 
+    async def generate_chat(
+        self,
+        messages: list[dict],
+    ) -> str:
+        """Generate completion from full messages list (multi-turn chat)."""
+        if not LITELLM_AVAILABLE or litellm is None:
+            raise RuntimeError("LiteLLM not available")
+
+        response = await litellm.acompletion(
+            model=self.model,
+            messages=messages,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            api_key=self.api_key,
+            stream=False,
+            **self.extra_params
+        )
+
+        return response.choices[0].message.content
+
+    def generate_chat_stream(
+        self,
+        messages: list[dict],
+    ) -> AsyncIterator[str]:
+        """Generate completion from full messages list with streaming."""
+        return self._generate_chat_stream_impl(messages)
+
+    async def _generate_chat_stream_impl(
+        self,
+        messages: list[dict],
+    ) -> AsyncIterator[str]:
+        """Internal streaming implementation for chat."""
+        if not LITELLM_AVAILABLE or litellm is None:
+            raise RuntimeError("LiteLLM not available")
+
+        response = await litellm.acompletion(
+            model=self.model,
+            messages=messages,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            api_key=self.api_key,
+            stream=True,
+            **self.extra_params
+        )
+
+        async for chunk in response:
+            if chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
+
     async def test_connection(self) -> Dict[str, Any]:
         """Test connection and return status."""
         if not LITELLM_AVAILABLE or litellm is None:

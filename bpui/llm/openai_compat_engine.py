@@ -105,6 +105,79 @@ class OpenAICompatEngine(LLMEngine):
                         except json.JSONDecodeError:
                             continue
 
+    async def generate_chat(
+        self,
+        messages: list[dict],
+    ) -> str:
+        """Generate completion from full messages list (multi-turn chat)."""
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+            "stream": False,
+        }
+
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            response = await client.post(
+                f"{self.base_url}/chat/completions",
+                headers=headers,
+                json=payload,
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data["choices"][0]["message"]["content"]
+
+    def generate_chat_stream(
+        self,
+        messages: list[dict],
+    ) -> AsyncIterator[str]:
+        """Generate completion from full messages list with streaming."""
+        return self._generate_chat_stream_impl(messages)
+
+    async def _generate_chat_stream_impl(
+        self,
+        messages: list[dict],
+    ) -> AsyncIterator[str]:
+        """Internal streaming implementation for chat."""
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+            "stream": True,
+        }
+
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            async with client.stream(
+                "POST",
+                f"{self.base_url}/chat/completions",
+                headers=headers,
+                json=payload,
+            ) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if line.startswith("data: "):
+                        data_str = line[6:]
+                        if data_str.strip() == "[DONE]":
+                            break
+                        try:
+                            data = json.loads(data_str)
+                            if "choices" in data and len(data["choices"]) > 0:
+                                delta = data["choices"][0].get("delta", {})
+                                if "content" in delta:
+                                    yield delta["content"]
+                        except json.JSONDecodeError:
+                            continue
+
     async def test_connection(self) -> Dict[str, Any]:
         """Test connection and return status."""
         try:
