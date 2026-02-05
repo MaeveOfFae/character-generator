@@ -142,10 +142,118 @@ class DraftsScreen(Screen):
         if drafts_list.index is not None and self.drafts:
             idx = drafts_list.index
             if 0 <= idx < len(self.drafts):
-                self.run_worker(self.open_draft, self.drafts[idx], exclusive=False)
+                draft_dir = self.drafts[idx]
+                self.run_worker(lambda: self.open_draft(draft_dir))
     
     def action_delete_draft(self) -> None:
         """Delete selected draft (D key)."""
-        # TODO: Implement delete functionality with confirmation
+        drafts_list = self.query_one("#drafts-list", ListView)
+        
+        if drafts_list.index is None or not self.drafts:
+            return
+        
+        idx = drafts_list.index
+        if not 0 <= idx < len(self.drafts):
+            return
+        
+        draft_dir = self.drafts[idx]
+        
+        # Show confirmation dialog
+        self.app.push_screen(DeleteConfirmScreen(draft_dir.name, self._confirm_delete))
+    
+    def _confirm_delete(self, confirmed: bool) -> None:
+        """Handle delete confirmation."""
+        if not confirmed:
+            return
+        
+        drafts_list = self.query_one("#drafts-list", ListView)
         status = self.query_one("#status", Static)
-        status.update("Delete functionality coming soon...")
+        
+        if drafts_list.index is None or not self.drafts:
+            return
+        
+        idx = drafts_list.index
+        if not 0 <= idx < len(self.drafts):
+            return
+        
+        draft_dir = self.drafts[idx]
+        
+        try:
+            from ..pack_io import delete_draft
+            delete_draft(draft_dir)
+            status.update(f"✓ Deleted: {draft_dir.name}")
+            # Reload drafts list
+            self.run_worker(self.load_drafts)
+        except Exception as e:
+            status.update(f"✗ Error deleting draft: {e}")
+
+
+class DeleteConfirmScreen(Screen):
+    """Confirmation dialog for deleting drafts."""
+    
+    BINDINGS = [
+        ("y", "confirm", "Yes, delete"),
+        ("n,escape,q", "cancel", "No, cancel"),
+    ]
+    
+    CSS = """
+    DeleteConfirmScreen {
+        layout: horizontal;
+        align: center middle;
+    }
+    
+    #dialog {
+        width: 60;
+        height: 12;
+        border: solid $warning;
+        background: $panel;
+        padding: 1;
+    }
+    
+    #message {
+        content-align: center middle;
+        margin-bottom: 2;
+    }
+    
+    #buttons {
+        layout: horizontal;
+        height: 3;
+    }
+    
+    #buttons Button {
+        width: 1fr;
+    }
+    """
+    
+    def __init__(self, draft_name: str, callback):
+        """Initialize confirmation dialog."""
+        super().__init__()
+        self.draft_name = draft_name
+        self.callback = callback
+    
+    def compose(self) -> ComposeResult:
+        """Compose confirmation dialog."""
+        with Vertical(id="dialog"):
+            yield Static(f"Delete draft:\n\n  {self.draft_name}\n\nThis cannot be undone!", id="message")
+            with Container(id="buttons"):
+                yield Button("Yes, Delete", id="confirm", variant="error")
+                yield Button("Cancel", id="cancel")
+    
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle button press."""
+        if event.button.id == "confirm":
+            self.app.pop_screen()
+            self.callback(True)
+        else:
+            self.app.pop_screen()
+            self.callback(False)
+    
+    def action_confirm(self) -> None:
+        """Confirm deletion (Y key)."""
+        self.app.pop_screen()
+        self.callback(True)
+    
+    def action_cancel(self) -> None:
+        """Cancel deletion (N/Escape/Q keys)."""
+        self.app.pop_screen()
+        self.callback(False)

@@ -4,10 +4,75 @@ import pytest
 from pathlib import Path
 from bpui.prompting import (
     load_blueprint,
+    load_rules,
+    get_rules_for_asset,
     build_orchestrator_prompt,
     build_asset_prompt,
     build_seedgen_prompt,
 )
+
+
+class TestLoadRules:
+    """Tests for load_rules function."""
+    
+    def test_load_rules_from_repo(self):
+        """Test loading rules from actual repo."""
+        repo_root = Path(__file__).parent.parent.parent
+        rules = load_rules(repo_root)
+        
+        assert isinstance(rules, list)
+        assert len(rules) > 0
+        # Check that some known rules are loaded
+        all_rules_text = "\n".join(rules)
+        assert "Scope & Role" in all_rules_text
+        assert "User Agency & Consent" in all_rules_text
+    
+    def test_load_rules_from_nonexistent_dir(self, tmp_path):
+        """Test loading rules from directory without rules folder."""
+        assert load_rules(tmp_path) == []
+    
+    def test_load_rules_empty_dir(self, tmp_path):
+        """Test loading rules from empty rules directory."""
+        rules_dir = tmp_path / "rules"
+        rules_dir.mkdir()
+        assert load_rules(tmp_path) == []
+
+
+class TestGetRulesForAsset:
+    """Tests for get_rules_for_asset function."""
+    
+    def test_get_rules_for_system_prompt(self):
+        """Test getting rules for system_prompt asset."""
+        repo_root = Path(__file__).parent.parent.parent
+        rules = get_rules_for_asset("system_prompt", repo_root)
+        
+        assert "Scope & Role" in rules
+        assert "User Agency & Consent" in rules
+        assert "Content Mode" in rules
+        assert "system_prompt" in rules  # Should include asset-specific rules
+    
+    def test_get_rules_for_character_sheet(self):
+        """Test getting rules for character_sheet asset."""
+        repo_root = Path(__file__).parent.parent.parent
+        rules = get_rules_for_asset("character_sheet", repo_root)
+        
+        assert "Scope & Role" in rules
+        assert "character_sheet" in rules
+        assert "Follow section order" in rules  # From hard rules
+    
+    def test_get_rules_for_intro_scene(self):
+        """Test getting rules for intro_scene asset."""
+        repo_root = Path(__file__).parent.parent.parent
+        rules = get_rules_for_asset("intro_scene", repo_root)
+        
+        assert "Scope & Role" in rules
+        assert "intro_scene" in rules
+        assert "Second-person" in rules
+    
+    def test_get_rules_nonexistent_dir(self, tmp_path):
+        """Test getting rules from nonexistent directory."""
+        rules = get_rules_for_asset("system_prompt", tmp_path)
+        assert rules == ""
 
 
 class TestLoadBlueprint:
@@ -45,6 +110,20 @@ class TestLoadBlueprint:
 class TestBuildOrchestratorPrompt:
     """Tests for build_orchestrator_prompt function."""
     
+    def test_build_includes_rules(self):
+        """Test that orchestrator prompt includes rules."""
+        repo_root = Path(__file__).parent.parent.parent
+        system, user = build_orchestrator_prompt(
+            "A detective",
+            repo_root=repo_root
+        )
+        
+        # Should include rules section
+        assert "# RULES" in system
+        assert "Scope & Role" in system
+        assert "User Agency & Consent" in system
+        assert "ORCHESTRATOR BLUEPRINT" in system
+    
     def test_build_with_mode(self):
         """Test building orchestrator prompt with mode."""
         repo_root = Path(__file__).parent.parent.parent
@@ -55,6 +134,7 @@ class TestBuildOrchestratorPrompt:
         )
         
         assert "RPBotGenerator" in system or "orchestrator" in system.lower()
+        assert "# RULES" in system
         assert "Mode: NSFW" in user
         assert "SEED: A dystopian detective" in user
     
@@ -67,6 +147,7 @@ class TestBuildOrchestratorPrompt:
             repo_root=repo_root
         )
         
+        assert "# RULES" in system
         assert "RPBotGenerator" in system or "orchestrator" in system.lower()
         assert "Mode:" not in user
         assert "SEED: A cheerful baker" in user
@@ -98,6 +179,21 @@ class TestBuildOrchestratorPrompt:
 class TestBuildAssetPrompt:
     """Tests for build_asset_prompt function."""
     
+    def test_build_includes_rules(self):
+        """Test that asset prompt includes rules."""
+        repo_root = Path(__file__).parent.parent.parent
+        system, user = build_asset_prompt(
+            "system_prompt",
+            "A detective",
+            repo_root=repo_root
+        )
+        
+        # Should include rules section
+        assert "# RULES" in system
+        assert "Scope & Role" in system
+        assert "User Agency & Consent" in system
+        assert "BLUEPRINT: system_prompt" in system
+    
     def test_build_system_prompt_asset(self):
         """Test building system_prompt asset."""
         repo_root = Path(__file__).parent.parent.parent
@@ -108,7 +204,9 @@ class TestBuildAssetPrompt:
             repo_root=repo_root
         )
         
+        assert "# RULES" in system
         assert "System Prompt" in system or "Blueprint Agent" in system
+        assert "300 tokens" in system  # From hard rules
         assert "Mode: NSFW" in user
         assert "SEED: A noir detective" in user
     
@@ -122,6 +220,7 @@ class TestBuildAssetPrompt:
             repo_root=repo_root
         )
         
+        assert "# RULES" in system
         assert "Character Sheet" in system or "Blueprint Agent" in system
         assert "Mode:" not in user
         assert "SEED: A pirate captain" in user
@@ -142,6 +241,7 @@ class TestBuildAssetPrompt:
             repo_root=repo_root
         )
         
+        assert "# RULES" in system
         assert "Prior Assets" in user
         assert "system_prompt" in user
         assert "Jake" in user
@@ -159,6 +259,7 @@ class TestBuildAssetPrompt:
             repo_root=repo_root
         )
         
+        assert "# RULES" in system
         assert "Prior Assets" not in user
     
     def test_build_intro_scene_asset(self):
@@ -170,7 +271,9 @@ class TestBuildAssetPrompt:
             repo_root=repo_root
         )
         
+        assert "# RULES" in system
         assert "Intro Scene" in system or "Blueprint Agent" in system
+        assert "Second-person" in system  # From hard rules
 
 
 class TestBuildSeedgenPrompt:
@@ -214,6 +317,7 @@ class TestPromptingEdgeCases:
         repo_root = Path(__file__).parent.parent.parent
         system, user = build_orchestrator_prompt("", repo_root=repo_root)
         
+        assert "# RULES" in system
         assert "SEED: " in user
     
     def test_multiline_seed(self):
@@ -225,6 +329,7 @@ and a vendetta"""
         
         system, user = build_orchestrator_prompt(seed, repo_root=repo_root)
         
+        assert "# RULES" in system
         assert seed in user
     
     def test_special_characters_in_seed(self):
@@ -234,6 +339,7 @@ and a vendetta"""
         
         system, user = build_orchestrator_prompt(seed, repo_root=repo_root)
         
+        assert "# RULES" in system
         assert seed in user
     
     def test_very_long_seed(self):
@@ -243,4 +349,5 @@ and a vendetta"""
         
         system, user = build_orchestrator_prompt(seed, repo_root=repo_root)
         
+        assert "# RULES" in system
         assert seed in user

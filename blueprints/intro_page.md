@@ -12,7 +12,7 @@ Use this blueprint to produce a single Markdown snippet. Keep the layout lean an
 
 Version note: version tracks the format spec for this blueprint (not a bundle version).
 
-**CRITICAL: ALL PLACEHOLDERS MUST BE REPLACED**
+>**CRITICAL: ALL PLACEHOLDERS MUST BE REPLACED**
 
 Rules:
 

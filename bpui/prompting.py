@@ -1,7 +1,7 @@
 """Prompt construction and blueprint loading."""
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 
 def load_blueprint(name: str, repo_root: Optional[Path] = None) -> str:
@@ -14,6 +14,82 @@ def load_blueprint(name: str, repo_root: Optional[Path] = None) -> str:
         raise FileNotFoundError(f"Blueprint not found: {blueprint_path}")
 
     return blueprint_path.read_text()
+
+
+def load_rules(repo_root: Optional[Path] = None) -> List[str]:
+    """Load all rule files from rules/ folder in order.
+    
+    Returns:
+        List of rule file contents in filename order
+    """
+    if repo_root is None:
+        repo_root = Path.cwd()
+
+    rules_dir = repo_root / "rules"
+    if not rules_dir.exists():
+        return []
+
+    # Get all .md files sorted by filename
+    rule_files = sorted(rules_dir.glob("*.md"))
+    
+    rules = []
+    for rule_file in rule_files:
+        rules.append(rule_file.read_text())
+    
+    return rules
+
+
+def get_rules_for_asset(asset_name: str, repo_root: Optional[Path] = None) -> str:
+    """Get relevant rules for a specific asset.
+    
+    For individual assets, includes core rules that apply to all generation.
+    
+    Args:
+        asset_name: Name of the asset (system_prompt, post_history, etc.)
+        repo_root: Repository root path
+        
+    Returns:
+        Combined rules as a single string
+    """
+    # Core rules that apply to all assets
+    core_rule_files = [
+        "00_scope_and_role.md",
+        "09_adjustment_note_and_thin_seed.md",
+        "20_user_agency_and_consent.md",
+        "30_content_modes.md",
+        "40_genre_and_tone.md",
+        "50_anti_generic.md",
+        "51_anti_moralizing_directive.md",
+        "55_no_moral_sanitizing.md",
+        "70_repo_hygiene.md",
+    ]
+    
+    if repo_root is None:
+        repo_root = Path.cwd()
+    
+    rules_dir = repo_root / "rules"
+    if not rules_dir.exists():
+        return ""
+    
+    rules = []
+    for rule_file in core_rule_files:
+        rule_path = rules_dir / rule_file
+        if rule_path.exists():
+            rules.append(rule_path.read_text())
+    
+    # Add asset-specific hard rules
+    hard_rules_path = rules_dir / "60_blueprint_hard_rules.md"
+    if hard_rules_path.exists():
+        hard_rules = hard_rules_path.read_text()
+        # Extract only the section relevant to this asset
+        section_pattern = rf"## {asset_name}\n+((?:[^#]|\n(?!## ))+)"
+        import re
+        match = re.search(section_pattern, hard_rules)
+        if match:
+            asset_rules = f"## {asset_name}\n{match.group(1)}"
+            rules.append(asset_rules)
+    
+    return "\n\n---\n\n".join(rules)
 
 
 def build_orchestrator_prompt(
@@ -31,7 +107,18 @@ def build_orchestrator_prompt(
     Returns:
         Tuple of (system_prompt, user_prompt)
     """
+    # Load all rules
+    rules = load_rules(repo_root)
+    rules_text = "\n\n---\n\n".join(rules) if rules else ""
+    
+    # Load orchestrator blueprint
     orchestrator = load_blueprint("rpbotgenerator", repo_root)
+    
+    # Combine rules + blueprint for system prompt
+    if rules_text:
+        system_prompt = f"# RULES\n\n{rules_text}\n\n---\n\n# ORCHESTRATOR BLUEPRINT\n\n{orchestrator}"
+    else:
+        system_prompt = orchestrator
 
     # User prompt is simple: mode (if specified) + seed
     user_lines = []
@@ -39,7 +126,7 @@ def build_orchestrator_prompt(
         user_lines.append(f"Mode: {mode}")
     user_lines.append(f"SEED: {seed}")
 
-    return orchestrator, "\n".join(user_lines)
+    return system_prompt, "\n".join(user_lines)
 
 
 def build_asset_prompt(
@@ -61,7 +148,17 @@ def build_asset_prompt(
     Returns:
         Tuple of (system_prompt, user_prompt)
     """
+    # Load relevant rules for this asset
+    rules = get_rules_for_asset(asset_name, repo_root)
+    
+    # Load asset blueprint
     blueprint = load_blueprint(asset_name, repo_root)
+    
+    # Combine rules + blueprint for system prompt
+    if rules:
+        system_prompt = f"# RULES\n\n{rules}\n\n---\n\n# BLUEPRINT: {asset_name}\n\n{blueprint}"
+    else:
+        system_prompt = blueprint
 
     # Build user prompt with mode + seed + prior assets as context
     user_lines = []
@@ -75,7 +172,7 @@ def build_asset_prompt(
         for prior_name, prior_content in prior_assets.items():
             user_lines.append(f"### {prior_name}:\n```\n{prior_content}\n```\n")
 
-    return blueprint, "\n".join(user_lines)
+    return system_prompt, "\n".join(user_lines)
 
 
 def build_seedgen_prompt(

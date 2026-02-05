@@ -12,6 +12,8 @@ else:
 
 import tomli_w
 
+from .logging_config import setup_logging, get_logger
+
 
 DEFAULT_CONFIG = {
     "engine": "litellm",
@@ -32,20 +34,40 @@ class Config:
         """Initialize config from file or defaults."""
         self.config_path = config_path or Path.cwd() / ".bpui.toml"
         self._data: Dict[str, Any] = {}
+        self._logger = get_logger(__name__)
+        self._setup_logging_if_needed()
         self.load()
+    
+    def _setup_logging_if_needed(self) -> None:
+        """Set up logging if not already configured."""
+        root_logger = get_logger("bpui")
+        if not root_logger.handlers:
+            log_level = os.getenv("BPUI_LOG_LEVEL", "INFO")
+            log_to_file = os.getenv("BPUI_LOG_FILE")
+            
+            log_file = Path(log_to_file) if log_to_file else None
+            setup_logging(
+                level=log_level,
+                log_file=log_file,
+                log_to_console=True,
+            )
+            self._logger.debug(f"Logging initialized at {log_level} level")
 
     def load(self) -> None:
         """Load config from file or use defaults."""
         if self.config_path.exists():
             with open(self.config_path, "rb") as f:
                 self._data = tomllib.load(f)
+            self._logger.debug(f"Loaded config from {self.config_path}")
         else:
             self._data = DEFAULT_CONFIG.copy()
+            self._logger.debug("Using default configuration")
 
     def save(self) -> None:
         """Save config to file."""
         with open(self.config_path, "wb") as f:
             tomli_w.dump(self._data, f)
+        self._logger.info(f"Saved config to {self.config_path}")
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get a config value."""
