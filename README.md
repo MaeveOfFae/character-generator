@@ -59,6 +59,20 @@ bpui export "Character Name" drafts/20240203_150000_character_name --model gpt4
 3. Parse the 7-codeblock output
 4. Export using `tools/export_character.sh`
 
+## Documentation
+
+- **TUI Guide:** [bpui/README.md](bpui/README.md)
+- **API Docs:** Generate with `make docs` and view at `docs/api/bpui/`
+- **API Docs README:** [docs/api/README.md](docs/api/README.md)
+
+## Contributing
+
+We welcome contributions! Please read:
+
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- [SECURITY.md](SECURITY.md)
+
 ## Repository Structure
 
 ```
