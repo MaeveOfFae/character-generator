@@ -2,18 +2,20 @@
 
 from pathlib import Path
 from typing import Optional, List
+from .profiler import profile
 
 
 def load_blueprint(name: str, repo_root: Optional[Path] = None) -> str:
     """Load a blueprint file from blueprints/ folder."""
-    if repo_root is None:
-        repo_root = Path.cwd()
+    with profile("load_blueprint", blueprint=name):
+        if repo_root is None:
+            repo_root = Path.cwd()
 
-    blueprint_path = repo_root / "blueprints" / f"{name}.md"
-    if not blueprint_path.exists():
-        raise FileNotFoundError(f"Blueprint not found: {blueprint_path}")
+        blueprint_path = repo_root / "blueprints" / f"{name}.md"
+        if not blueprint_path.exists():
+            raise FileNotFoundError(f"Blueprint not found: {blueprint_path}")
 
-    return blueprint_path.read_text()
+        return blueprint_path.read_text()
 
 
 def load_rules(repo_root: Optional[Path] = None) -> List[str]:
@@ -95,7 +97,8 @@ def get_rules_for_asset(asset_name: str, repo_root: Optional[Path] = None) -> st
 def build_orchestrator_prompt(
     seed: str,
     mode: Optional[str] = None,
-    repo_root: Optional[Path] = None
+    repo_root: Optional[Path] = None,
+    template=None
 ) -> tuple[str, str]:
     """Build orchestrator system + user prompts.
 
@@ -103,6 +106,7 @@ def build_orchestrator_prompt(
         seed: The character seed
         mode: Content mode (SFW/NSFW/Platform-Safe) or None for auto
         repo_root: Repository root path
+        template: Optional Template object for custom assets
 
     Returns:
         Tuple of (system_prompt, user_prompt)
@@ -113,6 +117,15 @@ def build_orchestrator_prompt(
     
     # Load orchestrator blueprint
     orchestrator = load_blueprint("rpbotgenerator", repo_root)
+    
+    # If template provided, modify orchestrator to list custom assets
+    if template:
+        # Add template info to orchestrator
+        asset_list = ", ".join([asset.name for asset in template.assets])
+        template_override = f"\n\n## TEMPLATE OVERRIDE\n\nUsing custom template: {template.name}\n"
+        template_override += f"Generate these assets in order: {asset_list}\n"
+        template_override += "Follow the dependency order defined in the template.\n"
+        orchestrator = orchestrator + template_override
     
     # Combine rules + blueprint for system prompt
     if rules_text:

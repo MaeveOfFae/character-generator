@@ -1,0 +1,42 @@
+# TavernAI / SillyTavern export preset
+# Exports in TavernAI character card format (PNG with embedded JSON)
+
+[preset]
+name = "TavernAI / SillyTavern"
+format = "json"
+description = "TavernAI/SillyTavern character card format (v2 spec)"
+
+# TavernAI v2 spec fields
+[[fields]]
+asset = "character_sheet"
+target = "description"
+
+[[fields]]
+asset = "system_prompt"
+target = "personality"
+
+[[fields]]
+asset = "intro_scene"
+target = "first_mes"
+
+[[fields]]
+asset = "post_history"
+target = "mes_example"
+wrapper = "<START>\n{{user}}: Hello!\n{{char}}: {{content}}"
+
+# Optional scenario/world info
+[[fields]]
+asset = "intro_page"
+target = "scenario"
+optional = true
+
+[metadata]
+spec = "chara_card_v2"
+spec_version = "2.0"
+creator = ""
+character_version = "1.0"
+
+[output]
+filename = "{{character_name}}_tavernai.json"
+# Note: For full TavernAI support, this JSON should be embedded in a PNG file
+# Use external tools like "chara-card-utils" to create the final PNG

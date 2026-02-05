@@ -1,0 +1,38 @@
+# Raw format export preset (default)
+# Exports each asset as a separate text file
+
+[preset]
+name = "Raw Text Files"
+format = "text"
+description = "Export each asset as a separate text file (default format)"
+
+[[fields]]
+asset = "system_prompt"
+target = "system_prompt.txt"
+
+[[fields]]
+asset = "post_history"
+target = "post_history.txt"
+
+[[fields]]
+asset = "character_sheet"
+target = "character_sheet.txt"
+
+[[fields]]
+asset = "intro_scene"
+target = "intro_scene.txt"
+
+[[fields]]
+asset = "intro_page"
+target = "intro_page.md"
+
+[[fields]]
+asset = "a1111"
+target = "a1111_prompt.txt"
+
+[[fields]]
+asset = "suno"
+target = "suno_prompt.txt"
+
+[output]
+directory = "{{character_name}}({{model}})"

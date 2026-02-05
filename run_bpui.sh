@@ -15,12 +15,36 @@ if [ ! -f "$VENV_PYTHON" ]; then
     
     echo "Installing dependencies..."
     pip install --quiet --upgrade pip
-    pip install --quiet textual rich tomli-w httpx setuptools wheel
+    
+    # Install from requirements.txt if it exists
+    if [ -f "$SCRIPT_DIR/requirements.txt" ]; then
+        pip install --quiet -r "$SCRIPT_DIR/requirements.txt"
+    else
+        # Fallback to manual installation
+        pip install --quiet textual rich tomli-w httpx setuptools wheel
+        # Add tomli for Python < 3.11
+        python -c "import sys; exit(0 if sys.version_info >= (3, 11) else 1)" || pip install --quiet tomli
+    fi
     
     echo "Installing bpui in editable mode..."
     pip install --quiet -e "$SCRIPT_DIR"
+    
+    echo "✓ Setup complete!"
 fi
 
 # Activate venv and run bpui
 source "$VENV_DIR/bin/activate"
+
+# Check for updates to dependencies
+if [ "$1" = "--update-deps" ]; then
+    echo "Updating dependencies..."
+    pip install --quiet --upgrade pip
+    if [ -f "$SCRIPT_DIR/requirements.txt" ]; then
+        pip install --quiet --upgrade -r "$SCRIPT_DIR/requirements.txt"
+    fi
+    pip install --quiet -e "$SCRIPT_DIR"
+    echo "✓ Dependencies updated!"
+    shift  # Remove --update-deps from args
+fi
+
 exec python -m bpui.cli "$@"

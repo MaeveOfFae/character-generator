@@ -25,6 +25,10 @@ class ReviewScreen(Screen):
         ("c", "toggle_chat", "Chat"),
         ("o", "save_to_file", "Save to File"),
         ("ctrl+r", "regenerate_asset", "Regenerate"),
+        ("t", "edit_tags", "Edit Tags"),
+        ("f", "toggle_favorite", "Toggle Favorite"),
+        ("g", "edit_genre", "Edit Genre"),
+        ("n", "edit_notes", "Edit Notes"),
     ]
 
     CSS = """
@@ -43,6 +47,42 @@ class ReviewScreen(Screen):
         text-style: bold;
         color: $primary;
         margin-bottom: 1;
+    }
+
+    #metadata-section {
+        layout: horizontal;
+        height: auto;
+        padding: 1;
+        border: solid $accent;
+        margin-bottom: 1;
+    }
+
+    #metadata-info {
+        width: 2fr;
+    }
+
+    #metadata-buttons {
+        width: 1fr;
+        layout: horizontal;
+    }
+
+    #metadata-buttons Button {
+        margin-left: 1;
+    }
+
+    .favorite-star {
+        color: $warning;
+    }
+
+    #main-split {
+        width: 100%;
+        height: 1fr;
+        layout: horizontal;
+    }
+
+    #left-panel {
+        width: 100%;
+        layout: vertical;
     }
 
     #tabs {
@@ -88,15 +128,6 @@ class ReviewScreen(Screen):
 
     .dirty {
         color: $warning;
-    }
-
-    #main-split {
-        width: 100%;
-        height: 1fr;
-    }
-
-    #left-panel {
-        width: 70%;
     }
 
     #chat-panel {
@@ -151,37 +182,60 @@ class ReviewScreen(Screen):
         """Compose review screen."""
         with Container(id="review-container"):
             yield Static(f"📝 Review: {self.draft_dir.name}", classes="title")
+            
+            # Metadata section
+            with Horizontal(id="metadata-section"):
+                yield Static("", id="metadata-info")
+                with Horizontal(id="metadata-buttons"):
+                    yield Button("⭐ [F] Favorite", id="favorite-toggle", variant="default")
+                    yield Button("🏷️  [T] Tags", id="edit-tags", variant="default")
+                    yield Button("🎭 [G] Genre", id="edit-genre", variant="default")
+                    yield Button("📝 [N] Notes", id="edit-notes", variant="default")
 
             with Horizontal(id="main-split"):
                 with Vertical(id="left-panel"):
                     with TabbedContent(id="tabs"):
-                        with TabPane("System Prompt"):
+                        with TabPane("System Prompt", id="system-prompt-tab"):
                             yield TextArea(
+                                self.assets.get("system_prompt", ""),
                                 id="system_prompt_area",
+                                read_only=True,
                             )
-                        with TabPane("Post History"):
+                        with TabPane("Post History", id="post-history-tab"):
                             yield TextArea(
+                                self.assets.get("post_history", ""),
                                 id="post_history_area",
+                                read_only=True,
                             )
-                        with TabPane("Character Sheet"):
+                        with TabPane("Character Sheet", id="character-sheet-tab"):
                             yield TextArea(
+                                self.assets.get("character_sheet", ""),
                                 id="character_sheet_area",
+                                read_only=True,
                             )
-                        with TabPane("Intro Scene"):
+                        with TabPane("Intro Scene", id="intro-scene-tab"):
                             yield TextArea(
+                                self.assets.get("intro_scene", ""),
                                 id="intro_scene_area",
+                                read_only=True,
                             )
-                        with TabPane("Intro Page"):
+                        with TabPane("Intro Page", id="intro-page-tab"):
                             yield TextArea(
+                                self.assets.get("intro_page", ""),
                                 id="intro_page_area",
+                                read_only=True,
                             )
-                        with TabPane("A1111"):
+                        with TabPane("A1111", id="a1111-tab"):
                             yield TextArea(
+                                self.assets.get("a1111", ""),
                                 id="a1111_area",
+                                read_only=True,
                             )
-                        with TabPane("Suno"):
+                        with TabPane("Suno", id="suno-tab"):
                             yield TextArea(
+                                self.assets.get("suno", ""),
                                 id="suno_area",
+                                read_only=True,
                             )
 
                     with Vertical(classes="button-row"):
@@ -206,62 +260,20 @@ class ReviewScreen(Screen):
                         id="chat-input",
                     )
                     yield Button("Send", id="chat-send", variant="primary")
-
-            yield Footer()
+            
+        yield Footer()
 
     async def on_mount(self) -> None:
         """Handle mount - load text and auto-validate."""
-        # Delay loading to ensure TextAreas are fully composed
-        self.set_timer(0.1, self._delayed_load)
-        
-    def _delayed_load(self) -> None:
-        """Load text after a short delay to ensure widgets exist."""
-        self.run_worker(self._load_text, exclusive=True, name="load_text")
-        
-    async def on_worker_state_changed(self, event) -> None:
-        """Handle worker state changes."""
-        if event.worker.name == "load_text" and event.state == "SUCCESS":
-            self.run_worker(self.validate_pack, exclusive=True)
+        # Update metadata display
+        self.update_metadata_display()
+        # Run validation after a brief delay
+        self.set_timer(0.3, lambda: self.run_worker(self.validate_pack, exclusive=True))
     
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         """Handle Enter key in chat input."""
         if event.input.id == "chat-input":
             await self.send_chat_message()
-    
-    async def _load_text(self) -> None:
-        """Load text into TextAreas after refresh."""
-        try:
-            areas = [
-                ("system_prompt_area", "system_prompt"),
-                ("post_history_area", "post_history"),
-                ("character_sheet_area", "character_sheet"),
-                ("intro_scene_area", "intro_scene"),
-                ("intro_page_area", "intro_page"),
-                ("a1111_area", "a1111"),
-                ("suno_area", "suno"),
-            ]
-            
-            for area_id, asset_name in areas:
-                content = self.assets.get(asset_name, "")
-                
-                if content:
-                    try:
-                        area = self.query_one(f"#{area_id}", TextArea)
-                        area.text = content
-                        area.refresh()
-                    except Exception:
-                        pass
-            
-            # Set all TextAreas to read-only initially (edit mode starts disabled)
-            for area_id, _ in areas:
-                try:
-                    area = self.query_one(f"#{area_id}", TextArea)
-                    area.read_only = True
-                except Exception:
-                    pass
-            
-        except Exception as e:
-            self.log.error(f"Error loading text areas: {e}")
     
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""
@@ -300,6 +312,18 @@ class ReviewScreen(Screen):
         elif event.button.id == "save_file":
             self.show_save_dialog()
 
+        elif event.button.id == "favorite-toggle":
+            await self.toggle_favorite()
+
+        elif event.button.id == "edit-tags":
+            self.show_tags_dialog()
+
+        elif event.button.id == "edit-genre":
+            self.show_genre_dialog()
+
+        elif event.button.id == "edit-notes":
+            self.show_notes_dialog()
+
     async def validate_pack(self) -> None:
         """Validate the pack."""
         status = self.query_one("#status", Static)
@@ -332,11 +356,18 @@ class ReviewScreen(Screen):
             status.add_class("error")
 
     async def export_pack(self) -> None:
-        """Export the pack."""
+        """Export the pack - show preset selector dialog."""
+        self.app.push_screen(ExportPresetDialog(self, self.draft_dir, self.assets, self.config))
+    
+    async def do_export(self, preset_name: Optional[str] = None) -> None:
+        """Perform the actual export with optional preset."""
         status = self.query_one("#status", Static)
         validation_log = self.query_one("#validation-log", RichLog)
 
-        status.update("⏳ Exporting pack...")
+        if preset_name:
+            status.update(f"⏳ Exporting with {preset_name} preset...")
+        else:
+            status.update("⏳ Exporting pack...")
         status.remove_class("error")
 
         try:
@@ -350,7 +381,12 @@ class ReviewScreen(Screen):
 
             model_name = self.config.model.split("/")[-1] if "/" in self.config.model else self.config.model
 
-            result = export_character(character_name, self.draft_dir, model_name)
+            result = export_character(
+                character_name=character_name,
+                source_dir=self.draft_dir,
+                model=model_name,
+                preset_name=preset_name
+            )
 
             validation_log.write("\n[bold cyan]Export Results:[/]\n")
             validation_log.write(result.get("output", "No export output"))
@@ -918,6 +954,359 @@ class ReviewScreen(Screen):
     def action_save_to_file(self) -> None:
         """Show save to file dialog (O key)."""
         self.show_save_dialog()
+    
+    def update_metadata_display(self) -> None:
+        """Update the metadata information display."""
+        from ..metadata import DraftMetadata
+        
+        metadata = DraftMetadata.load(self.draft_dir)
+        if not metadata:
+            metadata = DraftMetadata.create_default(self.draft_dir)
+        
+        metadata_info = self.query_one("#metadata-info", Static)
+        
+        # Format display
+        fav_mark = "⭐ " if metadata.favorite else ""
+        tags_str = f"🏷️  {', '.join(metadata.tags)}" if metadata.tags else "No tags"
+        genre_str = f"🎭 {metadata.genre}" if metadata.genre else "No genre"
+        notes_str = f"📝 {metadata.notes[:50]}{'...' if len(metadata.notes) > 50 else ''}" if metadata.notes else "No notes"
+        
+        metadata_info.update(f"{fav_mark}{tags_str} | {genre_str} | {notes_str}")
+        
+        # Update favorite button
+        fav_button = self.query_one("#favorite-toggle", Button)
+        if metadata.favorite:
+            fav_button.label = "⭐ [F] Favorited"
+            fav_button.variant = "warning"
+        else:
+            fav_button.label = "☆ [F] Favorite"
+            fav_button.variant = "default"
+    
+    async def toggle_favorite(self) -> None:
+        """Toggle favorite status (F key)."""
+        from ..metadata import DraftMetadata
+        
+        metadata = DraftMetadata.load(self.draft_dir)
+        if not metadata:
+            metadata = DraftMetadata.create_default(self.draft_dir)
+        
+        metadata.favorite = not metadata.favorite
+        metadata.update_modified()
+        metadata.save(self.draft_dir)
+        
+        self.update_metadata_display()
+        
+        status = self.query_one("#status", Static)
+        if metadata.favorite:
+            status.update("⭐ Added to favorites")
+        else:
+            status.update("Removed from favorites")
+    
+    def action_toggle_favorite(self) -> None:
+        """Action to toggle favorite (F key)."""
+        self.run_worker(self.toggle_favorite)
+    
+    def show_tags_dialog(self) -> None:
+        """Show tags editor dialog."""
+        from ..metadata import DraftMetadata
+        
+        metadata = DraftMetadata.load(self.draft_dir)
+        if not metadata:
+            metadata = DraftMetadata.create_default(self.draft_dir)
+        
+        self.app.push_screen(TagsEditorDialog(self.draft_dir, metadata.tags, self.update_metadata_display))
+    
+    def action_edit_tags(self) -> None:
+        """Action to edit tags (T key)."""
+        self.show_tags_dialog()
+    
+    def show_genre_dialog(self) -> None:
+        """Show genre editor dialog."""
+        from ..metadata import DraftMetadata
+        
+        metadata = DraftMetadata.load(self.draft_dir)
+        if not metadata:
+            metadata = DraftMetadata.create_default(self.draft_dir)
+        
+        self.app.push_screen(GenreEditorDialog(self.draft_dir, metadata.genre or "", self.update_metadata_display))
+    
+    def action_edit_genre(self) -> None:
+        """Action to edit genre (G key)."""
+        self.show_genre_dialog()
+    
+    def show_notes_dialog(self) -> None:
+        """Show notes editor dialog."""
+        from ..metadata import DraftMetadata
+        
+        metadata = DraftMetadata.load(self.draft_dir)
+        if not metadata:
+            metadata = DraftMetadata.create_default(self.draft_dir)
+        
+        self.app.push_screen(NotesEditorDialog(self.draft_dir, metadata.notes or "", self.update_metadata_display))
+    
+    def action_edit_notes(self) -> None:
+        """Action to edit notes (N key)."""
+        self.show_notes_dialog()
+
+
+class TagsEditorDialog(Screen):
+    """Dialog for editing tags."""
+    
+    BINDINGS = [
+        ("escape,q", "cancel", "Cancel"),
+        ("ctrl+s", "save", "Save"),
+    ]
+    
+    CSS = """
+    TagsEditorDialog {
+        layout: horizontal;
+        align: center middle;
+    }
+    
+    #dialog {
+        width: 70;
+        height: 20;
+        border: solid $primary;
+        background: $panel;
+        padding: 1;
+    }
+    
+    #title {
+        text-align: center;
+        margin-bottom: 1;
+    }
+    
+    #input {
+        width: 100%;
+        margin-bottom: 1;
+    }
+    
+    #help {
+        text-align: center;
+        color: $text-muted;
+        margin-bottom: 1;
+    }
+    
+    #buttons {
+        layout: horizontal;
+        height: 3;
+    }
+    
+    #buttons Button {
+        width: 1fr;
+    }
+    """
+    
+    def __init__(self, draft_dir: Path, tags: list[str], callback):
+        super().__init__()
+        self.draft_dir = draft_dir
+        self.tags = tags
+        self.callback = callback
+    
+    def compose(self) -> ComposeResult:
+        with Vertical(id="dialog"):
+            yield Static("🏷️  Edit Tags", id="title")
+            yield Static("Enter tags separated by commas", id="help")
+            yield Input(value=", ".join(self.tags), id="input")
+            with Horizontal(id="buttons"):
+                yield Button("💾 [Ctrl+S] Save", id="save", variant="success")
+                yield Button("[Q] Cancel", id="cancel")
+    
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "save":
+            self.action_save()
+        else:
+            self.action_cancel()
+    
+    def action_save(self) -> None:
+        from ..metadata import DraftMetadata
+        
+        input_widget = self.query_one("#input", Input)
+        tags_str = input_widget.value
+        
+        # Parse tags
+        tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
+        
+        # Save to metadata
+        metadata = DraftMetadata.load(self.draft_dir)
+        if metadata:
+            metadata.tags = tags
+            metadata.update_modified()
+            metadata.save(self.draft_dir)
+        
+        self.app.pop_screen()
+        if self.callback:
+            self.callback()
+    
+    def action_cancel(self) -> None:
+        self.app.pop_screen()
+
+
+class GenreEditorDialog(Screen):
+    """Dialog for editing genre."""
+    
+    BINDINGS = [
+        ("escape,q", "cancel", "Cancel"),
+        ("ctrl+s", "save", "Save"),
+    ]
+    
+    CSS = """
+    GenreEditorDialog {
+        layout: horizontal;
+        align: center middle;
+    }
+    
+    #dialog {
+        width: 60;
+        height: 15;
+        border: solid $primary;
+        background: $panel;
+        padding: 1;
+    }
+    
+    #title {
+        text-align: center;
+        margin-bottom: 1;
+    }
+    
+    #input {
+        width: 100%;
+        margin-bottom: 1;
+    }
+    
+    #buttons {
+        layout: horizontal;
+        height: 3;
+    }
+    
+    #buttons Button {
+        width: 1fr;
+    }
+    """
+    
+    def __init__(self, draft_dir: Path, genre: str, callback):
+        super().__init__()
+        self.draft_dir = draft_dir
+        self.genre = genre
+        self.callback = callback
+    
+    def compose(self) -> ComposeResult:
+        with Vertical(id="dialog"):
+            yield Static("🎭 Edit Genre", id="title")
+            yield Input(value=self.genre, placeholder="e.g., Fantasy, Sci-Fi, Modern...", id="input")
+            with Horizontal(id="buttons"):
+                yield Button("💾 [Ctrl+S] Save", id="save", variant="success")
+                yield Button("[Q] Cancel", id="cancel")
+    
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "save":
+            self.action_save()
+        else:
+            self.action_cancel()
+    
+    def action_save(self) -> None:
+        from ..metadata import DraftMetadata
+        
+        input_widget = self.query_one("#input", Input)
+        genre = input_widget.value.strip()
+        
+        # Save to metadata
+        metadata = DraftMetadata.load(self.draft_dir)
+        if metadata:
+            metadata.genre = genre
+            metadata.update_modified()
+            metadata.save(self.draft_dir)
+        
+        self.app.pop_screen()
+        if self.callback:
+            self.callback()
+    
+    def action_cancel(self) -> None:
+        self.app.pop_screen()
+
+
+class NotesEditorDialog(Screen):
+    """Dialog for editing notes."""
+    
+    BINDINGS = [
+        ("escape,q", "cancel", "Cancel"),
+        ("ctrl+s", "save", "Save"),
+    ]
+    
+    CSS = """
+    NotesEditorDialog {
+        layout: horizontal;
+        align: center middle;
+    }
+    
+    #dialog {
+        width: 80;
+        height: 25;
+        border: solid $primary;
+        background: $panel;
+        padding: 1;
+    }
+    
+    #title {
+        text-align: center;
+        margin-bottom: 1;
+    }
+    
+    #textarea {
+        width: 100%;
+        height: 1fr;
+        margin-bottom: 1;
+    }
+    
+    #buttons {
+        layout: horizontal;
+        height: 3;
+    }
+    
+    #buttons Button {
+        width: 1fr;
+    }
+    """
+    
+    def __init__(self, draft_dir: Path, notes: str, callback):
+        super().__init__()
+        self.draft_dir = draft_dir
+        self.notes = notes
+        self.callback = callback
+    
+    def compose(self) -> ComposeResult:
+        with Vertical(id="dialog"):
+            yield Static("📝 Edit Notes", id="title")
+            yield TextArea(text=self.notes, id="textarea")
+            with Horizontal(id="buttons"):
+                yield Button("💾 [Ctrl+S] Save", id="save", variant="success")
+                yield Button("[Q] Cancel", id="cancel")
+    
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "save":
+            self.action_save()
+        else:
+            self.action_cancel()
+    
+    def action_save(self) -> None:
+        from ..metadata import DraftMetadata
+        
+        textarea = self.query_one("#textarea", TextArea)
+        notes = textarea.text.strip()
+        
+        # Save to metadata
+        metadata = DraftMetadata.load(self.draft_dir)
+        if metadata:
+            metadata.notes = notes
+            metadata.update_modified()
+            metadata.save(self.draft_dir)
+        
+        self.app.pop_screen()
+        if self.callback:
+            self.callback()
+    
+    def action_cancel(self) -> None:
+        self.app.pop_screen()
 
 
 class SaveFileDialog(Screen):
@@ -1156,3 +1545,119 @@ class SaveFileDialog(Screen):
         status.update(f"✓ Saved all assets to {output_file}")
         status.add_class("success")
 
+
+class ExportPresetDialog(Screen):
+    """Dialog for selecting export preset."""
+    
+    BINDINGS = [
+        ("escape,q", "cancel", "Cancel"),
+        ("enter", "confirm", "Export"),
+    ]
+    
+    CSS = """
+    ExportPresetDialog {
+        layout: horizontal;
+        align: center middle;
+    }
+    
+    #dialog {
+        width: 70;
+        height: 30;
+        border: solid $primary;
+        background: $panel;
+        padding: 1;
+    }
+    
+    #title {
+        text-align: center;
+        margin-bottom: 1;
+    }
+    
+    #help {
+        text-align: center;
+        color: $text-muted;
+        margin-bottom: 1;
+    }
+    
+    #preset-list {
+        height: 1fr;
+        border: solid $accent;
+        margin-bottom: 1;
+    }
+    
+    #buttons {
+        layout: horizontal;
+        height: 3;
+    }
+    
+    #buttons Button {
+        width: 1fr;
+    }
+    """
+    
+    def __init__(self, parent_screen, draft_dir: Path, assets: dict, config):
+        super().__init__()
+        self.parent_screen = parent_screen
+        self.draft_dir = draft_dir
+        self.assets = assets
+        self.config = config
+        self.presets = []
+        self.selected_preset = None
+    
+    def compose(self) -> ComposeResult:
+        from textual.widgets import ListView, ListItem
+        
+        with Vertical(id="dialog"):
+            yield Static("📦 Export with Preset", id="title")
+            yield Static("Select an export format or use default", id="help")
+            yield ListView(id="preset-list")
+            with Horizontal(id="buttons"):
+                yield Button("📤 Export Default", id="export-default", variant="primary")
+                yield Button("[Enter] Export Selected", id="export-preset", variant="success")
+                yield Button("[Q] Cancel", id="cancel")
+    
+    async def on_mount(self) -> None:
+        """Load available presets."""
+        from ..export_presets import list_presets
+        
+        preset_list = self.query_one("#preset-list", ListView)
+        
+        # Load presets
+        self.presets = list_presets()
+        
+        if not self.presets:
+            await preset_list.append(ListItem(Static("[No presets found]")))
+        else:
+            for preset_name, preset_path in self.presets:
+                await preset_list.append(ListItem(Static(f"📋 {preset_name} - {preset_path.stem}")))
+    
+    async def on_list_view_selected(self, event: ListView.Selected) -> None:
+        """Handle preset selection."""
+        if event.item and self.presets:
+            idx = event.list_view.index
+            if idx is not None and 0 <= idx < len(self.presets):
+                self.selected_preset = self.presets[idx][1].stem
+    
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "export-default":
+            self.app.pop_screen()
+            self.parent_screen.run_worker(lambda: self.parent_screen.do_export(preset_name=None))
+        elif event.button.id == "export-preset":
+            self.action_confirm()
+        else:
+            self.action_cancel()
+    
+    def action_confirm(self) -> None:
+        """Export with selected preset."""
+        if not self.selected_preset and self.presets:
+            # Use first preset if none selected
+            self.selected_preset = self.presets[0][1].stem
+        
+        self.app.pop_screen()
+        if self.selected_preset:
+            self.parent_screen.run_worker(lambda: self.parent_screen.do_export(preset_name=self.selected_preset))
+        else:
+            self.parent_screen.run_worker(lambda: self.parent_screen.do_export(preset_name=None))
+    
+    def action_cancel(self) -> None:
+        self.app.pop_screen()

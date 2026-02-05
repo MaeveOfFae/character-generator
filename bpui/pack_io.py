@@ -7,6 +7,7 @@ from typing import Dict, List, Optional
 
 from .parse_blocks import ASSET_FILENAMES
 from .metadata import DraftMetadata
+from .draft_index import DraftIndex
 
 
 def create_draft_dir(
@@ -54,6 +55,13 @@ def create_draft_dir(
         character_name=character_name
     )
     metadata.save(draft_dir)
+    
+    # Add to index
+    try:
+        index = DraftIndex()
+        index.add_draft(draft_dir, metadata)
+    except Exception:
+        pass  # Don't fail draft creation if indexing fails
 
     return draft_dir
 
@@ -95,6 +103,38 @@ def load_draft(draft_dir: Path) -> Dict[str, str]:
     return assets
 
 
+def save_draft(
+    assets: Dict[str, str],
+    seed: str,
+    mode: Optional[str] = None,
+    model: Optional[str] = None
+) -> Path:
+    """Save assets as a new draft (convenience wrapper for create_draft_dir).
+    
+    Args:
+        assets: Dict mapping asset names to content
+        seed: Original character seed
+        mode: Content mode (SFW/NSFW/Platform-Safe)
+        model: LLM model used
+    
+    Returns:
+        Path to created draft directory
+    """
+    # Extract character name from character_sheet
+    char_sheet = assets.get("character_sheet", "")
+    character_name = "character"
+    
+    for line in char_sheet.split("\n")[:10]:
+        if line.lower().startswith("name:"):
+            name = line.split(":", 1)[1].strip()
+            # Sanitize for filename
+            character_name = "".join(c if c.isalnum() or c in "_ " else "_" for c in name.lower())
+            character_name = "_".join(character_name.split())
+            break
+    
+    return create_draft_dir(assets, character_name, seed=seed, mode=mode, model=model)
+
+
 def delete_draft(draft_dir: Path) -> None:
     """Delete a draft directory.
 
@@ -102,4 +142,49 @@ def delete_draft(draft_dir: Path) -> None:
         draft_dir: Draft directory path
     """
     if draft_dir.exists():
+        # Remove from index
+        try:
+            index = DraftIndex()
+            index.remove_draft(draft_dir)
+        except Exception:
+            pass  # Don't fail deletion if index removal fails
+        
         shutil.rmtree(draft_dir)
+
+
+def save_asset(draft_dir: Path, asset_name: str, content: str) -> None:
+    """Save a single asset to a draft directory and update metadata.
+
+    Args:
+        draft_dir: Draft directory path
+        asset_name: Name of the asset (e.g., 'character_sheet')
+        content: Content to save
+    """
+    from .asset_versions import save_version
+    
+    filename = ASSET_FILENAMES.get(asset_name)
+    if not filename:
+        raise ValueError(f"Unknown asset name: {asset_name}")
+
+    file_path = draft_dir / filename
+    
+    # Save version before overwriting (if file exists)
+    if file_path.exists():
+        old_content = file_path.read_text()
+        save_version(draft_dir, asset_name, old_content)
+    
+    # Write new content
+    file_path.write_text(content)
+
+    # Update metadata modified timestamp
+    metadata = DraftMetadata.load(draft_dir)
+    if metadata:
+        metadata.update_modified()
+        metadata.save(draft_dir)
+        
+        # Update index
+        try:
+            index = DraftIndex()
+            index.add_draft(draft_dir, metadata)
+        except Exception:
+            pass  # Don't fail save if indexing fails

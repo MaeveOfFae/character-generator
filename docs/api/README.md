@@ -14,7 +14,7 @@ make docs
 make docs-serve
 ```
 
-Then open: http://localhost:8000
+Then open: <http://localhost:8000>
 
 ## Notes
 

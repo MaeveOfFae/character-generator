@@ -25,6 +25,7 @@ Thank you for your interest in contributing to Character Generator! This documen
 
 1. Fork the repository on GitHub
 2. Clone your fork:
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/character-generator.git
    cd character-generator
@@ -72,6 +73,7 @@ pytest -m "not slow"
 - **Format with Black** (optional but encouraged)
 
 Example:
+
 ```python
 def create_asset(name: str, content: str, mode: Optional[str] = None) -> dict:
     """Create a new character asset.
@@ -152,6 +154,7 @@ async def test_your_async_function():
 ### Branch Naming
 
 Create a descriptive branch:
+
 ```bash
 git checkout -b feat/single-asset-regeneration
 git checkout -b fix/parser-unicode-bug
@@ -171,6 +174,7 @@ Follow conventional commits format:
 ```
 
 Types:
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation changes
@@ -180,6 +184,7 @@ Types:
 - `chore`: Maintenance tasks
 
 Examples:
+
 ```
 feat: add single asset regeneration to Review screen
 
@@ -209,6 +214,7 @@ docs: update README with Phase 1 features
 3. **Update documentation**: If adding features, update relevant docs
 4. **Run migration if needed**: `make migrate-drafts`
 5. **Commit your changes**:
+
    ```bash
    git add .
    git commit -m "feat: add awesome feature"
@@ -230,6 +236,7 @@ docs: update README with Phase 1 features
 ### PR Review Checklist
 
 Reviewers will check:
+
 - [ ] Tests pass (`make test`)
 - [ ] Coverage maintained (≥80%)
 - [ ] Code follows style guidelines
@@ -333,4 +340,4 @@ By contributing, you agree that your contributions will be licensed under the pr
 
 ---
 
-**Happy coding! 🚀**
+> **Happy coding! 🚀**

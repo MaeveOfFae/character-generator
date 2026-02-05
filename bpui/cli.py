@@ -4,6 +4,7 @@ import sys
 import argparse
 import asyncio
 from pathlib import Path
+import logging
 
 
 def main():
@@ -11,6 +12,17 @@ def main():
     parser = argparse.ArgumentParser(
         description="Blueprint UI - RPBotGenerator Character Compiler"
     )
+    
+    # Global logging options
+    parser.add_argument("--log-level", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+                       default="INFO", help="Set logging level (default: INFO)")
+    parser.add_argument("--log-file", type=Path, help="Write logs to file")
+    parser.add_argument("--log-component", help="Filter logs by component (e.g., bpui.cli)")
+    parser.add_argument("--quiet", action="store_true", help="Suppress console output (except errors)")
+    
+    # Performance profiling
+    parser.add_argument("--profile", action="store_true", help="Enable performance profiling")
+    
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
 
     # TUI command (default)
@@ -41,6 +53,11 @@ def main():
     export_parser.add_argument("character_name", help="Character name")
     export_parser.add_argument("source_dir", help="Source directory")
     export_parser.add_argument("--model", help="Model name for output directory")
+    export_parser.add_argument("--preset", help="Export preset name (e.g., chubai, tavernai, raw)")
+    
+    # Index rebuild command
+    index_parser = subparsers.add_parser("rebuild-index", help="Rebuild draft index from disk")
+    index_parser.add_argument("--drafts-dir", type=Path, help="Drafts directory (default: ./drafts)")
 
     # Batch command
     batch_parser = subparsers.add_parser("batch", help="Batch compile from seed file")
@@ -53,14 +70,40 @@ def main():
     batch_parser.add_argument("--out-dir", help="Output directory (default: drafts/)")
     batch_parser.add_argument("--model", help="Model override")
     batch_parser.add_argument("--continue-on-error", action="store_true", help="Continue if a seed fails")
+    batch_parser.add_argument("--max-concurrent", type=int, help="Max concurrent compilations (default: from config)")
     batch_parser.add_argument("--resume", action="store_true", help="Resume last incomplete batch")
     batch_parser.add_argument("--clean-batch-state", action="store_true", help="Clean up old batch state files")
 
     args = parser.parse_args()
+    
+    # Setup logging before any commands
+    from .logging_config import setup_logging
+    setup_logging(
+        level=args.log_level,
+        log_file=args.log_file,
+        log_to_console=not args.quiet,
+        component_filter=args.log_component
+    )
+    
+    # Setup profiling if requested
+    if args.profile:
+        from .profiler import get_profiler, enable_profiling
+        enable_profiling()
+        logger = logging.getLogger(__name__)
+        logger.info("Performance profiling enabled")
+    
+    logger = logging.getLogger(__name__)
 
-    # Default to TUI if no command
-    if not args.command or args.command == "tui":
+    # Default to GUI if no command
+    if not args.command:
+        logger.debug("No command specified, launching GUI")
+        run_gui()
+    elif args.command == "tui":
+        logger.debug("Launching TUI")
         run_tui()
+    elif args.command == "gui":
+        logger.debug("Launching GUI")
+        run_gui()
     elif args.command == "compile":
         asyncio.run(run_compile(args))
     elif args.command == "batch":
@@ -71,6 +114,15 @@ def main():
         run_validate(args)
     elif args.command == "export":
         run_export(args)
+    elif args.command == "rebuild-index":
+        run_rebuild_index(args)
+    
+    # Print profiling report if enabled
+    if args.profile:
+        from .profiler import get_profiler
+        profiler = get_profiler()
+        profiler.print_report()
+        run_rebuild_index(args)
 
 
 def run_tui():
@@ -81,8 +133,21 @@ def run_tui():
     app.run()
 
 
+def run_gui():
+    """Run the Qt6 GUI application."""
+    logger = logging.getLogger(__name__)
+    try:
+        from .gui.app import run_gui_app
+        run_gui_app()
+    except ImportError:
+        logger.error("PySide6 not installed. Install with: pip install PySide6")
+        logger.error("Or use TUI mode: bpui tui")
+        sys.exit(1)
+
+
 async def run_compile(args):
     """Run compilation from CLI."""
+    logger = logging.getLogger(__name__)
     from .config import Config
     from .llm.litellm_engine import LiteLLMEngine
     from .llm.openai_compat_engine import OpenAICompatEngine
@@ -92,9 +157,9 @@ async def run_compile(args):
 
     config = Config()
 
-    print(f"🌱 Compiling seed: {args.seed}")
-    print(f"   Mode: {args.mode or 'Auto'}")
-    print(f"   Model: {args.model or config.model}")
+    logger.info("Compiling seed: %s", args.seed)
+    logger.info("Mode: %s", args.mode or 'Auto')
+    logger.info("Model: %s", args.model or config.model)
 
     # Create engine
     model = args.model or config.model
@@ -112,12 +177,12 @@ async def run_compile(args):
         engine = OpenAICompatEngine(**engine_config)
 
     # Generate each asset sequentially
-    print("\n⏳ Starting sequential generation...")
+    logger.info("Starting sequential generation...")
     assets = {}
     character_name = None
 
     for asset_name in ASSET_ORDER:
-        print(f"\n→ Generating {asset_name}...")
+        logger.info("Generating %s...", asset_name)
         
         # Build prompt with prior assets as context
         system_prompt, user_prompt = build_asset_prompt(
@@ -130,13 +195,13 @@ async def run_compile(args):
         # Parse this asset
         asset_content = extract_single_asset(output_text, asset_name)
         assets[asset_name] = asset_content
-        print(f"✓ {asset_name} complete")
+        logger.info("%s complete", asset_name)
         
         # Extract character name from character_sheet
         if asset_name == "character_sheet" and not character_name:
             character_name = extract_character_name(asset_content)
             if character_name:
-                print(f"   Character: {character_name}")
+                logger.info("Character: %s", character_name)
 
     if not character_name:
         character_name = "unnamed_character"
@@ -243,8 +308,18 @@ def run_export(args):
         print(f"✗ Source directory not found: {source_dir}")
         sys.exit(1)
 
-    print(f"📦 Exporting: {args.character_name}")
-    result = export_character(args.character_name, source_dir, args.model)
+    preset_name = getattr(args, 'preset', None)
+    if preset_name:
+        print(f"📦 Exporting: {args.character_name} (using {preset_name} preset)")
+    else:
+        print(f"📦 Exporting: {args.character_name}")
+    
+    result = export_character(
+        character_name=args.character_name,
+        source_dir=source_dir,
+        model=args.model,
+        preset_name=preset_name
+    )
 
     print(result["output"])
     if result["errors"]:
@@ -255,6 +330,7 @@ def run_export(args):
 
 async def run_batch(args):
     """Run batch compilation from CLI."""
+    import asyncio
     from .config import Config
     from .llm.litellm_engine import LiteLLMEngine
     from .llm.openai_compat_engine import OpenAICompatEngine
@@ -270,6 +346,10 @@ async def run_batch(args):
         deleted = BatchState.cleanup_old_states(days=7)
         print(f"✓ Cleaned up {deleted} old batch state file(s)")
         return
+
+    # Get concurrent settings
+    max_concurrent = args.max_concurrent if hasattr(args, 'max_concurrent') and args.max_concurrent else config.batch_max_concurrent
+    rate_limit_delay = config.batch_rate_limit_delay
 
     # Handle resume
     batch_state = None
@@ -358,6 +438,51 @@ async def run_batch(args):
         engine_config["base_url"] = config.base_url
         engine = OpenAICompatEngine(**engine_config)
 
+    # Use parallel processing if max_concurrent > 1
+    if max_concurrent > 1:
+        print(f"📦 Parallel batch processing: {max_concurrent} concurrent")
+        await run_batch_parallel(
+            seeds=seeds,
+            engine=engine,
+            batch_state=batch_state,
+            args=args,
+            model=model,
+            max_concurrent=max_concurrent,
+            rate_limit_delay=rate_limit_delay
+        )
+    else:
+        # Sequential processing (original behavior)
+        await run_batch_sequential(
+            seeds=seeds,
+            engine=engine,
+            batch_state=batch_state,
+            args=args,
+            model=model
+        )
+
+    # Summary
+    successful = len(batch_state.completed_seeds)
+    failed = batch_state.failed_seeds
+    
+    print(f"\n{'='*60}")
+    print(f"✓ Batch complete: {successful}/{batch_state.total_seeds} successful")
+    if failed:
+        print(f"✗ {len(failed)} failed:")
+        for fail in failed[:5]:  # Show first 5
+            print(f"   - {fail['seed']}: {fail['error'][:50]}")
+        if len(failed) > 5:
+            print(f"   ... and {len(failed) - 5} more")
+
+    # Exit with error code if any failed
+    sys.exit(1 if failed else 0)
+
+
+async def run_batch_sequential(seeds, engine, batch_state, args, model):
+    """Run batch compilation sequentially (original behavior)."""
+    from .prompting import build_orchestrator_prompt
+    from .parse_blocks import parse_blueprint_output, extract_character_name, ASSET_FILENAMES
+    from .pack_io import create_draft_dir
+    
     # Compile each seed
     successful = len(batch_state.completed_seeds)
     failed = list(batch_state.failed_seeds)
@@ -423,7 +548,7 @@ async def run_batch(args):
                 print("\n✗ Stopping due to error (use --continue-on-error to continue)")
                 batch_state.mark_cancelled()
                 batch_state.save()
-                break
+                return
 
     # Mark batch as completed
     batch_state.mark_completed_status()
@@ -433,16 +558,124 @@ async def run_batch(args):
     if not failed:
         batch_state.delete_state_file()
 
-    # Summary
-    print(f"\n{'='*60}")
-    print(f"✓ Batch complete: {successful}/{batch_state.total_seeds} successful")
-    if failed:
-        print(f"\n✗ Failed ({len(failed)}):")
-        for fail_record in failed:
-            seed_display = fail_record["seed"][:60]
-            print(f"  • {seed_display}... → {fail_record['error']}")
 
-    sys.exit(0 if successful == batch_state.total_seeds else 1)
+async def run_batch_parallel(seeds, engine, batch_state, args, model, max_concurrent, rate_limit_delay):
+    """Run batch compilation with parallel processing."""
+    import asyncio
+    from .prompting import build_orchestrator_prompt
+    from .parse_blocks import parse_blueprint_output, extract_character_name, ASSET_FILENAMES
+    from .pack_io import create_draft_dir
+    
+    semaphore = asyncio.Semaphore(max_concurrent)
+    successful = len(batch_state.completed_seeds)
+    
+    async def compile_one_seed(seed, index):
+        """Compile a single seed with semaphore control."""
+        async with semaphore:
+            # Rate limiting
+            await asyncio.sleep(rate_limit_delay)
+            
+            print(f"\n[{index}/{batch_state.total_seeds}] Starting: {seed}")
+            
+            try:
+                # Build prompt
+                system_prompt, user_prompt = build_orchestrator_prompt(seed, args.mode)
+
+                # Generate (non-streaming for parallel)
+                output = await engine.generate(system_prompt, user_prompt)
+
+                # Parse
+                assets = parse_blueprint_output(output)
+                
+                # Extract character name
+                character_name = extract_character_name(assets.get("character_sheet", ""))
+                if not character_name:
+                    character_name = f"character_{index:03d}"
+
+                # Save with metadata
+                if args.out_dir:
+                    draft_dir = Path(args.out_dir) / f"{character_name}"
+                    draft_dir.mkdir(parents=True, exist_ok=True)
+                    for asset_name, content in assets.items():
+                        filename = ASSET_FILENAMES.get(asset_name)
+                        if filename:
+                            (draft_dir / filename).write_text(content)
+                else:
+                    draft_dir = create_draft_dir(
+                        assets, 
+                        character_name,
+                        seed=seed,
+                        mode=args.mode,
+                        model=model
+                    )
+
+                print(f"✓ [{index}/{batch_state.total_seeds}] Saved: {draft_dir.name}")
+                
+                # Mark as completed in batch state
+                batch_state.mark_completed(seed, str(draft_dir))
+                batch_state.save()
+                
+                return (True, seed, None)
+
+            except Exception as e:
+                print(f"✗ [{index}/{batch_state.total_seeds}] Failed: {seed}: {e}")
+                error_msg = str(e)
+                
+                # Mark as failed in batch state
+                batch_state.mark_failed(seed, error_msg)
+                batch_state.save()
+                
+                return (False, seed, error_msg)
+    
+    # Create tasks for all seeds
+    tasks = [
+        compile_one_seed(seed, batch_state.current_index + i + 1)
+        for i, seed in enumerate(seeds)
+    ]
+    
+    # Wait for all tasks
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    # Process results
+    failed = []
+    for result in results:
+        if isinstance(result, Exception):
+            print(f"✗ Unexpected error: {result}")
+            failed.append({"seed": "unknown", "error": str(result)})
+        elif not result[0]:  # Failed compilation
+            failed.append({"seed": result[1], "error": result[2]})
+    
+    # Mark batch as completed
+    batch_state.mark_completed_status()
+    batch_state.save()
+    
+    # Clean up state file on successful completion
+    if not failed:
+        batch_state.delete_state_file()
+
+
+def run_rebuild_index(args):
+    """Rebuild the draft index from disk."""
+    from .draft_index import DraftIndex
+    
+    logger = logging.getLogger(__name__)
+    
+    logger.info("Rebuilding draft index...")
+    
+    index = DraftIndex()
+    result = index.rebuild_index(drafts_root=args.drafts_dir)
+    
+    if result:
+        logger.info("Index rebuilt: %d indexed, %d skipped", result["indexed"], result["skipped"])
+        
+        # Show stats
+        stats = index.get_stats()
+        logger.info("Total drafts: %d", stats["total"])
+        logger.info("Favorites: %d", stats["favorites"])
+        for mode, count in stats["by_mode"].items():
+            logger.info("  %s: %d", mode, count)
+    else:
+        logger.info("Index rebuilt successfully")
 
 
 if __name__ == "__main__":

@@ -115,3 +115,161 @@ class DraftMetadata:
     def update_modified(self) -> None:
         """Update modified timestamp to now."""
         self.modified = datetime.now().isoformat()
+
+
+def migrate_draft_metadata(drafts_dir: Path) -> tuple[int, int]:
+    """
+    Migrate existing drafts to include metadata.
+    
+    Scans the drafts directory and creates default metadata for any
+    drafts that don't already have it.
+    
+    Args:
+        drafts_dir: Path to the drafts directory
+        
+    Returns:
+        Tuple of (total_drafts, migrated_count)
+    """
+    if not drafts_dir.exists():
+        return (0, 0)
+    
+    total = 0
+    migrated = 0
+    
+    for draft_path in drafts_dir.iterdir():
+        if not draft_path.is_dir():
+            continue
+        
+        # Skip hidden directories
+        if draft_path.name.startswith("."):
+            continue
+        
+        total += 1
+        
+        # Check if metadata already exists
+        if (draft_path / ".metadata.json").exists():
+            continue
+        
+        # Create default metadata
+        metadata = DraftMetadata.create_default(draft_path)
+        try:
+            metadata.save(draft_path)
+            migrated += 1
+        except OSError:
+            pass
+    
+    return (total, migrated)
+
+
+def search_metadata(
+    drafts_dir: Path,
+    query: str = "",
+    tags: list[str] | None = None,
+    genre: str = "",
+    favorite_only: bool = False
+) -> list[tuple[Path, DraftMetadata]]:
+    """
+    Search drafts by metadata.
+    
+    Args:
+        drafts_dir: Path to the drafts directory
+        query: Search query (matches name, character name, or notes)
+        tags: List of tags to filter by (any match)
+        genre: Genre to filter by
+        favorite_only: Only return favorites
+        
+    Returns:
+        List of (draft_path, metadata) tuples matching the criteria
+    """
+    if not drafts_dir.exists():
+        return []
+    
+    results = []
+    query_lower = query.lower()
+    tags_lower = [t.lower() for t in (tags or [])]
+    genre_lower = genre.lower()
+    
+    for draft_path in drafts_dir.iterdir():
+        if not draft_path.is_dir() or draft_path.name.startswith("."):
+            continue
+        
+        metadata = DraftMetadata.load(draft_path)
+        if not metadata:
+            # Create default metadata for drafts without it
+            metadata = DraftMetadata.create_default(draft_path)
+        
+        # Apply filters
+        if query_lower:
+            name_match = query_lower in draft_path.name.lower()
+            char_match = metadata.character_name and query_lower in metadata.character_name.lower()
+            notes_match = metadata.notes and query_lower in metadata.notes.lower()
+            seed_match = query_lower in metadata.seed.lower()
+            if not (name_match or char_match or notes_match or seed_match):
+                continue
+        
+        if tags_lower and metadata.tags:
+            meta_tags_lower = [t.lower() for t in metadata.tags]
+            if not any(tag in meta_tags_lower for tag in tags_lower):
+                continue
+        
+        if genre_lower and (not metadata.genre or genre_lower not in metadata.genre.lower()):
+            continue
+        
+        if favorite_only and not metadata.favorite:
+            continue
+        
+        results.append((draft_path, metadata))
+    
+    return results
+
+
+def get_all_tags(drafts_dir: Path) -> list[str]:
+    """
+    Get all unique tags from all drafts.
+    
+    Args:
+        drafts_dir: Path to the drafts directory
+        
+    Returns:
+        Sorted list of unique tags
+    """
+    if not drafts_dir.exists():
+        return []
+    
+    all_tags = set()
+    
+    for draft_path in drafts_dir.iterdir():
+        if not draft_path.is_dir() or draft_path.name.startswith("."):
+            continue
+        
+        metadata = DraftMetadata.load(draft_path)
+        if metadata and metadata.tags:
+            all_tags.update(metadata.tags)
+    
+    return sorted(all_tags)
+
+
+def get_all_genres(drafts_dir: Path) -> list[str]:
+    """
+    Get all unique genres from all drafts.
+    
+    Args:
+        drafts_dir: Path to the drafts directory
+        
+    Returns:
+        Sorted list of unique genres (excluding empty strings)
+    """
+    if not drafts_dir.exists():
+        return []
+    
+    all_genres = set()
+    
+    for draft_path in drafts_dir.iterdir():
+        if not draft_path.is_dir() or draft_path.name.startswith("."):
+            continue
+        
+        metadata = DraftMetadata.load(draft_path)
+        if metadata and metadata.genre:
+            all_genres.add(metadata.genre)
+    
+    return sorted(all_genres)

@@ -2,6 +2,7 @@
 
 import re
 from typing import Optional, Dict, List
+from .profiler import profile
 
 
 # Ordered asset names as they appear in output
@@ -59,18 +60,19 @@ def parse_blueprint_output(text: str) -> Dict[str, str]:
     Raises:
         ParseError: If output doesn't match expected structure
     """
-    blocks = extract_codeblocks(text)
+    with profile("parse_blueprint_output", input_length=len(text)):
+        blocks = extract_codeblocks(text)
 
-    if len(blocks) == 0:
-        raise ParseError("No codeblocks found in output")
+        if len(blocks) == 0:
+            raise ParseError("No codeblocks found in output")
 
-    # Check for optional Adjustment Note
-    start_idx = 0
-    adjustment_note = None
+        # Check for optional Adjustment Note
+        start_idx = 0
+        adjustment_note = None
 
-    if blocks[0].strip().startswith("Adjustment Note:"):
-        adjustment_note = blocks[0].strip()
-        start_idx = 1
+        if blocks[0].strip().startswith("Adjustment Note:"):
+            adjustment_note = blocks[0].strip()
+            start_idx = 1
 
     # Require exactly 7 asset blocks after adjustment note (if present)
     asset_blocks = blocks[start_idx:]
@@ -80,12 +82,12 @@ def parse_blueprint_output(text: str) -> Dict[str, str]:
             f"Required order: {', '.join(ASSET_ORDER)}"
         )
 
-    # Map blocks to asset names
-    assets = {}
-    for i, asset_name in enumerate(ASSET_ORDER):
-        assets[asset_name] = asset_blocks[i]
+        # Map blocks to asset names
+        assets = {}
+        for i, asset_name in enumerate(ASSET_ORDER):
+            assets[asset_name] = asset_blocks[i]
 
-    return assets
+        return assets
 
 
 def extract_single_asset(output: str, asset_name: str) -> str:

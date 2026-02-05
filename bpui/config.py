@@ -24,6 +24,10 @@ DEFAULT_CONFIG = {
     "temperature": 0.7,
     "max_tokens": 4096,
     "api_keys": {},  # Provider-specific keys: {"openai": "sk-...", "anthropic": "sk-ant-..."}
+    "batch": {
+        "max_concurrent": 3,  # Max parallel batch operations
+        "rate_limit_delay": 1.0,  # Seconds between batch starts
+    },
 }
 
 
@@ -140,6 +144,37 @@ class Config:
         api_keys = self.get("api_keys", {})
         return api_keys.get(provider) if isinstance(api_keys, dict) else None
     
+    def get_api_key_for_model(self, model: str) -> Optional[str]:
+        """Get API key for a specific model.
+        
+        Extracts provider from model string and returns the appropriate key.
+        Falls back to legacy config and environment variables.
+        
+        Examples:
+            "openai/gpt-4" -> returns openai key
+            "anthropic/claude-3" -> returns anthropic key
+        """
+        # Extract provider from model
+        provider = self._extract_provider(model)
+        
+        # Check provider-specific keys first
+        if provider:
+            key = self.get_api_key(provider)
+            if key:
+                return key
+        
+        # Fall back to legacy direct key
+        direct_key = self.get("api_key", "")
+        if direct_key:
+            return direct_key
+        
+        # Fall back to environment variable
+        env_var = self.get("api_key_env", "")
+        if env_var:
+            return os.getenv(env_var)
+        
+        return None
+    
     def get_all_providers(self) -> list[str]:
         """Get list of all providers with stored keys."""
         api_keys = self.get("api_keys", {})
@@ -151,6 +186,16 @@ class Config:
     def base_url(self) -> str:
         """Get base URL for OpenAI-compatible engines."""
         return self.get("base_url", "")
+    
+    @property
+    def api_base_url(self) -> str:
+        """Get base URL for OpenAI-compatible engines (alias for base_url)."""
+        return self.base_url
+    
+    @property
+    def api_version(self) -> Optional[str]:
+        """Get API version for OpenAI-compatible engines."""
+        return self.get("api_version", None)
 
     @property
     def temperature(self) -> float:
@@ -161,6 +206,18 @@ class Config:
     def max_tokens(self) -> int:
         """Get max tokens."""
         return self.get("max_tokens", 4096)
+    
+    @property
+    def batch_max_concurrent(self) -> int:
+        """Get max concurrent batch operations."""
+        batch_config = self.get("batch", {})
+        return batch_config.get("max_concurrent", 3) if isinstance(batch_config, dict) else 3
+    
+    @property
+    def batch_rate_limit_delay(self) -> float:
+        """Get batch rate limit delay in seconds."""
+        batch_config = self.get("batch", {})
+        return batch_config.get("rate_limit_delay", 1.0) if isinstance(batch_config, dict) else 1.0
 
     def to_dict(self) -> Dict[str, Any]:
         """Get config as dict."""

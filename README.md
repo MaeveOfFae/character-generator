@@ -20,6 +20,7 @@ bpui
 ```
 
 **TUI Features:**
+
 - **Keyboard Shortcuts** - Fast navigation (Q to quit, Enter to compile, Tab to switch tabs, etc.)
 - **Multi-Provider LLM Support** - OpenAI, Anthropic, DeepSeek, Google, Cohere, Mistral, and 100+ more via LiteLLM
 - **LLM Chat Assistant** - Interactive chat panel in Review screen for refining assets conversationally
@@ -151,18 +152,21 @@ Specify mode in TUI, CLI (`--mode SFW`), or inline in seed (e.g., "Mode: SFW").
 ## Key Features
 
 ### Asset Generation
+
 - **7-asset suite** from single SEED: system_prompt, post_history, character_sheet, intro_scene, intro_page, a1111_prompt, suno_prompt
 - **Strict hierarchy** ensures consistency across all assets
 - **Asset isolation** prevents downstream contradictions
 - **Deterministic output** for reproducible results
 
 ### LLM Support
+
 - **LiteLLM integration** supports 100+ providers (OpenAI, Anthropic, DeepSeek, Google, Cohere, Mistral, etc.)
 - **OpenAI-compatible** local models (Ollama, LM Studio, vLLM, etc.)
 - **Provider-specific API keys** auto-selected based on model
 - **Streaming support** for real-time feedback
 
 ### Workflow Tools
+
 - **Keyboard shortcuts** across all TUI screens
 - **Batch compilation** from seed files
 - **Asset editing** with dirty tracking and validation
@@ -172,6 +176,7 @@ Specify mode in TUI, CLI (`--mode SFW`), or inline in seed (e.g., "Mode: SFW").
 - **Export integration** creates properly structured output directories
 
 ### LLM Chat Assistant
+
 - **Interactive refinement** - Chat with LLM about any asset in the Review screen
 - **Context-aware** - LLM has access to the asset blueprint, current content, and character sheet
 - **Auto-apply edits** - LLM can provide edited versions that are automatically applied
@@ -180,6 +185,7 @@ Specify mode in TUI, CLI (`--mode SFW`), or inline in seed (e.g., "Mode: SFW").
 - **Multi-turn support** - Full conversation history maintained for context
 
 ### Moreau Virus / Morphosis Support
+
 - Automatic lore application for furry/anthro/scalie characters
 - Functional trait handling (anatomy, clothing, social context)
 - Morphosis counterculture integration

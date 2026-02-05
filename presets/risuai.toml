@@ -1,0 +1,30 @@
+# RisuAI export preset
+# Exports in RisuAI's character format
+
+[preset]
+name = "RisuAI"
+format = "json"
+description = "RisuAI character JSON format"
+
+[[fields]]
+asset = "character_sheet"
+target = "desc"
+
+[[fields]]
+asset = "system_prompt"
+target = "personality"
+
+[[fields]]
+asset = "intro_scene"
+target = "firstMessage"
+
+[[fields]]
+asset = "post_history"
+target = "exampleMessage"
+
+[metadata]
+version = "1.0"
+type = "character"
+
+[output]
+filename = "{{character_name}}_risuai.json"

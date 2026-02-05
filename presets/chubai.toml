@@ -1,0 +1,36 @@
+# Chub AI export preset
+# Exports in Chub AI's character card JSON format
+
+[preset]
+name = "Chub AI"
+format = "json"
+description = "Chub AI character card JSON format"
+
+# Map assets to Chub AI fields
+[[fields]]
+asset = "character_sheet"
+target = "description"
+# Extract just the description/personality parts
+
+[[fields]]
+asset = "system_prompt"
+target = "personality"
+
+[[fields]]
+asset = "intro_scene"
+target = "first_mes"
+
+[[fields]]
+asset = "post_history"
+target = "mes_example"
+wrapper = "<START>\n{{content}}"
+
+# Chub AI specific metadata fields
+[metadata]
+creator = ""
+character_version = "1.0"
+tags = []
+scenario = ""
+
+[output]
+filename = "{{character_name}}_chubai.json"
