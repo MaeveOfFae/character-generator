@@ -39,8 +39,11 @@ env/
 *.swo
 *~
 .DS_Store
-.github
+
+# AI Assistant Configuration (not needed to use bpui)
+.github/
 .clinerules/
+rules/
 
 # Testing
 .pytest_cache/
