@@ -277,7 +277,7 @@ Check the validation output for:
 
 - Read [bpui/README.md](bpui/README.md) for full documentation
 - Check [main README](../README.md) for blueprint details
-- See [.github/copilot-instructions.md](../.github/copilot-instructions.md) for generation rules
+- Review blueprint specifications in `blueprints/` folder
 
 ## Support
 
