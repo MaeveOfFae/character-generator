@@ -39,6 +39,8 @@ env/
 *.swo
 *~
 .DS_Store
+.github
+.clinerules/
 
 # Testing
 .pytest_cache/

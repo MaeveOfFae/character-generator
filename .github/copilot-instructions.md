@@ -1,57 +1,176 @@
 # Copilot instructions — Character Generator (Blueprint Pack)
 
 ## What this repo is
-- This workspace is primarily **prompt blueprints** (Markdown) for compiling one **SEED** into a consistent suite of character assets.
-- The orchestrator is [rpbotgenerator.md](../blueprints/rpbotgenerator.md). It compiles assets in a strict hierarchy/order into discrete outputs.
-- The asset blueprints live in the [blueprints/](../blueprints/) folder: [system_prompt.md](../blueprints/system_prompt.md), [post_history.md](../blueprints/post_history.md), [character_sheet.md](../blueprints/character_sheet.md), [intro_scene.md](../blueprints/intro_scene.md), [intro_page.md](../blueprints/intro_page.md), [a1111.md](../blueprints/a1111.md), [suno.md](../blueprints/suno.md).
-- **bpui/**: Terminal TUI application for interactive character generation with multi-provider LLM support (see [bpui/README.md](../bpui/README.md)).
+This workspace is a **compiler-style prompt blueprint system** for generating consistent character assets from a single SEED.
+
+**Architecture:**
+- **blueprints/**: Prompt templates (Markdown) defining 7 character assets + orchestrator
+- **bpui/**: Python TUI application (Textual) with multi-provider LLM support, streaming output, draft management
+- **tools/**: Shell scripts for export/validation
+- **.clinerules/**: Workflow instructions for AI agents (priority rules, workflows, module-specific gotchas)
+
+The orchestrator ([rpbotgenerator.md](../blueprints/rpbotgenerator.md)) compiles assets in strict hierarchy: `system_prompt → post_history → character_sheet → intro_scene → intro_page → a1111 → suno`
+
+## Core generation contract (NEVER BREAK)
+1. **One asset per codeblock/file** — nothing outside the asset blocks
+2. **Strict ordering** — lower-tier assets may only depend on seed + higher-tier assets (no "downstream facts upstream")
+3. **Asset isolation** — hierarchy enforcement prevents contradictions
+4. **User-authorship rule** — never narrate/assign {{user}} actions/thoughts/consent
+5. **Format compliance** — each blueprint has EXACT formatting (don't "normalize" across assets)
+
+**Fatal failures to avoid:**
+- Placeholders left unfilled: `{PLACEHOLDER}`, `((...))`, `{TITLE}`, `[Age]`, `[Name]`
+- Content mode mismatches: `[Content: SFW|NSFW]` must match chosen mode
+- Simplifying blueprint formats (e.g., A1111/Suno without full `[Control]` blocks)
+- Combining multiple assets into one codeblock
+- Introducing new facts in lower-tier assets that higher-tier assets would need
 
 ## Repository structure
 ```
 character-generator/
-├── blueprints/          # All prompt blueprints (orchestrator + asset specs)
-├── bpui/                # Terminal UI application (Python package)
-├── tools/               # Shell scripts (export, validation)
-├── .clinerules/         # Workflow instructions for agents
-├── fixtures/            # Test fixtures and sample outputs
-├── output/              # Generated character packs
-└── chub preset/         # Chub AI preset configurations
+├── blueprints/          # 7 asset templates + orchestrator (version: 3.1)
+├── bpui/                # Python package: TUI + LLM adapters + parser
+│   ├── cli.py           # argparse entry point (bpui compile/batch/validate)
+│   ├── config.py        # .bpui.toml management (provider-specific API keys)
+│   ├── prompting.py     # Blueprint loading from blueprints/ folder
+│   ├── parse_blocks.py  # Strict 7-codeblock parser (ASSET_ORDER, ASSET_FILENAMES)
+│   ├── llm/             # LiteLLM + OpenAI-compatible adapters (base.py interface)
+│   └── tui/             # Textual screens (home, compile, review, drafts, settings)
+├── tools/               # export_character.sh, validate_pack.py
+├── tests/               # pytest (unit + integration, >=80% coverage)
+├── drafts/              # Auto-saved TUI generations (timestamped dirs)
+├── output/              # Exported packs (sanitized_name(model))
+└── .clinerules/         # Priority: user request > orchestrator > .clinerules
 ```
 
-## Core generation contract (don't break it)
-- **One asset per codeblock/file**, and **nothing outside** the asset blocks (see [rpbotgenerator.md](../blueprints/rpbotgenerator.md)).
-- **Strict ordering**: system_prompt → post_history → character_sheet → intro_scene → intro_page → a1111 → suno (see [.clinerules/workflows/generate-suite.md](../.clinerules/workflows/generate-suite.md)).
-- **Asset isolation**: lower-tier assets may only depend on the seed + higher-tier assets; don’t introduce facts “downstream” that would need to be referenced “upstream”.
-- **User-authorship rule**: never narrate or assign actions/thoughts/sensations/decisions/consent to `{{user}}` (enforced across modules).
+## bpui (Terminal TUI) architecture
+**Entry points:**
+- `./run_bpui.sh` (auto-creates venv, recommended)
+- `bpui` (after manual install: `pip install textual rich tomli-w httpx litellm`)
+- `bpui compile --seed "..." --mode NSFW` (CLI mode)
+
+**LLM adapter system:**
+- `config.py`: Loads `.bpui.toml` (TOML format, gitignored), extracts provider from model prefix (`openai/gpt-4` → `api_keys.openai`)
+- `llm/base.py`: Abstract interface (generate, generate_stream, generate_chat, test_connection)
+- `llm/litellm_engine.py`: 100+ providers via LiteLLM (format: `provider/model`)
+- `llm/openai_compat_engine.py`: Direct REST API for local models (requires `base_url`)
+
+**Parser contract (parse_blocks.py):**
+1. Optional first block: `Adjustment Note: ...` (thin seed handling)
+2. Exactly 7 asset blocks in ASSET_ORDER: `system_prompt, post_history, character_sheet, intro_scene, intro_page, a1111, suno`
+3. Maps to ASSET_FILENAMES: `.txt` for most, `.md` for intro_page
+4. Raises `ParseError` if structure violated
+
+**Data flow:**
+```
+SEED → prompting.build_orchestrator_prompt() → LLM → parse_blocks.parse_blueprint_output() → pack_io.save_draft() → drafts/YYYYMMDD_HHMMSS_character_name/
+```
+
+## Module-specific gotchas
+**system_prompt / post_history:**
+- ≤300 tokens, paragraph-only (no headings/lists/bullets)
+- post_history: if `{{original}}` present, extend/refine it (never overwrite/negate)
+
+**character_sheet:**
+- Field order/names EXACT (from blueprint)
+- No bracket placeholders `[Age]`, `[Name]` left unfilled
+- Moreau support: set `heritage` field (e.g., `Moreau (canine hybrid), Japanese American`)
+
+**intro_page:**
+- Blueprint contains `{PLACEHOLDER}` tokens that STAY in blueprint
+- Generated output MUST replace ALL placeholders (single Markdown snippet, no HTML/CSS)
+- Hard ban: never emit example/prior character names
+
+**a1111:**
+- **CRITICAL:** Output COMPLETE `[Control]` template with ALL metadata lines, full `[Positive Prompt]` and `[Negative Prompt]` sections
+- Replace ALL `((...))` slots; set `[Content: SFW|NSFW]` to match mode
+- Failure mode: simple prompts like `(1girl, detailed, ...)` WITHOUT `[Control]` block are INVALID
+
+**suno:**
+- **CRITICAL:** Output COMPLETE `[Control]` block with ALL metadata lines + exact section headers (`[Verse]`, `[Chorus]`, etc.)
+- No `{TITLE}` placeholders left unfilled
+- Failure mode: lyrics without `[Control]` block or proper structure are INVALID
+
+## Developer workflows
+**Setup:**
+```bash
+./run_bpui.sh  # auto-creates venv, installs deps, launches TUI
+# or manual: python3 -m venv .venv && source .venv/bin/activate && pip install -e .
+```
+
+**Run tests:**
+```bash
+pytest  # runs all tests, requires >=80% coverage
+pytest -m "not slow"  # skip slow integration tests
+pytest --cov=bpui --cov=tools --cov-report=html  # generate htmlcov/
+```
+
+**TUI workflows:**
+1. Settings → configure model (`provider/model-name`) + API key (auto-selected from model prefix)
+2. Settings → Test Connection (validates LLM connectivity)
+3. Compile → enter seed + choose mode (Auto/SFW/NSFW/Platform-Safe) → streams output → auto-saves to `drafts/`
+4. Review → edit assets (E to toggle edit mode, Ctrl+S to save, Tab to switch tabs, C for LLM chat assistant)
+5. Drafts → browse/open previously generated characters
+6. Validate → run `tools/validate_pack.py` on any directory
+
+**CLI workflows:**
+```bash
+bpui compile --seed "Noir detective with psychic abilities" --mode NSFW
+bpui batch --input seeds.txt --mode NSFW --continue-on-error
+bpui validate drafts/20240203_150000_character_name
+bpui export "Character Name" drafts/20240203_150000_character_name --model gpt4
+```
+
+**Export:**
+```bash
+./tools/export_character.sh "Character Name" "source_dir" "llm_model"
+# Outputs to: output/character_name(llm_model)/
+# Expects: system_prompt.txt, post_history.txt, character_sheet.txt, intro_scene.txt, intro_page.md, a1111_prompt.txt, suno_prompt.txt
+```
+
+**Validation:**
+```bash
+python tools/validate_pack.py path/to/dir
+# Checks: missing files, leftover placeholders, mode consistency, user-authorship violations
+# Exit codes: 0=ok, 1=failed, 2=invalid invocation
+```
 
 ## Editing conventions (repo hygiene)
-- Prefer **minimal diffs**; don’t rename/restructure folders unless explicitly asked (see [.clinerules/70_repo_hygiene.md](../.clinerules/70_repo_hygiene.md)).
-- Keep blueprint formats **module-specific**; do not “normalize” formatting across assets.
-- Preserve YAML frontmatter fields (`name`, `description`, `invokable`, `version`, etc.). Most modules are aligned to `version: 3.1`; if you change a format spec, update the relevant blueprint(s) and the orchestrator consistently.
-- Treat [output/](../output/) and [seed output/](../seed output/) as generated artifacts unless the user asks to modify them.- **Blueprint location**: All blueprints live in `blueprints/` folder; `bpui/prompting.py` loads from there.
+**Priority hierarchy (when rules conflict):**
+1. User request (explicit)
+2. Orchestrator + blueprint hard rules
+3. .clinerules/ files
 
-## bpui (Terminal TUI) architecture
-- **Entry point**: `bpui/cli.py` (argparse) or `run_bpui.sh` (auto-venv launcher)
-- **Config**: `.bpui.toml` (TOML format, gitignored) with provider-specific API keys under `[api_keys]`
-- **LLM adapters**: Dual system (LiteLLM for 100+ providers, OpenAI-compatible for local models)
-- **Key selection**: Automatic based on model prefix (e.g., `openai/gpt-4` uses `api_keys.openai`)
-- **Parser**: `bpui/parse_blocks.py` extracts 7 required codeblocks with strict validation
-- **Screens**: Home, Compile, Review, Drafts, Settings, Seed Generator, Validate (see `bpui/tui/`)
-## Module-specific gotchas
-- **system_prompt / post_history**: paragraph-only, ≤300 tokens, no headings/lists (see [system_prompt.md](../blueprints/system_prompt.md), [post_history.md](../blueprints/post_history.md)).
-- **post_history**: if `{{original}}` is present, extend/refine it; never overwrite/negate it.
-- **character_sheet**: field order and names are strict; no bracket placeholders left unfilled in generated output (see [character_sheet.md](../blueprints/character_sheet.md)).
-- **intro_page**: blueprint contains many `{PLACEHOLDER}` tokens that must remain in the blueprint; generated output must replace them all and be a single Markdown snippet (no HTML/CSS) (see [intro_page.md](../blueprints/intro_page.md)).
-- **a1111**: blueprint uses `((...))` slots; generated output must replace all of them and set `[Content: SFW|NSFW]` to match mode (see [a1111.md](../blueprints/a1111.md)).
-- **suno**: keep the exact `[Control]` block structure and section headers; no `{TITLE}` placeholders left in generated output (see [suno.md](../blueprints/suno.md)).
+**File editing:**
+- Prefer **minimal diffs** (don't rename/restructure unless asked)
+- Keep blueprint formats **module-specific** (don't "normalize" formatting)
+- Preserve YAML frontmatter (`name`, `description`, `invokable`, `version: 3.1`)
+- Treat `output/` and `seed output/` as generated artifacts (don't edit unless asked)
+- **Blueprint location:** ALL blueprints live in `blueprints/` folder; `bpui/prompting.py` loads from there
 
-## Developer workflows you can run
-- **Launch TUI**: `./run_bpui.sh` (recommended) or `source .venv/bin/activate && bpui`
-- **Configure LLM**: Use Settings screen in TUI or edit `.bpui.toml` directly
-  - Provider-specific keys: `[api_keys]` section with `openai = "sk-..."`, `anthropic = "sk-ant-..."`, etc.
-  - Model format: `provider/model-name` (e.g., `openai/gpt-4`, `anthropic/claude-3-opus`)
-- **Export a generated suite** (expects these files in `source_dir`: `system_prompt.txt`, `post_history.txt`, `character_sheet.txt`, `intro_scene.txt`, `intro_page.md`, `a1111_prompt.txt`, `suno_prompt.txt`; optional: `a1111_sdxl_prompt.txt`):
-  - `./tools/export_character.sh "Character Name" "source_dir" "llm_model"` (see [tools/export_character.sh](../tools/export_character.sh)).
-  - Outputs to `output/<sanitized_name>(<sanitized_model>)/`.
-- **Validate outputs** for common failures (placeholders, mode mismatches, user-authorship violations): follow [.clinerules/workflows/validate-placeholders.md](../.clinerules/workflows/validate-placeholders.md).
-- **Generate full suite**: Use TUI Compile screen or follow [.clinerules/workflows/generate-suite.md](../.clinerules/workflows/generate-suite.md) for manual invocation.
+**Adding new features:**
+- If modifying blueprint formats, update: relevant blueprint + orchestrator + parser if structure changes
+- If changing LLM adapters, implement `llm/base.py` interface (generate, generate_stream, generate_chat, test_connection)
+- If adding TUI screens, follow Textual patterns in `bpui/tui/` (Home, Compile, Review, Drafts, Settings, Validate)
+
+## Testing conventions
+- `tests/unit/`: Fast unit tests for parser, config, prompting
+- `tests/integration/`: Slow integration tests for LLM adapters (mark with `@pytest.mark.slow`)
+- `tests/fixtures/`: Sample packs for validation testing
+- Run `pytest -m "not slow"` for pre-commit checks
+- Coverage requirement: >=80% (enforced in pytest.ini)
+
+## Common pitfalls when editing
+1. **Breaking parser contract**: parse_blocks.py expects EXACTLY 7 blocks (+ optional adjustment note)
+2. **Normalizing formats**: Each asset has unique format rules (don't make them consistent)
+3. **Adding facts downstream**: Lower-tier assets can't introduce new info that higher-tier assets need
+4. **Leaving placeholders**: Generated output must replace ALL `{PLACEHOLDER}`, `((...))`, `{TITLE}`, `[Age]` tokens
+5. **Simplifying blueprint output**: A1111/Suno REQUIRE full `[Control]` blocks (not simple prompts)
+6. **Narrating {{user}}**: Never assign actions/thoughts/consent to {{user}} (user-authorship rule)
+
+## Integration points
+- **LLM providers**: LiteLLM handles 100+ providers; OpenAI-compatible for local models (Ollama, LM Studio)
+- **Config management**: `.bpui.toml` (TOML) with provider-specific API keys (`[api_keys]` section)
+- **Validation**: `tools/validate_pack.py` (heuristic checks, no external deps, exit code contract)
+- **Export**: `tools/export_character.sh` (bash script, copies files, sanitizes names)
+- **Blueprint versioning**: Most assets aligned to `version: 3.1` (track in YAML frontmatter)
