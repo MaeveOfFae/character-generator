@@ -59,6 +59,13 @@ Subcommands for scripting:
 - Settings: engine, model, api_key_env, base_url, temperature, max_tokens
 - Gitignored by default
 
+### 8. API Documentation
+
+- Auto-generated HTML docs via pdoc3
+- Generate with `make docs`
+- View locally with `make docs-serve`
+- Output location: `docs/api/bpui/`
+
 ## File Structure Created
 
 ```

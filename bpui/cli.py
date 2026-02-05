@@ -44,7 +44,7 @@ def main():
 
     # Batch command
     batch_parser = subparsers.add_parser("batch", help="Batch compile from seed file")
-    batch_parser.add_argument("--input", required=True, help="File with seeds (one per line)")
+    batch_parser.add_argument("--input", help="File with seeds (one per line)")
     batch_parser.add_argument(
         "--mode",
         choices=["SFW", "NSFW", "Platform-Safe"],
@@ -53,6 +53,8 @@ def main():
     batch_parser.add_argument("--out-dir", help="Output directory (default: drafts/)")
     batch_parser.add_argument("--model", help="Model override")
     batch_parser.add_argument("--continue-on-error", action="store_true", help="Continue if a seed fails")
+    batch_parser.add_argument("--resume", action="store_true", help="Resume last incomplete batch")
+    batch_parser.add_argument("--clean-batch-state", action="store_true", help="Clean up old batch state files")
 
     args = parser.parse_args()
 
@@ -259,26 +261,87 @@ async def run_batch(args):
     from .prompting import build_orchestrator_prompt
     from .parse_blocks import parse_blueprint_output, extract_character_name, ASSET_FILENAMES
     from .pack_io import create_draft_dir
+    from .batch_state import BatchState
 
     config = Config()
 
-    # Load seeds
-    input_path = Path(args.input)
-    if not input_path.exists():
-        print(f"✗ Input file not found: {input_path}")
-        sys.exit(1)
+    # Handle cleanup flag
+    if args.clean_batch_state:
+        deleted = BatchState.cleanup_old_states(days=7)
+        print(f"✓ Cleaned up {deleted} old batch state file(s)")
+        return
 
-    seeds_raw = input_path.read_text().strip().split("\n")
-    seeds = [s.strip() for s in seeds_raw if s.strip()]
+    # Handle resume
+    batch_state = None
+    if args.resume:
+        batch_state = BatchState.find_resumable()
+        if not batch_state:
+            print("✗ No resumable batch found")
+            sys.exit(1)
+        
+        # Load seeds from original input file
+        if not batch_state.input_file:
+            print("✗ Cannot resume: batch state missing input file")
+            sys.exit(1)
+        
+        input_path = Path(batch_state.input_file)
+        if not input_path.exists():
+            print(f"✗ Original input file not found: {input_path}")
+            sys.exit(1)
+        
+        seeds_raw = input_path.read_text().strip().split("\n")
+        all_seeds = [s.strip() for s in seeds_raw if s.strip()]
+        
+        # Filter to remaining seeds
+        seeds = batch_state.get_remaining_seeds(all_seeds)
+        
+        print(f"📦 Resuming batch: {batch_state.batch_id[:8]}")
+        print(f"   Started: {batch_state.start_time}")
+        print(f"   Progress: {len(batch_state.completed_seeds)}/{batch_state.total_seeds} completed")
+        print(f"   Failed: {len(batch_state.failed_seeds)}")
+        print(f"   Remaining: {len(seeds)} seeds")
+        
+        # Use config from batch state
+        args.mode = batch_state.config_snapshot.get("mode")
+        if "model" in batch_state.config_snapshot:
+            args.model = batch_state.config_snapshot["model"]
+    else:
+        # New batch
+        if not args.input:
+            print("✗ --input required (or use --resume)")
+            sys.exit(1)
+        
+        # Load seeds
+        input_path = Path(args.input)
+        if not input_path.exists():
+            print(f"✗ Input file not found: {input_path}")
+            sys.exit(1)
 
-    if not seeds:
-        print("✗ No seeds found in file")
-        sys.exit(1)
+        seeds_raw = input_path.read_text().strip().split("\n")
+        seeds = [s.strip() for s in seeds_raw if s.strip()]
 
-    print(f"📦 Batch compiling {len(seeds)} seeds")
-    print(f"   Mode: {args.mode or 'Auto'}")
-    print(f"   Model: {args.model or config.model}")
-    print(f"   Continue on error: {args.continue_on_error}")
+        if not seeds:
+            print("✗ No seeds found in file")
+            sys.exit(1)
+
+        print(f"📦 Batch compiling {len(seeds)} seeds")
+        print(f"   Mode: {args.mode or 'Auto'}")
+        print(f"   Model: {args.model or config.model}")
+        print(f"   Continue on error: {args.continue_on_error}")
+        
+        # Create new batch state
+        batch_state = BatchState(
+            batch_id=str(__import__('uuid').uuid4()),
+            start_time=__import__('datetime').datetime.now().isoformat(),
+            total_seeds=len(seeds),
+            input_file=str(input_path.absolute()),
+            config_snapshot={
+                "mode": args.mode,
+                "model": args.model or config.model,
+                "temperature": config.temperature,
+                "max_tokens": config.max_tokens,
+            }
+        )
 
     # Create engine
     model = args.model or config.model
@@ -296,11 +359,12 @@ async def run_batch(args):
         engine = OpenAICompatEngine(**engine_config)
 
     # Compile each seed
-    successful = 0
-    failed = []
+    successful = len(batch_state.completed_seeds)
+    failed = list(batch_state.failed_seeds)
 
     for i, seed in enumerate(seeds, 1):
-        print(f"\n[{i}/{len(seeds)}] {seed}")
+        actual_index = batch_state.current_index + i
+        print(f"\n[{actual_index}/{batch_state.total_seeds}] {seed}")
 
         try:
             # Build prompt
@@ -320,9 +384,9 @@ async def run_batch(args):
             # Extract character name
             character_name = extract_character_name(assets.get("character_sheet", ""))
             if not character_name:
-                character_name = f"character_{i:03d}"
+                character_name = f"character_{actual_index:03d}"
 
-            # Save
+            # Save with metadata
             if args.out_dir:
                 draft_dir = Path(args.out_dir) / f"{character_name}"
                 draft_dir.mkdir(parents=True, exist_ok=True)
@@ -331,29 +395,54 @@ async def run_batch(args):
                     if filename:
                         (draft_dir / filename).write_text(content)
             else:
-                draft_dir = create_draft_dir(assets, character_name)
+                draft_dir = create_draft_dir(
+                    assets, 
+                    character_name,
+                    seed=seed,
+                    mode=args.mode,
+                    model=model
+                )
 
             print(f"✓ Saved to {draft_dir.name}")
             successful += 1
+            
+            # Mark as completed in batch state
+            batch_state.mark_completed(seed, str(draft_dir))
+            batch_state.save()
 
         except Exception as e:
             print(f"✗ Failed: {e}")
-            failed.append((seed, str(e)))
+            error_msg = str(e)
+            failed.append({"seed": seed, "error": error_msg})
+            
+            # Mark as failed in batch state
+            batch_state.mark_failed(seed, error_msg)
+            batch_state.save()
+            
             if not args.continue_on_error:
                 print("\n✗ Stopping due to error (use --continue-on-error to continue)")
+                batch_state.mark_cancelled()
+                batch_state.save()
                 break
+
+    # Mark batch as completed
+    batch_state.mark_completed_status()
+    batch_state.save()
+    
+    # Clean up state file on successful completion
+    if not failed:
+        batch_state.delete_state_file()
 
     # Summary
     print(f"\n{'='*60}")
-    print(f"✓ Batch complete: {successful}/{len(seeds)} successful")
+    print(f"✓ Batch complete: {successful}/{batch_state.total_seeds} successful")
     if failed:
         print(f"\n✗ Failed ({len(failed)}):")
-        for seed, error in failed:
-            print(f"  • {seed[:60]}... → {error}")
+        for fail_record in failed:
+            seed_display = fail_record["seed"][:60]
+            print(f"  • {seed_display}... → {fail_record['error']}")
 
-    sys.exit(0 if successful == len(seeds) else 1)
-
-    sys.exit(0 if successful == len(seeds) else 1)
+    sys.exit(0 if successful == batch_state.total_seeds else 1)
 
 
 if __name__ == "__main__":

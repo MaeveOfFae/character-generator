@@ -6,12 +6,16 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from .parse_blocks import ASSET_FILENAMES
+from .metadata import DraftMetadata
 
 
 def create_draft_dir(
     assets: Dict[str, str],
     character_name: str,
-    drafts_root: Optional[Path] = None
+    drafts_root: Optional[Path] = None,
+    seed: Optional[str] = None,
+    mode: Optional[str] = None,
+    model: Optional[str] = None
 ) -> Path:
     """Create a draft directory with assets.
 
@@ -19,6 +23,9 @@ def create_draft_dir(
         assets: Dict mapping asset names to content
         character_name: Sanitized character name
         drafts_root: Root drafts directory
+        seed: Original character seed
+        mode: Content mode (SFW/NSFW/Platform-Safe)
+        model: LLM model used
 
     Returns:
         Path to created draft directory
@@ -38,6 +45,15 @@ def create_draft_dir(
         filename = ASSET_FILENAMES.get(asset_name)
         if filename:
             (draft_dir / filename).write_text(content)
+
+    # Create and save metadata
+    metadata = DraftMetadata(
+        seed=seed or "unknown",
+        mode=mode,
+        model=model,
+        character_name=character_name
+    )
+    metadata.save(draft_dir)
 
     return draft_dir
 

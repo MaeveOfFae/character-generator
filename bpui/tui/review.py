@@ -1,10 +1,17 @@
 """Review and save screen for Blueprint UI."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, cast
+
+from pathlib import Path
 from textual.app import ComposeResult
-from textual.containers import Container, Vertical, VerticalScroll, Horizontal
+from textual.containers import Container, Vertical, Horizontal
 from textual.screen import Screen
 from textual.widgets import Button, Static, TabbedContent, TabPane, TextArea, RichLog, Footer, Input
-from pathlib import Path
+
+if TYPE_CHECKING:
+    from .review import ReviewScreen
 
 
 class ReviewScreen(Screen):
@@ -16,6 +23,8 @@ class ReviewScreen(Screen):
         ("ctrl+s", "save_changes", "Save"),
         ("tab", "next_tab", "Next Tab"),
         ("c", "toggle_chat", "Chat"),
+        ("o", "save_to_file", "Save to File"),
+        ("ctrl+r", "regenerate_asset", "Regenerate"),
     ]
 
     CSS = """
@@ -112,7 +121,7 @@ class ReviewScreen(Screen):
     }
     """
 
-    def __init__(self, config, draft_dir: Path, assets: dict):
+    def __init__(self, config, draft_dir: Path, assets: dict, seed: str = None, mode: str = None, model: str = None):
         """Initialize review screen."""
         super().__init__()
         self.config = config
@@ -123,6 +132,20 @@ class ReviewScreen(Screen):
         self.chat_visible = False
         self.chat_messages: list[dict] = []  # Chat history
         self.chat_generating = False
+        
+        # Load metadata or use provided values
+        from ..metadata import DraftMetadata
+        metadata = DraftMetadata.load(draft_dir)
+        
+        if metadata:
+            self.seed = metadata.seed
+            self.mode = metadata.mode
+            self.model = metadata.model
+        else:
+            # Use provided values or defaults
+            self.seed = seed or "unknown"
+            self.mode = mode
+            self.model = model or config.model
 
     def compose(self) -> ComposeResult:
         """Compose review screen."""
@@ -164,9 +187,11 @@ class ReviewScreen(Screen):
                     with Vertical(classes="button-row"):
                         yield Button("✏️  [E] Edit Mode", id="toggle_edit", variant="default")
                         yield Button("💾 [Ctrl+S] Save Changes", id="save", variant="success", disabled=True)
+                        yield Button("🔄 [Ctrl+R] Regenerate Asset", id="regenerate", variant="primary")
                         yield Button("✓ Validate", id="validate", variant="primary")
                         yield Button("📦 Export", id="export", variant="success")
                         yield Button("💬 [C] Chat", id="chat_toggle", variant="default")
+                        yield Button("📁 [O] Save to File", id="save_file", variant="default")
                         yield Button("⬅️  [Q] Back to Home", id="home")
 
                     yield RichLog(id="validation-log", highlight=True, markup=True)
@@ -235,13 +260,9 @@ class ReviewScreen(Screen):
                 except Exception:
                     pass
             
-        except Exception:
-            pass
+        except Exception as e:
+            self.log.error(f"Error loading text areas: {e}")
     
-    async def _load_text_areas(self) -> None:
-        """Deprecated - kept for compatibility."""
-        pass
-
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""
         if event.button.id == "home":
@@ -261,6 +282,9 @@ class ReviewScreen(Screen):
         elif event.button.id == "save":
             await self.save_changes()
 
+        elif event.button.id == "regenerate":
+            await self.regenerate_current_asset()
+
         elif event.button.id == "validate":
             await self.validate_pack()
 
@@ -272,6 +296,9 @@ class ReviewScreen(Screen):
 
         elif event.button.id == "chat-send":
             await self.send_chat_message()
+
+        elif event.button.id == "save_file":
+            self.show_save_dialog()
 
     async def validate_pack(self) -> None:
         """Validate the pack."""
@@ -288,12 +315,12 @@ class ReviewScreen(Screen):
             result = validate_pack(self.draft_dir)
 
             validation_log.write("[bold cyan]Validation Results:[/]\n")
-            validation_log.write(result["output"])
+            validation_log.write(result.get("output", "No validation output"))
 
-            if result["errors"]:
+            if result.get("errors"):
                 validation_log.write(f"\n[bold red]Errors:[/]\n{result['errors']}")
 
-            if result["success"]:
+            if result.get("success"):
                 status.update("✓ Validation passed")
             else:
                 status.update("✗ Validation failed")
@@ -316,7 +343,8 @@ class ReviewScreen(Screen):
             from ..export import export_character
             from ..parse_blocks import extract_character_name
 
-            character_name = extract_character_name(self.assets["character_sheet"])
+            character_sheet = self.assets.get("character_sheet", "")
+            character_name = extract_character_name(character_sheet)
             if not character_name:
                 character_name = "unnamed_character"
 
@@ -325,13 +353,14 @@ class ReviewScreen(Screen):
             result = export_character(character_name, self.draft_dir, model_name)
 
             validation_log.write("\n[bold cyan]Export Results:[/]\n")
-            validation_log.write(result["output"])
+            validation_log.write(result.get("output", "No export output"))
 
-            if result["errors"]:
+            if result.get("errors"):
                 validation_log.write(f"\n[bold red]Errors:[/]\n{result['errors']}")
 
-            if result["success"]:
-                status.update(f"✓ Exported to {result['output_dir']}")
+            if result.get("success"):
+                output_dir = result.get("output_dir", "unknown location")
+                status.update(f"✓ Exported to {output_dir}")
             else:
                 status.update("✗ Export failed")
                 status.add_class("error")
@@ -398,7 +427,7 @@ class ReviewScreen(Screen):
         }
         
         # Check if this area has changed
-        asset_name = area_map.get(event.text_area.id)
+        asset_name = area_map.get(event.text_area.id or "")
         if asset_name and event.text_area.text != self.assets.get(asset_name, ""):
             self.dirty_assets.add(asset_name)
             
@@ -448,7 +477,7 @@ class ReviewScreen(Screen):
                     self.assets[asset_name] = new_content
                     
                     # Write to file
-                    filename = ASSET_FILENAMES.get(asset_name)
+                    filename = ASSET_FILENAMES.get(asset_name, "")
                     if filename:
                         file_path = self.draft_dir / filename
                         file_path.write_text(new_content)
@@ -474,6 +503,149 @@ class ReviewScreen(Screen):
             status.update(f"✗ Error: {e}")
             status.add_class("error")
     
+    async def regenerate_current_asset(self) -> None:
+        """Regenerate the currently visible asset using the original seed."""
+        status = self.query_one("#status", Static)
+        validation_log = self.query_one("#validation-log", RichLog)
+        
+        # Check if seed is available
+        if not self.seed or self.seed == "unknown":
+            validation_log.write("[bold red]✗ Cannot regenerate: No seed available[/]")
+            validation_log.write("[dim]This draft doesn't have the original seed saved.[/dim]")
+            validation_log.write("[dim]Seed tracking was added in a recent update.[/dim]")
+            status.update("✗ No seed available for regeneration")
+            status.add_class("error")
+            return
+        
+        # Get active tab and map to asset
+        tabs = self.query_one("#tabs", TabbedContent)
+        active_tab = str(tabs.active)
+        
+        tab_to_asset = {
+            "system-prompt": "system_prompt",
+            "post-history": "post_history",
+            "character-sheet": "character_sheet",
+            "intro-scene": "intro_scene",
+            "intro-page": "intro_page",
+            "a1111": "a1111",
+            "suno": "suno",
+        }
+        
+        asset_name = tab_to_asset.get(active_tab)
+        if not asset_name:
+            validation_log.write(f"[bold red]✗ Unknown tab: {active_tab}[/]")
+            return
+        
+        validation_log.clear()
+        validation_log.write(f"[bold cyan]Regenerating: {asset_name}[/]")
+        validation_log.write(f"[dim]Seed: {self.seed}[/dim]")
+        validation_log.write(f"[dim]Mode: {self.mode or 'Auto'}[/dim]\n")
+        status.update(f"⏳ Regenerating {asset_name}...")
+        status.remove_class("error")
+        status.remove_class("success")
+        
+        try:
+            # Build prior assets dict (only higher-tier assets for hierarchy)
+            from ..parse_blocks import ASSET_ORDER
+            asset_index = ASSET_ORDER.index(asset_name)
+            prior_assets = {}
+            for i in range(asset_index):
+                prior_name = ASSET_ORDER[i]
+                if prior_name in self.assets:
+                    prior_assets[prior_name] = self.assets[prior_name]
+            
+            # Build prompt for this specific asset
+            from ..prompting import build_asset_prompt
+            system_prompt, user_prompt = build_asset_prompt(
+                asset_name=asset_name,
+                seed=self.seed,
+                mode=self.mode,
+                prior_assets=prior_assets if prior_assets else None
+            )
+            
+            validation_log.write("[dim]Creating LLM engine...[/dim]")
+            
+            # Create LLM engine
+            from ..llm.litellm_engine import LiteLLMEngine
+            from ..llm.openai_compat_engine import OpenAICompatEngine
+            
+            engine_config = {
+                "model": self.model or self.config.model,
+                "api_key": self.config.api_key,
+                "temperature": self.config.temperature,
+                "max_tokens": self.config.max_tokens,
+            }
+            
+            if self.config.engine == "litellm":
+                engine = LiteLLMEngine(**engine_config)
+            else:
+                engine_config["base_url"] = self.config.base_url
+                engine = OpenAICompatEngine(**engine_config)
+            
+            validation_log.write("[dim]Streaming generation...[/dim]\n")
+            
+            # Stream generation
+            raw_output = ""
+            chunk_count = 0
+            stream = engine.generate_stream(system_prompt, user_prompt)
+            
+            async for chunk in stream:
+                raw_output += chunk
+                chunk_count += 1
+                
+                # Show progress every 10 chunks
+                if chunk_count % 10 == 0:
+                    validation_log.write(".", end="")
+            
+            validation_log.write(f"\n\n[dim]Received {len(raw_output)} characters[/dim]")
+            
+            # Extract codeblock from output
+            import re
+            pattern = r"```(?:[a-z]*\n)?(.*?)```"
+            matches = re.findall(pattern, raw_output, re.DOTALL)
+            
+            if not matches:
+                # No codeblock found, use raw output
+                new_content = raw_output.strip()
+            else:
+                # Use first codeblock
+                new_content = matches[0].strip()
+            
+            validation_log.write(f"[green]✓ Generated {len(new_content)} characters[/]")
+            
+            # Update TextArea
+            area_mapping = {
+                "system_prompt": "system_prompt_area",
+                "post_history": "post_history_area",
+                "character_sheet": "character_sheet_area",
+                "intro_scene": "intro_scene_area",
+                "intro_page": "intro_page_area",
+                "a1111": "a1111_area",
+                "suno": "suno_area",
+            }
+            
+            area_id = area_mapping.get(asset_name)
+            if area_id:
+                area = self.query_one(f"#{area_id}", TextArea)
+                area.text = new_content
+                
+                # Mark as dirty and enable save
+                self.dirty_assets.add(asset_name)
+                save_button = self.query_one("#save", Button)
+                save_button.disabled = False
+                
+                # Update in-memory assets
+                self.assets[asset_name] = new_content
+                
+                validation_log.write(f"[green]✓ Updated {asset_name} (unsaved)[/]")
+                status.update(f"✓ Regenerated {asset_name} - Save to keep changes")
+                status.add_class("success")
+            
+        except Exception as e:
+            validation_log.write(f"\n[bold red]✗ Error during regeneration: {e}[/]")
+            status.update(f"✗ Regeneration failed: {e}")
+            status.add_class("error")
+    
     def action_go_back(self) -> None:
         """Go back to home screen."""
         from .home import HomeScreen
@@ -495,20 +667,28 @@ class ReviewScreen(Screen):
         # Get all tab IDs
         tab_ids = [pane.id for pane in tabs.query(TabPane)]
         if not tab_ids:
+            tabs.active = "system-prompt"
             return
         
         # Find current tab index
         try:
-            current_idx = tab_ids.index(tabs.active)
+            current_active = tabs.active
+            if current_active is None or current_active not in tab_ids:
+                current_active = cast(str, tab_ids[0])
+            current_idx = tab_ids.index(current_active)
             next_idx = (current_idx + 1) % len(tab_ids)
-            tabs.active = tab_ids[next_idx]
+            tabs.active = cast(str, tab_ids[next_idx])
         except (ValueError, IndexError):
             # Default to first tab if something goes wrong
-            tabs.active = tab_ids[0]
+            tabs.active = cast(str, tab_ids[0])
     
     def action_toggle_chat(self) -> None:
         """Toggle chat panel (C key)."""
         self.toggle_chat()
+    
+    def action_regenerate_asset(self) -> None:
+        """Regenerate current asset (Ctrl+R)."""
+        self.run_worker(self.regenerate_current_asset, exclusive=False)
     
     def toggle_chat(self) -> None:
         """Show or hide chat panel."""
@@ -578,12 +758,12 @@ class ReviewScreen(Screen):
             
             # Stream response
             assistant_response = ""
-            chat_log.write("[bold green]Assistant:[/] ", end="")
+            chat_log.write("[bold green]Assistant:[/] ")
             
             stream = engine.generate_chat_stream(messages)
             async for chunk in stream:
                 assistant_response += chunk
-                chat_log.write(chunk, end="")
+                chat_log.write(chunk)
                 chat_log.refresh()
             
             chat_log.write("")  # Newline
@@ -730,4 +910,249 @@ class ReviewScreen(Screen):
         # Log to chat
         chat_log = self.query_one("#chat-log", RichLog)
         chat_log.write(f"[bold yellow]✓ Applied edits to {asset_name}[/bold yellow]")
+    
+    def show_save_dialog(self) -> None:
+        """Show save to file dialog."""
+        self.app.push_screen(SaveFileDialog(self))
+    
+    def action_save_to_file(self) -> None:
+        """Show save to file dialog (O key)."""
+        self.show_save_dialog()
+
+
+class SaveFileDialog(Screen):
+    """Dialog for saving assets to custom file locations."""
+    
+    BINDINGS = [
+        ("escape,q", "cancel", "Cancel"),
+        ("enter", "confirm", "Save"),
+    ]
+    
+    CSS = """
+    SaveFileDialog {
+        layout: horizontal;
+        align: center middle;
+    }
+    
+    #dialog {
+        width: 80;
+        height: 25;
+        border: solid $primary;
+        background: $panel;
+        padding: 1;
+    }
+    
+    #title {
+        content-align: center middle;
+        text-style: bold;
+        color: $primary;
+        margin-bottom: 1;
+    }
+    
+    #options {
+        height: 12;
+        border: solid $accent;
+        padding: 1;
+        margin-bottom: 1;
+    }
+    
+    #path-row {
+        layout: horizontal;
+        height: 3;
+        margin-bottom: 1;
+    }
+    
+    #path-label {
+        width: 15;
+        content-align: left middle;
+    }
+    
+    #path-input {
+        width: 1fr;
+    }
+    
+    #buttons {
+        layout: horizontal;
+        height: 3;
+    }
+    
+    #buttons Button {
+        width: 1fr;
+    }
+    
+    .radio-option {
+        height: 2;
+    }
+    """
+    
+    def __init__(self, parent_screen: ReviewScreen):
+        """Initialize save dialog."""
+        super().__init__()
+        self.parent_screen = parent_screen
+        self.selected_option = "current"  # current, all, custom
+        self.custom_path = ""
+    
+    def compose(self) -> ComposeResult:
+        """Compose save dialog."""
+        with Vertical(id="dialog"):
+            yield Static("📁 Save to File", id="title")
+            
+            with Vertical(id="options"):
+                yield Static("Choose what to save:", classes="radio-option")
+                yield Static("  [1] Current asset only", id="opt-current")
+                yield Static("  [2] All assets (zip archive)", id="opt-all")
+                yield Static("  [3] Custom selection", id="opt-custom")
+                yield Static("")
+            
+            with Horizontal(id="path-row"):
+                yield Static("Output path:", id="path-label")
+                yield Input(placeholder=f"{self.parent_screen.draft_dir.parent}/", id="path-input")
+            
+            with Container(id="buttons"):
+                yield Button("Save", id="confirm", variant="primary")
+                yield Button("Cancel", id="cancel")
+    
+    def on_key(self, event) -> None:
+        """Handle key presses for option selection."""
+        if event.key == "1":
+            self.selected_option = "current"
+            self._update_option_display()
+        elif event.key == "2":
+            self.selected_option = "all"
+            self._update_option_display()
+        elif event.key == "3":
+            self.selected_option = "custom"
+            self._update_option_display()
+    
+    def _update_option_display(self) -> None:
+        """Update display to show selected option."""
+        opt_current = self.query_one("#opt-current", Static)
+        opt_all = self.query_one("#opt-all", Static)
+        opt_custom = self.query_one("#opt-custom", Static)
+        
+        # Reset all
+        opt_current.update("  [1] Current asset only")
+        opt_all.update("  [2] All assets (zip archive)")
+        opt_custom.update("  [3] Custom selection")
+        
+        # Highlight selected
+        if self.selected_option == "current":
+            opt_current.update("  [1] [bold green]✓[/] Current asset only")
+        elif self.selected_option == "all":
+            opt_all.update("  [2] [bold green]✓[/] All assets (zip archive)")
+        elif self.selected_option == "custom":
+            opt_custom.update("  [3] [bold green]✓[/] Custom selection")
+    
+    async def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle button press."""
+        if event.button.id == "confirm":
+            await self.confirm_save()
+        else:
+            self.app.pop_screen()
+    
+    def action_confirm(self) -> None:
+        """Confirm save (Enter key)."""
+        self.run_worker(self.confirm_save, exclusive=False)
+    
+    def action_cancel(self) -> None:
+        """Cancel (Escape/Q keys)."""
+        self.app.pop_screen()
+    
+    async def confirm_save(self) -> None:
+        """Perform the save operation."""
+        path_input = self.query_one("#path-input", Input)
+        custom_path = path_input.value.strip()
+        
+        if not custom_path:
+            custom_path = str(self.parent_screen.draft_dir.parent)
+        
+        output_path = Path(custom_path)
+        
+        try:
+            if self.selected_option == "current":
+                # Save current asset only
+                await self._save_current_asset(output_path)
+            elif self.selected_option == "all":
+                # Save all assets as zip
+                await self._save_all_assets(output_path)
+            elif self.selected_option == "custom":
+                # Custom selection - save all for now
+                await self._save_all_assets(output_path)
+            
+            self.app.pop_screen()
+            
+        except Exception as e:
+            # Show error
+            path_input.value = f"Error: {e}"
+    
+    async def _save_current_asset(self, output_path: Path) -> None:
+        """Save only the currently displayed asset."""
+        # Get active tab
+        tabs = self.parent_screen.query_one("#tabs", TabbedContent)
+        active_tab = str(tabs.active)
+        
+        # Map tab IDs to asset names
+        tab_to_asset = {
+            "system-prompt": ("system_prompt", "system_prompt.txt"),
+            "post-history": ("post_history", "post_history.txt"),
+            "character-sheet": ("character_sheet", "character_sheet.txt"),
+            "intro-scene": ("intro_scene", "intro_scene.txt"),
+            "intro-page": ("intro_page", "intro_page.md"),
+            "a1111": ("a1111", "a1111_prompt.txt"),
+            "suno": ("suno", "suno_prompt.txt"),
+        }
+        
+        asset_info = tab_to_asset.get(active_tab)
+        if not asset_info:
+            return
+        
+        asset_name, default_filename = asset_info
+        content = self.parent_screen.assets.get(asset_name, "")
+        
+        if not content:
+            return
+        
+        # Save to file
+        if output_path.is_dir():
+            output_file = output_path / default_filename
+        else:
+            output_file = output_path
+        
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        output_file.write_text(content)
+        
+        # Update parent status
+        status = self.parent_screen.query_one("#status", Static)
+        status.update(f"✓ Saved {asset_name} to {output_file}")
+        status.add_class("success")
+    
+    async def _save_all_assets(self, output_path: Path) -> None:
+        """Save all assets as a zip archive."""
+        import zipfile
+        import io
+        from datetime import datetime
+        
+        # Determine output file path
+        if output_path.is_dir():
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_file = output_path / f"{self.parent_screen.draft_dir.name}_{timestamp}.zip"
+        else:
+            output_file = output_path
+            if not output_file.suffix:
+                output_file = output_file.with_suffix(".zip")
+        
+        # Create zip file
+        with zipfile.ZipFile(output_file, "w", zipfile.ZIP_DEFLATED) as zf:
+            from ..parse_blocks import ASSET_FILENAMES
+            
+            for asset_name, content in self.parent_screen.assets.items():
+                if isinstance(asset_name, str):
+                    filename = ASSET_FILENAMES.get(asset_name)
+                    if filename and content:
+                        zf.writestr(filename, content)
+        
+        # Update parent status
+        status = self.parent_screen.query_one("#status", Static)
+        status.update(f"✓ Saved all assets to {output_file}")
+        status.add_class("success")
 

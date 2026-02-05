@@ -331,17 +331,30 @@ class CompileScreen(Screen):
             output_log.write(f"[bold green]✓ Generated {len(assets)} assets[/]")
             output_log.refresh()
 
-            # Save draft
-            draft_dir = create_draft_dir(assets, character_name)
+            # Save draft with metadata
+            draft_dir = create_draft_dir(
+                assets, 
+                character_name,
+                seed=seed,
+                mode=mode,
+                model=model
+            )
             output_log.write(f"[bold green]✓ Draft saved:[/] {draft_dir}")
             output_log.refresh()
 
             status.update("✓ Compilation complete!")
             status.refresh()
 
-            # Navigate to review screen
+            # Navigate to review screen with seed and mode
             from .review import ReviewScreen
-            self.app.push_screen(ReviewScreen(self.config, draft_dir, assets))
+            self.app.push_screen(ReviewScreen(
+                self.config, 
+                draft_dir, 
+                assets,
+                seed=seed,
+                mode=mode,
+                model=model
+            ))
 
         except Exception as e:
             output_log.write(f"\n[bold red]✗ Error: {e}[/]")

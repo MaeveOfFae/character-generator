@@ -3,6 +3,9 @@
 /seed output/
 /drafts/
 
+# Batch processing state
+/.bpui-batch-state/
+
 # Chub presets (user-specific)
 /chub preset/
 
@@ -41,7 +44,6 @@ env/
 .DS_Store
 
 # AI Assistant Configuration (not needed to use bpui)
-.github/
 .clinerules/
 rules/
 
