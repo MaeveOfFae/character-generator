@@ -7,7 +7,6 @@ This workspace is a **compiler-style prompt blueprint system** for generating co
 - **blueprints/**: Prompt templates (Markdown) defining 7 character assets + orchestrator
 - **bpui/**: Python TUI application (Textual) with multi-provider LLM support, streaming output, draft management
 - **tools/**: Shell scripts for export/validation
-- **.clinerules/**: Workflow instructions for AI agents (priority rules, workflows, module-specific gotchas)
 
 The orchestrator ([rpbotgenerator.md](../blueprints/rpbotgenerator.md)) compiles assets in strict hierarchy: `system_prompt → post_history → character_sheet → intro_scene → intro_page → a1111 → suno`
 
@@ -39,8 +38,7 @@ character-generator/
 ├── tools/               # export_character.sh, validate_pack.py
 ├── tests/               # pytest (unit + integration, >=80% coverage)
 ├── drafts/              # Auto-saved TUI generations (timestamped dirs)
-├── output/              # Exported packs (sanitized_name(model))
-└── .clinerules/         # Priority: user request > orchestrator > .clinerules
+└── output/              # Exported packs (sanitized_name(model))
 ```
 
 ## bpui (Terminal TUI) architecture
@@ -139,7 +137,7 @@ python tools/validate_pack.py path/to/dir
 **Priority hierarchy (when rules conflict):**
 1. User request (explicit)
 2. Orchestrator + blueprint hard rules
-3. .clinerules/ files
+3. Project conventions and patterns
 
 **File editing:**
 - Prefer **minimal diffs** (don't rename/restructure unless asked)
