@@ -86,6 +86,7 @@ class SeedGeneratorScreen(QWidget):
     
     def __init__(self, parent, config):
         super().__init__(parent)
+        self.main_window = parent
         self.config = config
         self.worker = None
         self.seeds = []
@@ -223,9 +224,8 @@ class SeedGeneratorScreen(QWidget):
     
     def go_back(self):
         """Go back to home screen."""
-        main_window = self.parent()  # type: ignore
-        if main_window and hasattr(main_window, 'show_home'):
-            main_window.show_home()  # type: ignore
+        if self.main_window and hasattr(self.main_window, 'show_home'):
+            self.main_window.show_home()
     
     def surprise_me(self):
         """Generate random creative seeds without genre input."""

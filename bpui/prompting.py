@@ -15,7 +15,7 @@ def load_blueprint(name: str, repo_root: Optional[Path] = None) -> str:
         if not blueprint_path.exists():
             raise FileNotFoundError(f"Blueprint not found: {blueprint_path}")
 
-        return blueprint_path.read_text()
+        return blueprint_path.read_text(encoding='utf-8')
 
 
 def load_rules(repo_root: Optional[Path] = None) -> List[str]:
@@ -36,7 +36,7 @@ def load_rules(repo_root: Optional[Path] = None) -> List[str]:
     
     rules = []
     for rule_file in rule_files:
-        rules.append(rule_file.read_text())
+        rules.append(rule_file.read_text(encoding='utf-8'))
     
     return rules
 
@@ -77,12 +77,12 @@ def get_rules_for_asset(asset_name: str, repo_root: Optional[Path] = None) -> st
     for rule_file in core_rule_files:
         rule_path = rules_dir / rule_file
         if rule_path.exists():
-            rules.append(rule_path.read_text())
+            rules.append(rule_path.read_text(encoding='utf-8'))
     
     # Add asset-specific hard rules
     hard_rules_path = rules_dir / "60_blueprint_hard_rules.md"
     if hard_rules_path.exists():
-        hard_rules = hard_rules_path.read_text()
+        hard_rules = hard_rules_path.read_text(encoding='utf-8')
         # Extract only the section relevant to this asset
         section_pattern = rf"## {asset_name}\n+((?:[^#]|\n(?!## ))+)"
         import re
@@ -205,7 +205,7 @@ def build_seedgen_prompt(
     if not seed_gen_path.exists():
         raise FileNotFoundError(f"Seed generator not found: {seed_gen_path}")
 
-    seed_gen = seed_gen_path.read_text()
+    seed_gen = seed_gen_path.read_text(encoding='utf-8')
     return seed_gen, genre_lines
 
 
