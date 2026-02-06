@@ -443,7 +443,7 @@ class SettingsDialog(QDialog):
     def save_settings(self):
         """Save settings."""
         # Update model
-        self.config.model = self.model_input.text().strip()
+        self.config.set("model", self.model_input.text().strip())
         
         # Update API key
         api_key = self.api_key_input.text().strip()

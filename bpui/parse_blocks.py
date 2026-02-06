@@ -74,13 +74,13 @@ def parse_blueprint_output(text: str) -> Dict[str, str]:
             adjustment_note = blocks[0].strip()
             start_idx = 1
 
-    # Require exactly 7 asset blocks after adjustment note (if present)
-    asset_blocks = blocks[start_idx:]
-    if len(asset_blocks) != 7:
-        raise ParseError(
-            f"Expected 7 asset blocks, found {len(asset_blocks)}. "
-            f"Required order: {', '.join(ASSET_ORDER)}"
-        )
+        # Require exactly 7 asset blocks after adjustment note (if present)
+        asset_blocks = blocks[start_idx:]
+        if len(asset_blocks) != 7:
+            raise ParseError(
+                f"Expected 7 asset blocks, found {len(asset_blocks)}. "
+                f"Required order: {', '.join(ASSET_ORDER)}"
+            )
 
         # Map blocks to asset names
         assets = {}
