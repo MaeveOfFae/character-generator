@@ -52,7 +52,7 @@ if not exist "%VENV_PYTHON%" (
     )
     
     echo Installing bpui in editable mode...
-    pip install --quiet -e "%SCRIPT_DIR%"
+    pip install --quiet -e "%SCRIPT_DIR%."
     if errorlevel 1 (
         echo ERROR: Failed to install bpui
         pause
@@ -74,7 +74,7 @@ if "%1"=="--update-deps" (
     if exist "%SCRIPT_DIR%requirements.txt" (
         pip install --quiet --upgrade -r "%SCRIPT_DIR%requirements.txt"
     )
-    pip install --quiet -e "%SCRIPT_DIR%"
+    pip install --quiet -e "%SCRIPT_DIR%."
     echo Dependencies updated!
     echo.
     shift
