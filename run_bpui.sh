@@ -21,7 +21,7 @@ if [ ! -f "$VENV_PYTHON" ]; then
         pip install --quiet -r "$SCRIPT_DIR/requirements.txt"
     else
         # Fallback to manual installation
-        pip install --quiet textual rich tomli-w httpx setuptools wheel
+        pip install --quiet textual rich tomli-w httpx setuptools wheel PySide6
         # Add tomli for Python < 3.11
         python -c "import sys; exit(0 if sys.version_info >= (3, 11) else 1)" || pip install --quiet tomli
     fi

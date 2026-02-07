@@ -2,10 +2,15 @@
 
 import json
 import uuid
+import logging
+import os
+import fcntl
 from dataclasses import dataclass, asdict, field
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -108,7 +113,7 @@ class BatchState:
         return cls(**data)
     
     def save(self, state_dir: Optional[Path] = None) -> Path:
-        """Save state to disk.
+        """Save state to disk with file locking.
         
         Args:
             state_dir: Directory to save state file (defaults to .bpui-batch-state)
@@ -127,8 +132,27 @@ class BatchState:
         filename = f"batch_{timestamp}_{self.batch_id[:8]}.json"
         state_file = state_dir / filename
         
-        with open(state_file, "w") as f:
-            json.dump(self.to_dict(), f, indent=2)
+        # Write to temporary file first, then atomic rename
+        temp_file = state_file.with_suffix('.tmp')
+        
+        # Try to use filelock for cross-platform locking, fall back to simple write
+        try:
+            from filelock import FileLock
+            lock_file = state_file.with_suffix('.lock')
+            with FileLock(lock_file):
+                with open(temp_file, "w") as f:
+                    json.dump(self.to_dict(), f, indent=2)
+                    f.flush()
+                    os.fsync(f.fileno())
+        except ImportError:
+            logger.debug("filelock not available, using simple write (may have race conditions on Windows)")
+            with open(temp_file, "w") as f:
+                json.dump(self.to_dict(), f, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+        
+        # Atomic rename
+        temp_file.replace(state_file)
         
         return state_file
     
@@ -212,15 +236,16 @@ class BatchState:
         if not state_dir.exists():
             return
         
-        # Find state file matching this batch ID (exact match or prefix)
+        # Find exact match by loading and comparing batch_id
         for state_file in state_dir.glob("batch_*.json"):
             try:
-                # Check if batch_id is in the filename
-                if self.batch_id in state_file.name or self.batch_id[:8] in state_file.name:
+                state = BatchState.load(state_file)
+                if state.batch_id == self.batch_id:
                     state_file.unlink()
+                    logger.debug(f"Deleted state file: {state_file}")
                     break
-            except Exception:
-                pass
+            except (json.JSONDecodeError, KeyError, TypeError) as e:
+                logger.warning(f"Failed to load state file {state_file}: {e}")
     
     @staticmethod
     def cleanup_old_states(state_dir: Optional[Path] = None, days: int = 7) -> int:
@@ -247,7 +272,7 @@ class BatchState:
                 if state_file.stat().st_mtime < cutoff_time:
                     state_file.unlink()
                     deleted_count += 1
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to delete old state file {state_file}: {e}")
         
         return deleted_count

@@ -60,12 +60,67 @@ class Config:
     def load(self) -> None:
         """Load config from file or use defaults."""
         if self.config_path.exists():
-            with open(self.config_path, "rb") as f:
-                self._data = tomllib.load(f)
-            self._logger.debug(f"Loaded config from {self.config_path}")
+            try:
+                with open(self.config_path, "rb") as f:
+                    self._data = tomllib.load(f)
+                self._logger.debug(f"Loaded config from {self.config_path}")
+                # Validate loaded config
+                self._validate_config()
+            except tomllib.TOMLDecodeError as e:
+                self._logger.error(f"Invalid TOML in {self.config_path}: {e}")
+                self._logger.info("Falling back to default configuration")
+                self._data = DEFAULT_CONFIG.copy()
+            except Exception as e:
+                self._logger.error(f"Error loading config from {self.config_path}: {e}")
+                self._logger.info("Falling back to default configuration")
+                self._data = DEFAULT_CONFIG.copy()
         else:
             self._data = DEFAULT_CONFIG.copy()
             self._logger.debug("Using default configuration")
+    
+    def _validate_config(self) -> None:
+        """Validate loaded config values.
+        
+        Raises:
+            ValueError: If required keys are missing or invalid
+        """
+        required_keys = ["engine", "model", "temperature", "max_tokens"]
+        for key in required_keys:
+            if key not in self._data:
+                raise ValueError(f"Missing required config key: {key}")
+        
+        # Validate types
+        if not isinstance(self._data["temperature"], (int, float)):
+            raise ValueError("Config 'temperature' must be a number")
+        if not isinstance(self._data["max_tokens"], int):
+            raise ValueError("Config 'max_tokens' must be an integer")
+        if not isinstance(self._data["engine"], str):
+            raise ValueError("Config 'engine' must be a string")
+        if not isinstance(self._data["model"], str):
+            raise ValueError("Config 'model' must be a string")
+        
+        # Validate api_keys structure
+        if "api_keys" in self._data:
+            if not isinstance(self._data["api_keys"], dict):
+                raise ValueError("Config 'api_keys' must be a dictionary")
+            # Validate keys and values are strings
+            for key, value in self._data["api_keys"].items():
+                if not isinstance(key, str):
+                    raise ValueError(f"api_keys key must be string, got {type(key)}")
+                if value is not None and not isinstance(value, str):
+                    raise ValueError(f"api_keys value for '{key}' must be string or None")
+        
+        # Validate temperature range
+        temp = self._data["temperature"]
+        if temp < 0 or temp > 2:
+            self._logger.warning(f"Temperature {temp} is outside typical range [0, 2]")
+        
+        # Validate max_tokens
+        tokens = self._data["max_tokens"]
+        if tokens <= 0:
+            raise ValueError("Config 'max_tokens' must be positive")
+        if tokens > 128000:
+            self._logger.warning(f"max_tokens {tokens} is very large, may cause errors")
 
     def save(self) -> None:
         """Save config to file."""
@@ -174,6 +229,26 @@ class Config:
             return os.getenv(env_var)
         
         return None
+    
+    def validate_api_key(self, model: str) -> None:
+        """Validate that API key exists for model.
+        
+        Args:
+            model: Model name to validate API key for
+            
+        Raises:
+            ValueError: If no API key is configured for the model
+        """
+        key = self.get_api_key_for_model(model)
+        if not key:
+            provider = self._extract_provider(model) or "unknown provider"
+            env_var = self.get("api_key_env", "OPENAI_API_KEY")
+            raise ValueError(
+                f"No API key configured for model '{model}' (provider: {provider}).\n"
+                f"Set provider-specific key in config:\n"
+                f"  bpui config set api_keys.{provider} YOUR_API_KEY\n"
+                f"Or set environment variable: {env_var}"
+            )
     
     def get_all_providers(self) -> list[str]:
         """Get list of all providers with stored keys."""

@@ -1,16 +1,21 @@
 """Validation wrapper for tools/validate_pack.py."""
 
+import os
 import subprocess
 from pathlib import Path
 from typing import Dict, Optional, Any
 
 
-def validate_pack(pack_dir: Path, repo_root: Optional[Path] = None) -> Dict[str, Any]:
+VALIDATION_TIMEOUT = int(os.getenv("BPUI_VALIDATION_TIMEOUT", "30"))
+
+
+def validate_pack(pack_dir: Path, repo_root: Optional[Path] = None, timeout: Optional[int] = None) -> Dict[str, Any]:
     """Validate a pack directory.
 
     Args:
         pack_dir: Directory containing pack files
         repo_root: Repository root path
+        timeout: Timeout in seconds (uses BPUI_VALIDATION_TIMEOUT if None)
 
     Returns:
         Dict with validation results:
@@ -21,6 +26,9 @@ def validate_pack(pack_dir: Path, repo_root: Optional[Path] = None) -> Dict[str,
     """
     if repo_root is None:
         repo_root = Path.cwd()
+    
+    if timeout is None:
+        timeout = VALIDATION_TIMEOUT
 
     validator_path = repo_root / "tools" / "validate_pack.py"
     if not validator_path.exists():
@@ -37,7 +45,7 @@ def validate_pack(pack_dir: Path, repo_root: Optional[Path] = None) -> Dict[str,
             cwd=repo_root,
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=timeout,
         )
 
         return {
@@ -50,7 +58,9 @@ def validate_pack(pack_dir: Path, repo_root: Optional[Path] = None) -> Dict[str,
         return {
             "success": False,
             "output": "",
-            "errors": "Validation timed out after 30 seconds",
+            "errors": f"Validation timed out after {timeout} seconds. "
+                      f"The pack may be too large or the validator may be stuck. "
+                      f"Try increasing BPUI_VALIDATION_TIMEOUT environment variable.",
             "exit_code": 124,
         }
     except Exception as e:

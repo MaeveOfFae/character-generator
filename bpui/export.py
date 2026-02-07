@@ -1,8 +1,12 @@
 """Export wrapper for tools/export_character.sh."""
 
+import os
 import subprocess
 from pathlib import Path
 from typing import Dict, Optional, Any
+
+
+EXPORT_TIMEOUT = int(os.getenv("BPUI_EXPORT_TIMEOUT", "30"))
 
 
 def export_character(
@@ -64,7 +68,7 @@ def export_character(
             cwd=repo_root,
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=EXPORT_TIMEOUT,
         )
 
         # Parse output directory from stdout if successful
@@ -90,7 +94,7 @@ def export_character(
         return {
             "success": False,
             "output": "",
-            "errors": "Export timed out after 30 seconds",
+            "errors": f"Export timed out after {EXPORT_TIMEOUT} seconds",
             "exit_code": 124,
             "output_dir": None,
         }

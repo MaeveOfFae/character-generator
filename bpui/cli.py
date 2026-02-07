@@ -101,9 +101,6 @@ def main():
     elif args.command == "tui":
         logger.debug("Launching TUI")
         run_tui()
-    elif args.command == "gui":
-        logger.debug("Launching GUI")
-        run_gui()
     elif args.command == "compile":
         asyncio.run(run_compile(args))
     elif args.command == "batch":
@@ -122,7 +119,6 @@ def main():
         from .profiler import get_profiler
         profiler = get_profiler()
         profiler.print_report()
-        run_rebuild_index(args)
 
 
 def run_tui():
@@ -147,8 +143,8 @@ def run_gui():
 
 async def run_compile(args):
     """Run compilation from CLI."""
-    logger = logging.getLogger(__name__)
     from .config import Config
+    logger = logging.getLogger(__name__)
     from .llm.litellm_engine import LiteLLMEngine
     from .llm.openai_compat_engine import OpenAICompatEngine
     from .prompting import build_asset_prompt
@@ -161,8 +157,11 @@ async def run_compile(args):
     logger.info("Mode: %s", args.mode or 'Auto')
     logger.info("Model: %s", args.model or config.model)
 
-    # Create engine
+    # Validate API key
     model = args.model or config.model
+    config.validate_api_key(model)
+
+    # Create engine
     engine_config = {
         "model": model,
         "api_key": config.api_key,
@@ -171,7 +170,12 @@ async def run_compile(args):
     }
 
     if config.engine == "litellm":
-        engine = LiteLLMEngine(**engine_config)
+        try:
+            engine = LiteLLMEngine(**engine_config)
+        except ImportError as e:
+            logger.error("LiteLLM not installed. Install with: pip install litellm")
+            logger.error("Or configure engine=openai-compat in .bpui.toml for OpenAI-compatible APIs")
+            sys.exit(1)
     else:
         engine_config["base_url"] = config.base_url
         engine = OpenAICompatEngine(**engine_config)
@@ -228,7 +232,11 @@ async def run_seedgen(args):
     from .llm.openai_compat_engine import OpenAICompatEngine
     from .prompting import build_seedgen_prompt
 
+    logger = logging.getLogger(__name__)
     config = Config()
+
+    # Validate API key
+    config.validate_api_key(config.model)
 
     # Read input
     input_path = Path(args.input)
@@ -252,7 +260,12 @@ async def run_seedgen(args):
     }
 
     if config.engine == "litellm":
-        engine = LiteLLMEngine(**engine_config)
+        try:
+            engine = LiteLLMEngine(**engine_config)
+        except ImportError as e:
+            logger.error("LiteLLM not installed. Install with: pip install litellm")
+            logger.error("Or configure engine=openai-compat in .bpui.toml for OpenAI-compatible APIs")
+            sys.exit(1)
     else:
         engine_config["base_url"] = config.base_url
         engine = OpenAICompatEngine(**engine_config)
@@ -339,6 +352,7 @@ async def run_batch(args):
     from .pack_io import create_draft_dir
     from .batch_state import BatchState
 
+    logger = logging.getLogger(__name__)
     config = Config()
 
     # Handle cleanup flag
@@ -350,6 +364,10 @@ async def run_batch(args):
     # Get concurrent settings
     max_concurrent = args.max_concurrent if hasattr(args, 'max_concurrent') and args.max_concurrent else config.batch_max_concurrent
     rate_limit_delay = config.batch_rate_limit_delay
+
+    # Validate API key
+    model = args.model or config.model
+    config.validate_api_key(model)
 
     # Handle resume
     batch_state = None
@@ -424,7 +442,6 @@ async def run_batch(args):
         )
 
     # Create engine
-    model = args.model or config.model
     engine_config = {
         "model": model,
         "api_key": config.api_key,
@@ -433,7 +450,12 @@ async def run_batch(args):
     }
 
     if config.engine == "litellm":
-        engine = LiteLLMEngine(**engine_config)
+        try:
+            engine = LiteLLMEngine(**engine_config)
+        except ImportError as e:
+            logger.error("LiteLLM not installed. Install with: pip install litellm")
+            logger.error("Or configure engine=openai-compat in .bpui.toml for OpenAI-compatible APIs")
+            sys.exit(1)
     else:
         engine_config["base_url"] = config.base_url
         engine = OpenAICompatEngine(**engine_config)
@@ -562,9 +584,58 @@ async def run_batch_sequential(seeds, engine, batch_state, args, model):
 async def run_batch_parallel(seeds, engine, batch_state, args, model, max_concurrent, rate_limit_delay):
     """Run batch compilation with parallel processing."""
     import asyncio
+    import random
     from .prompting import build_orchestrator_prompt
     from .parse_blocks import parse_blueprint_output, extract_character_name, ASSET_FILENAMES
     from .pack_io import create_draft_dir
+    
+    # Simple rate limiter using time-based delays
+    class RateLimiter:
+        """Simple time-based rate limiter with thread safety."""
+        
+        def __init__(self, calls_per_second: float = 1.0):
+            """Initialize rate limiter.
+            
+            Args:
+                calls_per_second: Maximum calls per second
+            """
+            self.min_interval = 1.0 / calls_per_second if calls_per_second > 0 else 0
+            self.last_call = 0.0
+            self._lock = asyncio.Lock()
+        
+        async def acquire(self):
+            """Wait until next call is allowed."""
+            if self.min_interval <= 0:
+                return
+            
+            async with self._lock:
+                now = asyncio.get_event_loop().time()
+                elapsed = now - self.last_call
+                
+                if elapsed < self.min_interval:
+                    await asyncio.sleep(self.min_interval - elapsed)
+                
+                self.last_call = asyncio.get_event_loop().time()
+    
+    def is_transient_error(error: Exception) -> bool:
+        """Check if error is transient (worth retrying).
+        
+        Args:
+            error: Exception to check
+            
+        Returns:
+            True if error is transient
+        """
+        error_str = str(error).lower()
+        transient_patterns = [
+            "timeout", "connection", "network", "rate limit",
+            "429", "503", "502", "504", "temporarily unavailable"
+        ]
+        return any(pattern in error_str for pattern in transient_patterns)
+    
+    # Create rate limiter (default 1 call per second, configurable via rate_limit_delay)
+    calls_per_second = 1.0 / rate_limit_delay if rate_limit_delay > 0 else 10.0
+    rate_limiter = RateLimiter(calls_per_second)
     
     semaphore = asyncio.Semaphore(max_concurrent)
     successful = len(batch_state.completed_seeds)
@@ -573,7 +644,7 @@ async def run_batch_parallel(seeds, engine, batch_state, args, model, max_concur
         """Compile a single seed with semaphore control."""
         async with semaphore:
             # Rate limiting
-            await asyncio.sleep(rate_limit_delay)
+            await rate_limiter.acquire()
             
             print(f"\n[{index}/{batch_state.total_seeds}] Starting: {seed}")
             
@@ -642,8 +713,10 @@ async def run_batch_parallel(seeds, engine, batch_state, args, model, max_concur
         if isinstance(result, Exception):
             print(f"✗ Unexpected error: {result}")
             failed.append({"seed": "unknown", "error": str(result)})
-        elif not result[0]:  # Failed compilation
-            failed.append({"seed": result[1], "error": result[2]})
+        elif isinstance(result, tuple) and len(result) == 3:
+            success, seed, error = result
+            if not success:  # Failed compilation
+                failed.append({"seed": seed, "error": error})
     
     # Mark batch as completed
     batch_state.mark_completed_status()

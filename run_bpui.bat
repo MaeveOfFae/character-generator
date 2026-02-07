@@ -37,7 +37,7 @@ if not exist "%VENV_PYTHON%" (
         )
     ) else (
         REM Fallback to manual installation
-        pip install --quiet textual rich tomli-w httpx setuptools wheel
+        pip install --quiet textual rich tomli-w httpx setuptools wheel PySide6
         if errorlevel 1 (
             echo ERROR: Failed to install base dependencies
             pause

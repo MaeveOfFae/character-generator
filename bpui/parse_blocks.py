@@ -41,6 +41,13 @@ def extract_codeblocks(text: str) -> List[str]:
 
     Returns:
         List of codeblock contents (without fence markers)
+    
+    Note:
+        This parser uses a simple regex pattern that does NOT handle nested codeblocks
+        (e.g., markdown codeblocks inside LLM-generated codeblocks). In the unlikely
+        event that an LLM generates nested codeblocks, parsing will extract the
+        outer codeblock content only. This is acceptable for the intended use case
+        where LLMs generate simple, flat codeblock structures.
     """
     # Match ```...``` blocks (handles language tags)
     pattern = r"```(?:[a-z]*\n)?(.*?)```"
@@ -77,9 +84,18 @@ def parse_blueprint_output(text: str) -> Dict[str, str]:
         # Require exactly 7 asset blocks after adjustment note (if present)
         asset_blocks = blocks[start_idx:]
         if len(asset_blocks) != 7:
+            # Include preview of blocks for debugging
+            block_previews = "\n".join(
+                f"  Block {i}: {b[:75]}{'...' if len(b) > 75 else ''}"
+                for i, b in enumerate(asset_blocks[:3])
+            )
+            if len(asset_blocks) > 3:
+                block_previews += f"\n  ... and {len(asset_blocks) - 3} more blocks"
+            
             raise ParseError(
                 f"Expected 7 asset blocks, found {len(asset_blocks)}. "
-                f"Required order: {', '.join(ASSET_ORDER)}"
+                f"Required order: {', '.join(ASSET_ORDER)}\n"
+                f"Actual blocks found:\n{block_previews}"
             )
 
         # Map blocks to asset names
