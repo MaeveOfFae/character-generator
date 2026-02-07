@@ -202,7 +202,8 @@ class ReviewWidget(QWidget):
             editor.setPlainText(content)
             # Reapply highlighting after loading
             if asset_key in self.highlighters:
-                self.highlighters[asset_key].rehighlight()
+                highlighter = self.highlighters[asset_key]
+                self.apply_highlighting(editor, highlighter)
     
     def mark_dirty(self):
         """Mark as having unsaved changes."""
