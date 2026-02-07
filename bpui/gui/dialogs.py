@@ -438,6 +438,25 @@ class SettingsDialog(QDialog):
         content_layout.addWidget(tokenizer_label)
         content_layout.addWidget(QLabel("Colors for highlighting different tokenizer types:"))
         
+        # Live preview
+        preview_label = QLabel("Live Preview:")
+        preview_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+        content_layout.addWidget(preview_label)
+        
+        self.preview_text = QPlainTextEdit()
+        self.preview_text.setReadOnly(True)
+        self.preview_text.setMaximumHeight(150)
+        self.preview_text.setPlainText(
+            "This is a [bracketed text] example.\n"
+            "Here is some **bold asterisk** text.\n"
+            "Parentheses (like this) show too.\n"
+            "Double braces {{like this}} work.\n"
+            "Curly braces {and these} as well.\n"
+            "Pipes |and this pattern| also.\n"
+            "At sign @mentions work too."
+        )
+        content_layout.addWidget(self.preview_text)
+        
         tokenizer_frame = QFrame()
         tokenizer_frame.setFrameStyle(QFrame.Shape.StyledPanel)
         tokenizer_layout = QFormLayout(tokenizer_frame)
@@ -458,6 +477,8 @@ class SettingsDialog(QDialog):
             btn = self.create_color_button(color, label)
             self.tokenizer_color_buttons[key] = btn
             tokenizer_layout.addRow(label + ":", btn)
+            # Connect to update preview when color changes
+            btn.clicked.connect(lambda checked, b=btn, k=key: self.update_preview(b, k))
         
         content_layout.addWidget(tokenizer_frame)
         
@@ -549,6 +570,7 @@ class SettingsDialog(QDialog):
                 }}
             """)
             button.setToolTip(f"Click to change color\nCurrent: {color_hex}")
+            self.update_preview()
     
     def load_theme_colors(self):
         """Load theme colors from config."""
@@ -575,6 +597,9 @@ class SettingsDialog(QDialog):
             """)
             btn.setToolTip(f"Click to change color\nCurrent: {default_color}")
         
+        # Update preview
+        self.update_preview()
+        
         # Reset app colors
         for key, btn in self.app_color_buttons.items():
             default_color = self.DEFAULT_THEME["app"][key]
@@ -598,6 +623,37 @@ class SettingsDialog(QDialog):
         if match:
             return match.group(1).strip()
         return None
+    
+    def update_preview(self, button=None, key=None):
+        """Update preview text with current tokenizer colors."""
+        from .theme import SyntaxHighlighter
+        from PySide6.QtGui import QTextCursor
+        
+        # Get current colors from buttons
+        current_colors = {"tokenizer": {}}
+        for btn_key, btn in self.tokenizer_color_buttons.items():
+            color = self.get_color_from_button(btn)
+            if color:
+                current_colors["tokenizer"][btn_key] = color
+        
+        # Create highlighter
+        highlighter = SyntaxHighlighter(current_colors)
+        
+        # Apply highlighting to preview
+        text = self.preview_text.toPlainText()
+        cursor = QTextCursor(self.preview_text.document())
+        cursor.select(QTextCursor.SelectionType.Document)
+        cursor.removeSelectedText()
+        cursor.insertText(text)
+        
+        # Get highlights
+        highlights = highlighter.get_highlight_data(text)
+        
+        # Apply highlights in reverse order (to maintain positions)
+        for start, end, fmt in reversed(highlights):
+            cursor.setPosition(start)
+            cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
+            cursor.mergeCharFormat(fmt)
     
     def get_available_models(self):
         """Get list of available models from litellm."""
@@ -744,6 +800,9 @@ class SettingsDialog(QDialog):
                 theme_colors["app"][key] = color
         
         self.config.set("theme", theme_colors)
+        
+        # Save config to disk
+        self.config.save()
         
         # Refresh theme if main window exists
         if hasattr(self.main_window, 'theme_manager'):
