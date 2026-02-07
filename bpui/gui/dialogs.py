@@ -3,10 +3,11 @@
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QLineEdit, QTextEdit, QComboBox, QListWidget, QListWidgetItem,
-    QCheckBox, QFormLayout, QPlainTextEdit, QSplitter, QMessageBox
+    QCheckBox, QFormLayout, QPlainTextEdit, QSplitter, QMessageBox,
+    QTabWidget, QWidget, QColorDialog, QPushButton, QScrollArea, QFrame
 )
 from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QColor, QPalette
 from pathlib import Path
 import asyncio
 
@@ -282,14 +283,65 @@ class ExportDialog(QDialog):
 class SettingsDialog(QDialog):
     """Dialog for application settings."""
     
+    # Default theme colors
+    DEFAULT_THEME = {
+        "tokenizer": {
+            "brackets": "#e91e63",  # []
+            "asterisk": "#2196f3",  # **
+            "parentheses": "#ff9800",  # ()
+            "double_brackets": "#4caf50",  # {{}}
+            "curly_braces": "#9c27b0",  # {}
+            "pipes": "#00bcd4",  # ||
+            "at_sign": "#ff5722",  # @
+        },
+        "app": {
+            "background": "#1e1e1e",
+            "text": "#e0e0e0",
+            "accent": "#6200ea",
+            "button": "#3700b3",
+            "button_text": "#ffffff",
+            "border": "#424242",
+            "highlight": "#bb86fc",
+            "window": "#121212",
+        }
+    }
+    
     def __init__(self, parent, config):
         super().__init__(parent)
         self.config = config
+        self.theme_colors = self.load_theme_colors()
         
         self.setWindowTitle("Settings")
-        self.setMinimumWidth(500)
+        self.setMinimumWidth(600)
         
         layout = QVBoxLayout(self)
+        
+        # Tab widget
+        self.tabs = QTabWidget()
+        layout.addWidget(self.tabs)
+        
+        # Create tabs
+        self.create_general_tab()
+        self.create_theme_tab()
+        
+        # Buttons
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        btn_layout.addWidget(cancel_btn)
+        
+        save_btn = QPushButton("Save")
+        save_btn.clicked.connect(self.save_settings)
+        btn_layout.addWidget(save_btn)
+        
+        layout.addLayout(btn_layout)
+    
+    def create_general_tab(self):
+        """Create the general settings tab."""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
         
         # Form
         form = QFormLayout()
@@ -304,7 +356,7 @@ class SettingsDialog(QDialog):
         self.model_input.addItems(available_models)
         
         # Set current model
-        current_model = config.model
+        current_model = self.config.model
         index = self.model_input.findText(current_model)
         if index >= 0:
             self.model_input.setCurrentIndex(index)
@@ -319,8 +371,8 @@ class SettingsDialog(QDialog):
         self.api_key_input.setPlaceholderText("Enter API key...")
         
         # Try to get existing key
-        provider = config.model.split("/")[0] if "/" in config.model else "openai"
-        existing_key = config.get_api_key(provider)
+        provider = self.config.model.split("/")[0] if "/" in self.config.model else "openai"
+        existing_key = self.config.get_api_key(provider)
         if existing_key:
             self.api_key_input.setText(existing_key)
         
@@ -330,10 +382,10 @@ class SettingsDialog(QDialog):
         batch_label = QLabel("<b>Batch Processing</b>")
         form.addRow(batch_label)
         
-        self.max_concurrent_input = QLineEdit(str(config.batch_max_concurrent))
+        self.max_concurrent_input = QLineEdit(str(self.config.batch_max_concurrent))
         form.addRow("Max Concurrent:", self.max_concurrent_input)
         
-        self.rate_limit_input = QLineEdit(str(config.batch_rate_limit_delay))
+        self.rate_limit_input = QLineEdit(str(self.config.batch_rate_limit_delay))
         form.addRow("Rate Limit Delay (s):", self.rate_limit_input)
         
         layout.addLayout(form)
@@ -365,19 +417,186 @@ class SettingsDialog(QDialog):
         
         layout.addStretch()
         
-        # Buttons
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
+        self.tabs.addTab(widget, "General")
+    
+    def create_theme_tab(self):
+        """Create the theme settings tab."""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
         
-        cancel_btn = QPushButton("Cancel")
-        cancel_btn.clicked.connect(self.reject)
-        btn_layout.addWidget(cancel_btn)
+        # Scroll area for all color settings
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         
-        save_btn = QPushButton("Save")
-        save_btn.clicked.connect(self.save_settings)
-        btn_layout.addWidget(save_btn)
+        content = QWidget()
+        content_layout = QVBoxLayout(content)
         
-        layout.addLayout(btn_layout)
+        # Tokenizer Colors Section
+        tokenizer_label = QLabel("<h3>Tokenizer Colors</h3>")
+        content_layout.addWidget(tokenizer_label)
+        content_layout.addWidget(QLabel("Colors for highlighting different tokenizer types:"))
+        
+        tokenizer_frame = QFrame()
+        tokenizer_frame.setFrameStyle(QFrame.Shape.StyledPanel)
+        tokenizer_layout = QFormLayout(tokenizer_frame)
+        
+        self.tokenizer_color_buttons = {}
+        tokenizer_configs = [
+            ("brackets", "Square Brackets [ ]", "tokenizer", "brackets"),
+            ("asterisk", "Asterisk **", "tokenizer", "asterisk"),
+            ("parentheses", "Parentheses ( )", "tokenizer", "parentheses"),
+            ("double_brackets", "Double Brackets {{ }}", "tokenizer", "double_brackets"),
+            ("curly_braces", "Curly Braces { }", "tokenizer", "curly_braces"),
+            ("pipes", "Pipes | |", "tokenizer", "pipes"),
+            ("at_sign", "At Sign @", "tokenizer", "at_sign"),
+        ]
+        
+        for key, label, category, subcategory in tokenizer_configs:
+            color = self.theme_colors.get(category, {}).get(subcategory, self.DEFAULT_THEME[category][subcategory])
+            btn = self.create_color_button(color, label)
+            self.tokenizer_color_buttons[key] = btn
+            tokenizer_layout.addRow(label + ":", btn)
+        
+        content_layout.addWidget(tokenizer_frame)
+        
+        # App Colors Section
+        app_label = QLabel("<h3>Application Colors</h3>")
+        content_layout.addWidget(app_label)
+        content_layout.addWidget(QLabel("Colors for the application UI:"))
+        
+        app_frame = QFrame()
+        app_frame.setFrameStyle(QFrame.Shape.StyledPanel)
+        app_layout = QFormLayout(app_frame)
+        
+        self.app_color_buttons = {}
+        app_configs = [
+            ("background", "Background", "app", "background"),
+            ("text", "Text", "app", "text"),
+            ("accent", "Accent", "app", "accent"),
+            ("button", "Button", "app", "button"),
+            ("button_text", "Button Text", "app", "button_text"),
+            ("border", "Border", "app", "border"),
+            ("highlight", "Highlight", "app", "highlight"),
+            ("window", "Window", "app", "window"),
+        ]
+        
+        for key, label, category, subcategory in app_configs:
+            color = self.theme_colors.get(category, {}).get(subcategory, self.DEFAULT_THEME[category][subcategory])
+            btn = self.create_color_button(color, label)
+            self.app_color_buttons[key] = btn
+            app_layout.addRow(label + ":", btn)
+        
+        content_layout.addWidget(app_frame)
+        
+        # Reset to defaults button
+        reset_layout = QHBoxLayout()
+        reset_layout.addStretch()
+        reset_btn = QPushButton("Reset to Defaults")
+        reset_btn.clicked.connect(self.reset_theme_colors)
+        reset_layout.addWidget(reset_btn)
+        content_layout.addLayout(reset_layout)
+        
+        content_layout.addStretch()
+        scroll.setWidget(content)
+        
+        layout.addWidget(scroll)
+        
+        self.tabs.addTab(widget, "Theme")
+    
+    def create_color_button(self, color, tooltip):
+        """Create a color selection button."""
+        btn = QPushButton()
+        btn.setFixedSize(100, 30)
+        btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {color};
+                border: 2px solid #666;
+                border-radius: 4px;
+            }}
+            QPushButton:hover {{
+                border: 2px solid #999;
+            }}
+        """)
+        btn.setToolTip(f"Click to change color\nCurrent: {color}")
+        btn.clicked.connect(lambda: self.choose_color(btn))
+        return btn
+    
+    def choose_color(self, button):
+        """Open color dialog and update button color."""
+        current_color = button.styleSheet()
+        # Extract current color from stylesheet
+        import re
+        match = re.search(r'background-color:\s*([^;]+);', current_color)
+        if match:
+            current_color_hex = match.group(1).strip()
+            initial_color = QColor(current_color_hex)
+        else:
+            initial_color = QColor("#ffffff")
+        
+        color = QColorDialog.getColor(initial_color, self, "Choose Color")
+        if color.isValid():
+            color_hex = color.name()
+            button.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {color_hex};
+                    border: 2px solid #666;
+                    border-radius: 4px;
+                }}
+                QPushButton:hover {{
+                    border: 2px solid #999;
+                }}
+            """)
+            button.setToolTip(f"Click to change color\nCurrent: {color_hex}")
+    
+    def load_theme_colors(self):
+        """Load theme colors from config."""
+        theme_config = self.config.get("theme", {})
+        return {
+            "tokenizer": theme_config.get("tokenizer", self.DEFAULT_THEME["tokenizer"]),
+            "app": theme_config.get("app", self.DEFAULT_THEME["app"])
+        }
+    
+    def reset_theme_colors(self):
+        """Reset all theme colors to defaults."""
+        # Reset tokenizer colors
+        for key, btn in self.tokenizer_color_buttons.items():
+            default_color = self.DEFAULT_THEME["tokenizer"][key]
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {default_color};
+                    border: 2px solid #666;
+                    border-radius: 4px;
+                }}
+                QPushButton:hover {{
+                    border: 2px solid #999;
+                }}
+            """)
+            btn.setToolTip(f"Click to change color\nCurrent: {default_color}")
+        
+        # Reset app colors
+        for key, btn in self.app_color_buttons.items():
+            default_color = self.DEFAULT_THEME["app"][key]
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {default_color};
+                    border: 2px solid #666;
+                    border-radius: 4px;
+                }}
+                QPushButton:hover {{
+                    border: 2px solid #999;
+                }}
+            """)
+            btn.setToolTip(f"Click to change color\nCurrent: {default_color}")
+    
+    def get_color_from_button(self, button):
+        """Extract color hex from button stylesheet."""
+        import re
+        stylesheet = button.styleSheet()
+        match = re.search(r'background-color:\s*([^;]+);', stylesheet)
+        if match:
+            return match.group(1).strip()
+        return None
     
     def get_available_models(self):
         """Get list of available models from litellm."""
@@ -507,6 +726,23 @@ class SettingsDialog(QDialog):
             self.config._data["batch"]["rate_limit_delay"] = float(self.rate_limit_input.text())
         except ValueError:
             pass  # Keep existing values if invalid
+        
+        # Save theme colors
+        theme_colors = {"tokenizer": {}, "app": {}}
+        
+        # Save tokenizer colors
+        for key, btn in self.tokenizer_color_buttons.items():
+            color = self.get_color_from_button(btn)
+            if color:
+                theme_colors["tokenizer"][key] = color
+        
+        # Save app colors
+        for key, btn in self.app_color_buttons.items():
+            color = self.get_color_from_button(btn)
+            if color:
+                theme_colors["app"][key] = color
+        
+        self.config.set("theme", theme_colors)
         
         self.accept()
 
