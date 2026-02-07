@@ -9,6 +9,7 @@ from .home import HomeWidget
 from .compile import CompileWidget
 from .review import ReviewWidget
 from .batch import BatchScreen
+from .theme import ThemeManager
 
 
 class MainWindow(QMainWindow):
@@ -17,9 +18,13 @@ class MainWindow(QMainWindow):
     def __init__(self, config):
         super().__init__()
         self.config = config
+        self.theme_manager = ThemeManager(config)
         
         self.setWindowTitle("Blueprint UI")
         self.setGeometry(100, 100, 1400, 900)
+        
+        # Apply theme to entire window
+        self.theme_manager.apply_theme(self)
         
         # Stacked widget for screens
         self.stack = QStackedWidget()
