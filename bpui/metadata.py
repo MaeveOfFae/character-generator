@@ -121,11 +121,11 @@ def migrate_draft_metadata(drafts_dir: Path) -> tuple[int, int]:
     """
     Migrate existing drafts to include metadata.
     
-    Scans the drafts directory and creates default metadata for any
+    Scans through drafts directory and creates default metadata for any
     drafts that don't already have it.
     
     Args:
-        drafts_dir: Path to the drafts directory
+        drafts_dir: Path to drafts directory
         
     Returns:
         Tuple of (total_drafts, migrated_count)
@@ -159,6 +159,96 @@ def migrate_draft_metadata(drafts_dir: Path) -> tuple[int, int]:
             pass
     
     return (total, migrated)
+
+
+def update_metadata_schema(drafts_dir: Path) -> tuple[int, int]:
+    """
+    Update existing metadata files to include any missing required fields.
+    
+    Scans through all drafts and ensures their metadata files contain
+    all required fields with appropriate default values.
+    
+    Args:
+        drafts_dir: Path to drafts directory
+        
+    Returns:
+        Tuple of (total_drafts, updated_count)
+    """
+    if not drafts_dir.exists():
+        return (0, 0)
+    
+    total = 0
+    updated = 0
+    
+    # Required fields with their default values
+    required_defaults = {
+        "seed": "unknown",
+        "mode": None,
+        "model": None,
+        "created": None,
+        "modified": None,
+        "tags": [],
+        "genre": None,
+        "notes": None,
+        "favorite": False,
+        "character_name": None,
+    }
+    
+    for draft_path in drafts_dir.iterdir():
+        if not draft_path.is_dir():
+            continue
+        
+        # Skip hidden directories
+        if draft_path.name.startswith("."):
+            continue
+        
+        total += 1
+        
+        metadata_path = draft_path / ".metadata.json"
+        
+        # Skip if no metadata file
+        if not metadata_path.exists():
+            continue
+        
+        # Load existing metadata
+        try:
+            with open(metadata_path) as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, IOError):
+            continue
+        
+        # Check if any required fields are missing
+        missing_fields = False
+        
+        for field, default_value in required_defaults.items():
+            if field not in data:
+                # For timestamp fields, use __post_init__ defaults
+                if field in ("created", "modified", "tags"):
+                    # These will be handled by __post_init__
+                    missing_fields = True
+                else:
+                    # Set the default value
+                    data[field] = default_value
+                    missing_fields = True
+            elif field == "character_name" and data[field] is None:
+                # Infer character name from directory name if missing
+                dir_name = draft_path.name
+                parts = dir_name.split("_", 2)
+                if len(parts) > 2:
+                    data["character_name"] = parts[2]
+                    missing_fields = True
+        
+        # Save if any fields were added
+        if missing_fields:
+            try:
+                # Create DraftMetadata to trigger __post_init__
+                metadata = DraftMetadata.from_dict(data)
+                metadata.save(draft_path)
+                updated += 1
+            except (OSError, TypeError):
+                pass
+    
+    return (total, updated)
 
 
 def search_metadata(

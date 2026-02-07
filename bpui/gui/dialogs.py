@@ -416,6 +416,19 @@ class SettingsDialog(QDialog):
         
         layout.addLayout(rebuild_layout)
         
+        # Update metadata schema button
+        migrate_layout = QHBoxLayout()
+        migrate_btn = QPushButton("🔄 Update Metadata Schema")
+        migrate_btn.setToolTip("Add missing required fields to existing draft metadata files")
+        migrate_btn.clicked.connect(self.update_metadata_schema)
+        migrate_layout.addWidget(migrate_btn)
+        
+        self.migrate_status = QLabel("")
+        self.migrate_status.setStyleSheet("color: #888;")
+        migrate_layout.addWidget(self.migrate_status, 1)
+        
+        layout.addLayout(migrate_layout)
+        
         layout.addStretch()
         
         self.tabs.addTab(widget, "General")
@@ -765,6 +778,29 @@ class SettingsDialog(QDialog):
         except Exception as e:
             self.rebuild_status.setText(f"❌ Error: {e}")
             self.rebuild_status.setStyleSheet("color: #f44;")
+    
+    def update_metadata_schema(self):
+        """Update metadata schema for existing drafts."""
+        from ..metadata import update_metadata_schema
+        from pathlib import Path
+        
+        self.migrate_status.setText("⏳ Updating metadata schema...")
+        self.migrate_status.setStyleSheet("color: #888;")
+        
+        try:
+            drafts_dir = Path("drafts")
+            total, updated = update_metadata_schema(drafts_dir)
+            
+            if updated > 0:
+                self.migrate_status.setText(f"✓ Updated {updated}/{total} drafts")
+                self.migrate_status.setStyleSheet("color: #4a4;")
+            else:
+                self.migrate_status.setText("✓ All drafts already up-to-date")
+                self.migrate_status.setStyleSheet("color: #4a4;")
+        
+        except Exception as e:
+            self.migrate_status.setText(f"❌ Error: {e}")
+            self.migrate_status.setStyleSheet("color: #f44;")
     
     def save_settings(self):
         """Save settings."""
