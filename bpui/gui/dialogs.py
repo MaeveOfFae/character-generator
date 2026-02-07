@@ -809,6 +809,10 @@ class SettingsDialog(QDialog):
             self.main_window.theme_manager.refresh_theme()
             self.main_window.theme_manager.apply_theme(self.main_window)
         
+        # Refresh syntax highlighters in review widgets
+        if hasattr(self.main_window, 'refresh_all_highlighters'):
+            self.main_window.refresh_all_highlighters()
+        
         self.accept()
 
 

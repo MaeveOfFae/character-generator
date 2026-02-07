@@ -103,3 +103,10 @@ class MainWindow(QMainWindow):
         
         self.stack.addWidget(review)
         self.stack.setCurrentWidget(review)
+    
+    def refresh_all_highlighters(self):
+        """Refresh syntax highlighters in all review widgets."""
+        for i in range(self.stack.count()):
+            widget = self.stack.widget(i)
+            if isinstance(widget, ReviewWidget):
+                widget.refresh_highlighters()

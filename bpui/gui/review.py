@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QKeySequence, QShortcut
 from pathlib import Path
+from .theme import SyntaxHighlighter
 
 
 class ReviewWidget(QWidget):
@@ -21,6 +22,7 @@ class ReviewWidget(QWidget):
         self.edit_mode = False
         self.text_editors = {}
         self.dirty = False  # Track if changes are unsaved
+        self.highlighters = {}  # Store highlighters for each editor
         
         self.setup_ui()
         self.load_assets()
@@ -119,6 +121,9 @@ class ReviewWidget(QWidget):
             
             self.text_editors[asset_key] = editor
             self.tab_widget.addTab(editor, tab_name)
+            
+            # Create and attach syntax highlighter
+            self.create_highlighter(editor)
         
         layout.addWidget(self.tab_widget, 1)
     
@@ -195,6 +200,9 @@ class ReviewWidget(QWidget):
         for asset_key, editor in self.text_editors.items():
             content = self.assets.get(asset_key, "")
             editor.setPlainText(content)
+            # Reapply highlighting after loading
+            if asset_key in self.highlighters:
+                self.highlighters[asset_key].rehighlight()
     
     def mark_dirty(self):
         """Mark as having unsaved changes."""
@@ -248,6 +256,30 @@ class ReviewWidget(QWidget):
             self.status_label.setStyleSheet("color: #4a4;")
         except Exception as e:
             self.main_window.status_bar.showMessage(f"✗ Error saving: {e}", 5000)
+    
+    def create_highlighter(self, editor):
+        """Create and store syntax highlighter for editor."""
+        # Load theme colors from config
+        theme_config = self.config.get("theme", {})
+        from .theme import ThemeManager, SyntaxHighlighter, DEFAULT_THEME
+        
+        # Get theme colors
+        theme_colors = {
+            "tokenizer": theme_config.get("tokenizer", DEFAULT_THEME["tokenizer"]),
+            "app": theme_config.get("app", DEFAULT_THEME["app"])
+        }
+        
+        # Create highlighter instance (stores the colors)
+        highlighter = SyntaxHighlighter(theme_colors)
+        
+        # Store reference to highlighter for each editor
+        for asset_key, ed in self.text_editors.items():
+            if ed == editor:
+                self.highlighters[asset_key] = highlighter
+                break
+        
+        # Apply highlighting to the editor
+        self.apply_highlighting(editor, highlighter)
     
     def regenerate_asset(self):
         """Regenerate the current asset using LLM."""
@@ -355,3 +387,40 @@ class ReviewWidget(QWidget):
         current = self.tab_widget.currentIndex()
         next_index = (current + 1) % self.tab_widget.count()
         self.tab_widget.setCurrentIndex(next_index)
+    
+    def refresh_highlighters(self):
+        """Refresh all syntax highlighters with updated theme colors."""
+        from .theme import ThemeManager, SyntaxHighlighter, DEFAULT_THEME
+        
+        # Reload theme colors
+        theme_config = self.config.get("theme", {})
+        theme_colors = {
+            "tokenizer": theme_config.get("tokenizer", DEFAULT_THEME["tokenizer"]),
+            "app": theme_config.get("app", DEFAULT_THEME["app"])
+        }
+        
+        # Update all highlighters
+        for asset_key, highlighter in self.highlighters.items():
+            highlighter.theme_colors = theme_colors
+            highlighter.formats = highlighter._create_formats()
+            
+            # Reapply highlighting to the editor
+            editor = self.text_editors.get(asset_key)
+            if editor:
+                self.apply_highlighting(editor, highlighter)
+    
+    def apply_highlighting(self, editor, highlighter):
+        """Apply syntax highlighting to an editor."""
+        from PySide6.QtGui import QTextCursor
+        
+        text = editor.toPlainText()
+        
+        # Get highlights
+        highlights = highlighter.get_highlight_data(text)
+        
+        # Apply highlights in reverse order (to maintain positions)
+        cursor = QTextCursor(editor.document())
+        for start, end, fmt in reversed(highlights):
+            cursor.setPosition(start)
+            cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
+            cursor.mergeCharFormat(fmt)
