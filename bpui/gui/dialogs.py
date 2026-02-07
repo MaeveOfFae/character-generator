@@ -294,9 +294,23 @@ class SettingsDialog(QDialog):
         # Form
         form = QFormLayout()
         
-        # Model
-        self.model_input = QLineEdit(config.model)
+        # Model - use editable combobox for typing/filtering
+        self.model_input = QComboBox()
+        self.model_input.setEditable(True)
         self.model_input.setPlaceholderText("e.g., openai/gpt-4")
+        
+        # Populate with available models from litellm
+        available_models = self.get_available_models()
+        self.model_input.addItems(available_models)
+        
+        # Set current model
+        current_model = config.model
+        index = self.model_input.findText(current_model)
+        if index >= 0:
+            self.model_input.setCurrentIndex(index)
+        else:
+            self.model_input.setCurrentText(current_model)
+        
         form.addRow("Model:", self.model_input)
         
         # API Key (masked)
@@ -365,6 +379,42 @@ class SettingsDialog(QDialog):
         
         layout.addLayout(btn_layout)
     
+    def get_available_models(self):
+        """Get list of available models from litellm."""
+        try:
+            from ..llm.litellm_engine import LITELLM_AVAILABLE
+            if LITELLM_AVAILABLE:
+                import litellm
+                # Get all model names from litellm's model_cost dictionary
+                models = list(litellm.model_cost.keys())
+                # Filter out non-model entries and common patterns
+                filtered_models = []
+                for model in models:
+                    # Skip entries that are clearly not model names
+                    if not model or model.startswith("sample_"):
+                        continue
+                    # Skip image generation parameters
+                    if "/" in model and model.split("/")[0].replace("-", "").replace("x", "").isdigit():
+                        continue
+                    filtered_models.append(model)
+                
+                # Sort models alphabetically, but put common models first
+                common_prefixes = ["openai/", "anthropic/", "deepseek/", "google/", "cohere/", "mistral/"]
+                common_models = []
+                other_models = []
+                
+                for model in sorted(filtered_models):
+                    if any(model.startswith(prefix) for prefix in common_prefixes):
+                        common_models.append(model)
+                    else:
+                        other_models.append(model)
+                
+                return common_models + other_models
+        except Exception:
+            pass  # If litellm not available or error, return empty list
+        
+        return []
+    
     def test_connection(self):
         """Test LLM connection."""
         import time
@@ -374,7 +424,7 @@ class SettingsDialog(QDialog):
         self.test_status.setStyleSheet("color: #888;")
         
         # Get current values
-        model = self.model_input.text().strip()
+        model = self.model_input.currentText().strip()
         api_key = self.api_key_input.text().strip()
         
         if not model:
@@ -443,7 +493,7 @@ class SettingsDialog(QDialog):
     def save_settings(self):
         """Save settings."""
         # Update model
-        self.config.set("model", self.model_input.text().strip())
+        self.config.set("model", self.model_input.currentText().strip())
         
         # Update API key
         api_key = self.api_key_input.text().strip()
