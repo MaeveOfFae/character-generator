@@ -310,6 +310,7 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self.config = config
         self.theme_colors = self.load_theme_colors()
+        self.main_window = parent
         
         self.setWindowTitle("Settings")
         self.setMinimumWidth(600)
@@ -743,6 +744,11 @@ class SettingsDialog(QDialog):
                 theme_colors["app"][key] = color
         
         self.config.set("theme", theme_colors)
+        
+        # Refresh theme if main window exists
+        if hasattr(self.main_window, 'theme_manager'):
+            self.main_window.theme_manager.refresh_theme()
+            self.main_window.theme_manager.apply_theme(self.main_window)
         
         self.accept()
 
