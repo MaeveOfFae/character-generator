@@ -72,6 +72,11 @@ class TemplateManagerScreen(QWidget):
         # Template actions
         action_layout = QHBoxLayout()
         
+        new_btn = QPushButton("➕ New Template")
+        new_btn.setStyleSheet("background-color: #2d4a2d; font-weight: bold;")
+        new_btn.clicked.connect(self.new_template)
+        action_layout.addWidget(new_btn)
+        
         refresh_btn = QPushButton("🔄 Refresh")
         refresh_btn.clicked.connect(self.load_templates)
         action_layout.addWidget(refresh_btn)
@@ -111,6 +116,16 @@ class TemplateManagerScreen(QWidget):
         self.validate_btn.setEnabled(False)
         self.validate_btn.clicked.connect(self.validate_template)
         detail_action_layout.addWidget(self.validate_btn)
+        
+        self.edit_btn = QPushButton("✏️ Edit")
+        self.edit_btn.setEnabled(False)
+        self.edit_btn.clicked.connect(self.edit_template)
+        detail_action_layout.addWidget(self.edit_btn)
+        
+        self.duplicate_btn = QPushButton("📑 Duplicate")
+        self.duplicate_btn.setEnabled(False)
+        self.duplicate_btn.clicked.connect(self.duplicate_template)
+        detail_action_layout.addWidget(self.duplicate_btn)
         
         self.export_btn = QPushButton("📤 Export")
         self.export_btn.setEnabled(False)
@@ -167,6 +182,8 @@ class TemplateManagerScreen(QWidget):
             self.selected_template = None
             self.details_text.clear()
             self.validate_btn.setEnabled(False)
+            self.edit_btn.setEnabled(False)
+            self.duplicate_btn.setEnabled(False)
             self.export_btn.setEnabled(False)
             self.delete_btn.setEnabled(False)
             return
@@ -209,6 +226,8 @@ class TemplateManagerScreen(QWidget):
         
         # Enable buttons
         self.validate_btn.setEnabled(True)
+        self.edit_btn.setEnabled(not self.selected_template.is_official)
+        self.duplicate_btn.setEnabled(True)
         self.export_btn.setEnabled(True)
         self.delete_btn.setEnabled(not self.selected_template.is_official)
     
@@ -348,3 +367,120 @@ class TemplateManagerScreen(QWidget):
         
         except Exception as e:
             QMessageBox.critical(self, "Delete Error", f"Failed to delete: {e}")
+    
+    def new_template(self):
+        """Create a new template using the wizard."""
+        from .template_wizard import TemplateWizard
+        
+        wizard = TemplateWizard(self)
+        if wizard.exec() == QDialog.DialogCode.Accepted:
+            self.load_templates()
+    
+    def edit_template(self):
+        """Edit the selected template."""
+        if not self.selected_template or self.selected_template.is_official:
+            return
+        
+        # TODO: Implement template editing
+        # For now, just show a message
+        QMessageBox.information(
+            self,
+            "Edit Template",
+            f"Template editing coming soon!\n\n"
+            f"You can manually edit the template.toml file at:\n"
+            f"{self.selected_template.path / 'template.toml'}"
+        )
+    
+    def duplicate_template(self):
+        """Duplicate the selected template."""
+        if not self.selected_template:
+            return
+        
+        # Ask for new name
+        from PySide6.QtWidgets import QInputDialog
+        
+        new_name, ok = QInputDialog.getText(
+            self,
+            "Duplicate Template",
+            f"Enter name for duplicated template:",
+            text=f"{self.selected_template.name} (Copy)"
+        )
+        
+        if not ok or not new_name.strip():
+            return
+        
+        try:
+            from ..templates import TemplateManager
+            import shutil
+            
+            manager = TemplateManager()
+            
+            # Create new template directory
+            new_dir_name = new_name.strip().lower().replace(" ", "_")
+            new_dir = manager.custom_dir / new_dir_name
+            
+            if new_dir.exists():
+                QMessageBox.warning(
+                    self,
+                    "Duplicate Failed",
+                    f"A template named '{new_name}' already exists."
+                )
+                return
+            
+            # Copy template directory
+            if self.selected_template.is_official:
+                # For official template, create custom copy
+                new_dir.mkdir(parents=True, exist_ok=True)
+                
+                # Generate template.toml
+                import tomli_w
+                template_data = {
+                    "template": {
+                        "name": new_name.strip(),
+                        "version": "1.0.0",
+                        "description": f"Copy of {self.selected_template.name}"
+                    },
+                    "assets": [
+                        {
+                            "name": asset.name,
+                            "required": asset.required,
+                            "depends_on": asset.depends_on,
+                            "description": asset.description,
+                            "blueprint_file": asset.blueprint_file or f"{asset.name}.md"
+                        }
+                        for asset in self.selected_template.assets
+                    ]
+                }
+                
+                with open(new_dir / "template.toml", "wb") as f:
+                    tomli_w.dump(template_data, f)
+            else:
+                # For custom template, copy directory
+                shutil.copytree(self.selected_template.path, new_dir)
+                
+                # Update name in template.toml
+                import sys
+                if sys.version_info >= (3, 11):
+                    import tomllib
+                else:
+                    import tomli as tomllib
+                import tomli_w
+                
+                toml_path = new_dir / "template.toml"
+                with open(toml_path, "rb") as f:
+                    data = tomllib.load(f)
+                
+                data["template"]["name"] = new_name.strip()
+                
+                with open(toml_path, "wb") as f:
+                    tomli_w.dump(data, f)
+            
+            QMessageBox.information(
+                self,
+                "Duplicate Complete",
+                f"✓ Created duplicate template: {new_name}"
+            )
+            self.load_templates()
+        
+        except Exception as e:
+            QMessageBox.critical(self, "Duplicate Error", f"Failed to duplicate template:\n{e}")

@@ -74,11 +74,11 @@ class CompileWorker(QThread):
         
         # Parse
         self.output.emit("\n\nParsing output...\n")
-        assets = parse_blueprint_output(response)
+        assets = parse_blueprint_output(response, template=self.template)
         
         # Save
         self.output.emit("Saving draft...\n")
-        draft_dir = save_draft(assets, self.seed, self.mode, self.config.model)
+        draft_dir = save_draft(assets, self.seed, self.mode, self.config.model, template=self.template)
         
         self.output.emit(f"\n✓ Saved to: {draft_dir}\n")
         

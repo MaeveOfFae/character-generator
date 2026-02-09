@@ -21,6 +21,7 @@ class DraftMetadata:
     notes: Optional[str] = None
     favorite: bool = False
     character_name: Optional[str] = None
+    template_name: Optional[str] = None  # Name of template used for generation
     
     def __post_init__(self):
         """Set default timestamps if not provided."""

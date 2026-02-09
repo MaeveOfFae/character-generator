@@ -1,8 +1,11 @@
 """Strict codeblock parser for blueprint outputs."""
 
 import re
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, TYPE_CHECKING
 from .profiler import profile
+
+if TYPE_CHECKING:
+    from .templates import Template
 
 
 # Ordered asset names as they appear in output
@@ -16,8 +19,8 @@ ASSET_ORDER = [
     "suno",
 ]
 
-# Filename mapping
-ASSET_FILENAMES = {
+# Default filename mapping (can be overridden by templates)
+DEFAULT_ASSET_FILENAMES = {
     "system_prompt": "system_prompt.txt",
     "post_history": "post_history.txt",
     "character_sheet": "character_sheet.txt",
@@ -26,6 +29,43 @@ ASSET_FILENAMES = {
     "a1111": "a1111_prompt.txt",
     "suno": "suno_prompt.txt",
 }
+
+# Legacy alias for backward compatibility
+ASSET_FILENAMES = DEFAULT_ASSET_FILENAMES
+
+
+def get_asset_filename(asset_name: str, template: Optional['Template'] = None) -> str:
+    """Get filename for an asset, considering template-specific overrides.
+    
+    Args:
+        asset_name: Name of the asset
+        template: Optional template with custom filename mapping
+        
+    Returns:
+        Filename for the asset (e.g., 'system_prompt.txt')
+    """
+    # Check template for custom filename
+    if template:
+        for asset in template.assets:
+            if asset.name == asset_name:
+                # If blueprint_file is specified, use it as base for filename
+                if asset.blueprint_file:
+                    # Keep .md extension if present, otherwise assume .txt
+                    if asset.blueprint_file.endswith('.md'):
+                        return asset.blueprint_file
+                    elif asset.blueprint_file.endswith('.txt'):
+                        return asset.blueprint_file
+                    else:
+                        # Blueprint file without extension, add .txt
+                        return asset.blueprint_file if '.' in asset.blueprint_file else f"{asset.blueprint_file}.txt"
+                break
+    
+    # Fall back to default mapping
+    if asset_name in DEFAULT_ASSET_FILENAMES:
+        return DEFAULT_ASSET_FILENAMES[asset_name]
+    
+    # Generic fallback: asset_name.txt
+    return f"{asset_name}.txt"
 
 
 class ParseError(Exception):
@@ -55,11 +95,12 @@ def extract_codeblocks(text: str) -> List[str]:
     return [m.strip() for m in matches]
 
 
-def parse_blueprint_output(text: str) -> Dict[str, str]:
+def parse_blueprint_output(text: str, template: Optional['Template'] = None) -> Dict[str, str]:
     """Parse blueprint orchestrator output into assets.
 
     Args:
         text: LLM output containing codeblocks
+        template: Optional template defining expected assets (uses official 7-asset if None)
 
     Returns:
         Dict mapping asset names to content
@@ -81,9 +122,20 @@ def parse_blueprint_output(text: str) -> Dict[str, str]:
             adjustment_note = blocks[0].strip()
             start_idx = 1
 
-        # Require exactly 7 asset blocks after adjustment note (if present)
         asset_blocks = blocks[start_idx:]
-        if len(asset_blocks) != 7:
+        
+        # Determine expected asset order from template or use default
+        if template:
+            expected_assets = [asset.name for asset in template.assets]
+            expected_count = len(expected_assets)
+            template_name = template.name
+        else:
+            expected_assets = ASSET_ORDER
+            expected_count = 7
+            template_name = "Official RPBotGenerator"
+        
+        # Validate asset count
+        if len(asset_blocks) != expected_count:
             # Include preview of blocks for debugging
             block_previews = "\n".join(
                 f"  Block {i}: {b[:75]}{'...' if len(b) > 75 else ''}"
@@ -93,14 +145,14 @@ def parse_blueprint_output(text: str) -> Dict[str, str]:
                 block_previews += f"\n  ... and {len(asset_blocks) - 3} more blocks"
             
             raise ParseError(
-                f"Expected 7 asset blocks, found {len(asset_blocks)}. "
-                f"Required order: {', '.join(ASSET_ORDER)}\n"
+                f"Template '{template_name}' expects {expected_count} asset blocks, found {len(asset_blocks)}. "
+                f"Required order: {', '.join(expected_assets)}\n"
                 f"Actual blocks found:\n{block_previews}"
             )
 
         # Map blocks to asset names
         assets = {}
-        for i, asset_name in enumerate(ASSET_ORDER):
+        for i, asset_name in enumerate(expected_assets):
             assets[asset_name] = asset_blocks[i]
 
         return assets
