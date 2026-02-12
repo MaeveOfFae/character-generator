@@ -68,6 +68,25 @@ bpui validate drafts/20240203_150000_character_name
 bpui export "Character Name" drafts/20240203_150000_character_name
 ```
 
+### Compare Characters
+
+```bash
+# TUI
+bpui → Similarity Analyzer → Select two characters → Compare
+
+# CLI (basic comparison)
+bpui similarity "character1" "character2"
+
+# CLI (with LLM deep analysis)
+bpui similarity "character1" "character2" --use-llm
+
+# Compare all pairs
+bpui similarity drafts --all --use-llm
+
+# Cluster similar characters
+bpui similarity drafts --cluster --threshold 0.75
+```
+
 ## Settings (.bpui.toml)
 
 ### OpenAI
@@ -147,6 +166,12 @@ bpui validate output/character_name
 
 # Export
 bpui export "Name" drafts/20240203_150000_name --model gpt4
+
+# Compare characters
+bpui similarity "char1" "char2" --use-llm
+
+# Analyze all characters
+bpui similarity drafts --all --cluster --threshold 0.75
 ```
 
 ## Support Files
@@ -154,4 +179,6 @@ bpui export "Name" drafts/20240203_150000_name --model gpt4
 - Full docs: [bpui/README.md](bpui/README.md)
 - Installation guide: [INSTALL.md](INSTALL.md)
 - Implementation details: [IMPLEMENTATION.md](IMPLEMENTATION.md)
+- Feature audit: [docs/FEATURE_AUDIT.md](docs/FEATURE_AUDIT.md)
+- Similarity analyzer: [docs/SIMILARITY_ENHANCEMENTS.md](docs/SIMILARITY_ENHANCEMENTS.md)
 - Test script: `python test_bpui.py`

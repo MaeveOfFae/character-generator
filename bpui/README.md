@@ -14,6 +14,7 @@ A terminal TUI application for compiling RPBotGenerator character assets.
 - **Export**: Direct integration with export scripts
 - **Seed Generator**: Generate seed lists from genre/theme inputs
 - **CLI Mode**: Scriptable commands for automation
+- **Similarity Analyzer**: Compare characters for commonalities, differences, and relationship potential
 - **Keyboard Shortcuts**: Fast navigation and actions across all screens
 
 ## Keyboard Shortcuts
@@ -26,8 +27,9 @@ All screens display available shortcuts in the footer. Press the indicated keys 
 - **2** - Batch Compile
 - **3** - Seed Generator
 - **4** - Browse Drafts
-- **5** - Validate Pack
-- **6** - Settings
+- **5** - Similarity Analyzer
+- **6** - Validate Pack
+- **7** - Settings
 
 ### Compile Screen
 - **Q / Escape** - Back to home
@@ -65,6 +67,12 @@ All screens display available shortcuts in the footer. Press the indicated keys 
 ### Validate Screen
 - **Q / Escape** - Back to home
 - **Enter** - Run validation
+
+### Similarity Analyzer Screen
+- **Q / Escape** - Back to home
+- **Tab** - Navigate between character selects and options
+- **Enter** - Compare selected characters
+- **Space** - Toggle LLM analysis checkbox
 
 ## Installation
 
@@ -145,7 +153,14 @@ bpui
    - Auto-validates on open
    - Export to `output/`
 7. **Drafts**: Browse previously generated drafts
-8. **Validate**: Validate any directory
+8. **Similarity Analyzer**: Compare two characters
+   - Select two characters from drafts directory
+   - Optional LLM-powered deep analysis
+   - View similarity scores, commonalities, differences
+   - Check redundancy and get rework suggestions
+   - Batch mode to compare all pairs
+   - Clustering to group similar characters
+9. **Validate**: Validate any directory
 
 ### CLI Mode (Scriptable)
 
@@ -182,6 +197,25 @@ bpui validate output/character_name
 bpui export "Character Name" drafts/20240203_150000_character_name --model gpt4
 ```
 
+**Compare characters (similarity):**
+
+```bash
+# Basic comparison
+bpui similarity "character1" "character2"
+
+# With LLM deep analysis
+bpui similarity "character1" "character2" --use-llm
+
+# Compare all pairs
+bpui similarity drafts --all --use-llm
+
+# Cluster similar characters
+bpui similarity drafts --cluster --threshold 0.75
+
+# JSON output
+bpui similarity "char1" "char2" --format json
+```
+
 ## Architecture
 
 ### Modules
@@ -192,6 +226,7 @@ bpui export "Character Name" drafts/20240203_150000_character_name --model gpt4
   - `litellm_engine.py`: LiteLLM adapter (multi-provider)
   - `openai_compat_engine.py`: OpenAI-compatible REST API
 - **bpui/prompting.py**: Blueprint loading and prompt construction
+- **bpui/similarity.py**: Character similarity analyzer with LLM support
 - **bpui/parse_blocks.py**: Strict 7-codeblock parser
 - **bpui/pack_io.py**: Draft directory management
 - **bpui/validate.py**: Validation wrapper (`tools/validate_pack.py`)
@@ -204,6 +239,7 @@ bpui export "Character Name" drafts/20240203_150000_character_name --model gpt4
   - `compile.py`: Compilation screen
   - `review.py`: Asset review screen
   - `drafts.py`: Draft browser
+  - `similarity.py`: Similarity analyzer screen
   - `validate_screen.py`: Validation screen
 - **bpui/cli.py**: CLI entry point
 

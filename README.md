@@ -28,6 +28,7 @@ bpui
 - **Asset Editing** - Edit and save generated assets with live validation
 - **Draft Management** - Browse and review all generated characters
 - **Seed Generator** - Generate seed lists from genre/theme inputs
+- **Similarity Analyzer** - Compare characters to find commonalities, differences, and relationship potential
 - **Real-time Streaming** - Watch generation progress in real-time
 
 See [bpui/README.md](bpui/README.md) for complete TUI documentation and keyboard shortcuts reference.
@@ -51,6 +52,15 @@ bpui validate drafts/20240203_150000_character_name
 
 # Export to output directory
 bpui export "Character Name" drafts/20240203_150000_character_name --model gpt4
+
+# Analyze character similarity
+bpui similarity "character1" "character2" --use-llm
+
+# Compare all character pairs
+bpui similarity drafts --all --use-llm
+
+# Cluster similar characters
+bpui similarity drafts --cluster --threshold 0.75
 ```
 
 ### Option 3: Direct LLM invocation
@@ -65,6 +75,8 @@ bpui export "Character Name" drafts/20240203_150000_character_name --model gpt4
 - **TUI Guide:** [bpui/README.md](bpui/README.md)
 - **API Docs:** Generate with `make docs` and view at `docs/api/bpui/`
 - **API Docs README:** [docs/api/README.md](docs/api/README.md)
+- **Feature Audit:** [docs/FEATURE_AUDIT.md](docs/FEATURE_AUDIT.md) - Complete feature audit report
+- **Similarity Analyzer:** [docs/SIMILARITY_ENHANCEMENTS.md](docs/SIMILARITY_ENHANCEMENTS.md) - Detailed documentation
 
 ## Contributing
 
@@ -92,8 +104,10 @@ character-generator/
 │   ├── cli.py                  # CLI entry point
 │   ├── config.py               # Configuration management
 │   ├── prompting.py            # Blueprint loading
+│   ├── similarity.py           # Character similarity analyzer
 │   ├── parse_blocks.py         # 7-codeblock parser
 │   ├── llm/                    # LLM adapters (LiteLLM + OpenAI-compatible)
+│   ├── gui/                    # Qt6 GUI screens
 │   └── tui/                    # Textual screens (home, compile, review, etc.)
 ├── tools/               # Shell scripts (export, validation)
 │   ├── export_character.sh     # Export compiled characters
@@ -183,6 +197,17 @@ Specify mode in TUI, CLI (`--mode SFW`), or inline in seed (e.g., "Mode: SFW").
 - **Conversational workflow** - Ask questions, request changes, get suggestions iteratively
 - **Toggle with C key** - Chat panel slides in/out without losing history
 - **Multi-turn support** - Full conversation history maintained for context
+
+### Similarity Analyzer
+
+- **Character comparison** - Compare two characters to find commonalities and differences
+- **LLM-powered analysis** - Deep narrative insights, story opportunities, and relationship arcs
+- **Redundancy detection** - Identify when characters are too similar
+- **Rework suggestions** - Actionable ideas to differentiate characters
+- **Merge recommendations** - Suggest merging extreme duplicates (>95% similar)
+- **Batch operations** - Compare all pairs or cluster similar characters
+- **Multi-dimensional scoring** - Personality, values, goals, background, conflict/synergy potential
+- **CLI/TUI/GUI support** - Available in all interfaces with `--use-llm` flag
 
 ### Moreau Virus / Morphosis Support
 
