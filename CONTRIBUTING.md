@@ -306,12 +306,14 @@ character-generator/
 
 ### Adding a New Asset Type
 
-1. Create blueprint in `blueprints/your_asset.md`
-2. Add to `parse_blocks.py` ASSET_ORDER and ASSET_FILENAMES
-3. Update orchestrator in `blueprints/rpbotgenerator.md`
-4. Add TextArea to Review screen
-5. Add validation rules to `validate.py`
-6. Write tests
+1. For official templates: Create blueprint in `blueprints/system/` (for system-level assets) or `blueprints/templates/example_minimal/` (for default template assets)
+2. For custom templates: Use the Template Manager in GUI or create in `~/.config/bpui/templates/custom/`
+3. Add to `parse_blocks.py` ASSET_ORDER and ASSET_FILENAMES (for official assets)
+4. Update orchestrator in `blueprints/rpbotgenerator.md` (if modifying official template)
+5. Update template configuration in `blueprints/templates/example_minimal/template.toml` or custom template
+6. Add TextArea to Review screen (GUI/TUI)
+7. Add validation rules to `validate.py`
+8. Write tests
 
 ### Adding a New LLM Provider
 

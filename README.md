@@ -152,14 +152,26 @@ Multiple export presets for different platforms:
 character-generator/
 ├── blueprints/              # All prompt blueprints
 │   ├── rpbotgenerator.md       # Main orchestrator
-│   ├── system_prompt.md        # System prompt spec
-│   ├── post_history.md         # Behavior layer
-│   ├── character_sheet.md      # Character data structure
-│   ├── intro_scene.md          # Opening scene
-│   ├── intro_page.md           # Markdown intro
-│   ├── a1111.md               # Image prompt (A1111)
-│   ├── a1111_sdxl_comfyui.md   # SDXL alternate
-│   └── suno.md                 # Song prompt (Suno V5)
+│   ├── examples/               # Example and alternative blueprints
+│   │   └── a1111_sdxl_comfyui.md   # SDXL alternate
+│   ├── system/                 # System-level blueprints
+│   │   ├── offspring_generator.md   # Offspring synthesis
+│   │   └── system_prompt.md         # System-level system prompt
+│   └── templates/              # Template-specific blueprints
+│       ├── example_image_only/   # Image generation template
+│       │   ├── a1111.md
+│       │   ├── character_sheet.md
+│       │   └── post_history.md
+│       ├── example_minimal/       # Minimal template (default)
+│       │   ├── character_sheet.md
+│       │   ├── intro_page.md
+│       │   ├── intro_scene.md
+│       │   ├── post_history.md
+│       │   └── system_prompt.md
+│       └── example_music_only/   # Music generation template
+│           ├── character_sheet.md
+│           ├── post_history.md
+│           └── suno.md
 ├── bpui/                   # Python package
 │   ├── cli.py                  # CLI entry point
 │   ├── config.py               # Configuration

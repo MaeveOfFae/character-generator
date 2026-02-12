@@ -114,49 +114,49 @@ class TemplateManager:
                 required=True,
                 depends_on=[],
                 description="System-level behavioral instructions",
-                blueprint_file="../../system/system_prompt.md"
+                blueprint_file="templates/example_minimal/system_prompt.md"
             ),
             AssetDefinition(
                 name="post_history",
                 required=True,
                 depends_on=["system_prompt"],
                 description="Conversation context and relationship state",
-                blueprint_file="post_history.md"
+                blueprint_file="templates/example_minimal/post_history.md"
             ),
             AssetDefinition(
                 name="character_sheet",
                 required=True,
                 depends_on=["system_prompt", "post_history"],
                 description="Structured character data",
-                blueprint_file="character_sheet.md"
+                blueprint_file="templates/example_minimal/character_sheet.md"
             ),
             AssetDefinition(
                 name="intro_scene",
                 required=True,
                 depends_on=["system_prompt", "post_history", "character_sheet"],
                 description="First interaction scenario",
-                blueprint_file="intro_scene.md"
+                blueprint_file="templates/example_minimal/intro_scene.md"
             ),
             AssetDefinition(
                 name="intro_page",
                 required=True,
                 depends_on=["character_sheet"],
                 description="Visual character introduction page",
-                blueprint_file="intro_page.md"
+                blueprint_file="templates/example_minimal/intro_page.md"
             ),
             AssetDefinition(
                 name="a1111",
                 required=True,
                 depends_on=["character_sheet"],
                 description="Stable Diffusion image generation prompt",
-                blueprint_file="../../examples/a1111_sdxl_comfyui.md"
+                blueprint_file="examples/a1111_sdxl_comfyui.md"
             ),
             AssetDefinition(
                 name="suno",
                 required=True,
                 depends_on=["character_sheet"],
                 description="Suno music generation prompt",
-                blueprint_file="suno.md"
+                blueprint_file="templates/example_music_only/suno.md"
             ),
         ]
         
@@ -445,7 +445,13 @@ class TemplateManager:
         if not asset or not asset.blueprint_file:
             return None
         
-        # Try template's assets directory first
+        # For official templates, try direct path from blueprints root first
+        if template.is_official:
+            root_path = self.official_dir / asset.blueprint_file
+            if root_path.exists():
+                return root_path.read_text(encoding='utf-8')
+        
+        # Try template's assets directory
         blueprint_path = template.path / "assets" / asset.blueprint_file
         if blueprint_path.exists():
             return blueprint_path.read_text(encoding='utf-8')
@@ -457,8 +463,13 @@ class TemplateManager:
             if resolved_path.exists():
                 return resolved_path.read_text(encoding='utf-8')
         
-        # Try official blueprints directories as fallback
+        # Try official blueprints directories as fallback for custom templates
         if not template.is_official:
+            # Try direct path from blueprints root
+            root_path = self.official_dir / asset.blueprint_file
+            if root_path.exists():
+                return root_path.read_text(encoding='utf-8')
+            
             # Try in template-specific blueprint directories
             for blueprint_dir in self.official_dir.glob("templates/*/"):
                 official_path = blueprint_dir / asset.blueprint_file
@@ -474,10 +485,5 @@ class TemplateManager:
             examples_path = self.official_dir / "examples" / asset.blueprint_file
             if examples_path.exists():
                 return examples_path.read_text(encoding='utf-8')
-            
-            # Finally, try direct path from blueprints root
-            root_path = self.official_dir / asset.blueprint_file
-            if root_path.exists():
-                return root_path.read_text(encoding='utf-8')
         
         return None

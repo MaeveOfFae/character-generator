@@ -150,7 +150,12 @@ pip install litellm
 - Config: `.bpui.toml` (repo root)
 - Drafts: `drafts/` (auto-created)
 - Exports: `output/<name>(<model>)/`
-- Blueprints: `rpbotgenerator.md`, etc. (repo root)
+- Blueprints: `blueprints/` directory with hierarchical structure
+  - `blueprints/rpbotgenerator.md` - Main orchestrator
+  - `blueprints/system/` - System-level blueprints
+  - `blueprints/templates/` - Template-specific blueprints
+  - `blueprints/examples/` - Example and alternative blueprints
+  - See `blueprints/README.md` for full documentation
 
 ## CLI Quick Commands
 
