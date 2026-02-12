@@ -35,6 +35,7 @@ class MainWindow(QMainWindow):
         from .validate import ValidateScreen
         from .template_manager import TemplateManagerScreen
         from .offspring import OffspringWidget
+        from .similarity import SimilarityWidget
         
         self.home = HomeWidget(self.config, self)
         self.compile = CompileWidget(self.config, self)
@@ -43,6 +44,7 @@ class MainWindow(QMainWindow):
         self.validate = ValidateScreen(self, self.config)
         self.template_manager = TemplateManagerScreen(self, self.config)
         self.offspring = OffspringWidget(self.config, self)
+        self.similarity = SimilarityWidget(self)
         
         # Add screens to stack
         self.stack.addWidget(self.home)
@@ -52,6 +54,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.validate)
         self.stack.addWidget(self.template_manager)
         self.stack.addWidget(self.offspring)
+        self.stack.addWidget(self.similarity)
         
         # Status bar
         self.status_bar = QStatusBar()
@@ -97,6 +100,11 @@ class MainWindow(QMainWindow):
         """Show offspring generator screen."""
         self.stack.setCurrentWidget(self.offspring)
         self.status_bar.showMessage("Offspring Generator")
+    
+    def show_similarity(self):
+        """Show similarity analyzer screen."""
+        self.stack.setCurrentWidget(self.similarity)
+        self.status_bar.showMessage("Similarity Analyzer")
     
     def show_review(self, draft_dir, assets):
         """Show review screen."""

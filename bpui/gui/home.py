@@ -70,6 +70,12 @@ class HomeWidget(QWidget):
         offspring_btn.clicked.connect(lambda: self.main_window.show_offspring())
         btn_layout.addWidget(offspring_btn)
         
+        similarity_btn = QPushButton("🔍 Similarity Analyzer")
+        similarity_btn.setFixedSize(200, 50)
+        similarity_btn.setStyleSheet("font-size: 14px; font-weight: bold;")
+        similarity_btn.clicked.connect(lambda: self.main_window.show_similarity())
+        btn_layout.addWidget(similarity_btn)
+        
         validate_btn = QPushButton("✓ Validate Directory")
         validate_btn.setFixedSize(200, 50)
         validate_btn.setStyleSheet("font-size: 14px; font-weight: bold;")

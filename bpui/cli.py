@@ -85,6 +85,17 @@ def main():
     )
     offspring_parser.add_argument("--out", help="Output directory (default: drafts/)")
     offspring_parser.add_argument("--model", help="Model override")
+    
+    # Similarity command
+    similarity_parser = subparsers.add_parser("similarity", help="Analyze character similarities")
+    similarity_parser.add_argument("draft1", help="Path or name of first draft")
+    similarity_parser.add_argument("draft2", help="Path or name of second draft")
+    similarity_parser.add_argument("--drafts-dir", type=Path, help="Drafts directory (default: ./drafts)")
+    similarity_parser.add_argument("--format", choices=["text", "json"], default="text", help="Output format")
+    similarity_parser.add_argument("--all", action="store_true", help="Compare all pairs in drafts directory")
+    similarity_parser.add_argument("--cluster", action="store_true", help="Cluster similar characters")
+    similarity_parser.add_argument("--threshold", type=float, default=0.6, help="Similarity threshold for clustering (0.0-1.0)")
+    similarity_parser.add_argument("--use-llm", action="store_true", help="Enable LLM-powered deep analysis")
 
     args = parser.parse_args()
     
@@ -127,6 +138,8 @@ def main():
         run_rebuild_index(args)
     elif args.command == "offspring":
         asyncio.run(run_offspring(args))
+    elif args.command == "similarity":
+        run_similarity(args)
     
     # Print profiling report if enabled
     if args.profile:
@@ -944,6 +957,161 @@ def _find_draft(identifier: str, drafts_root: Path) -> Path | None:
                 return draft_path
     
     return None
+
+
+def run_similarity(args):
+    """Run similarity analysis from CLI."""
+    from .similarity import SimilarityAnalyzer, format_similarity_report
+    
+    drafts_root = args.drafts_dir or Path.cwd() / "drafts"
+    
+    if args.all:
+        # Compare all pairs
+        print(f"🔍 Comparing all characters in: {drafts_root}")
+        
+        # Get all draft directories
+        draft_dirs = []
+        if drafts_root.exists():
+            for item in drafts_root.iterdir():
+                if item.is_dir() and (item / "character_sheet.txt").exists():
+                    draft_dirs.append(item)
+        
+        if not draft_dirs:
+            print("✗ No drafts found")
+            sys.exit(1)
+        
+        analyzer = SimilarityAnalyzer()
+        results = analyzer.compare_multiple(draft_dirs)
+        
+        print(f"\n📊 Analyzed {len(results)} pairs\n")
+        print("=" * 60)
+        
+        # Sort by overall similarity
+        sorted_results = sorted(
+            results.items(),
+            key=lambda x: x[1].overall_score,
+            reverse=True
+        )
+        
+        for (char1, char2), result in sorted_results:
+            if args.format == "json":
+                import json
+                print(json.dumps({
+                    "character1": char1,
+                    "character2": char2,
+                    "overall_score": result.overall_score,
+                    "compatibility": result.compatibility,
+                    "dimension_scores": result.dimension_scores,
+                    "conflict_potential": result.conflict_potential,
+                    "synergy_potential": result.synergy_potential,
+                }, indent=2))
+            else:
+                print(format_similarity_report(result))
+        
+        if args.cluster:
+            print("\n" + "=" * 60)
+            print("📦 Character Clusters")
+            print("=" * 60)
+            clusters = analyzer.cluster_characters(draft_dirs, min_similarity=args.threshold)
+            for i, cluster in enumerate(clusters, 1):
+                print(f"\nCluster {i} ({len(cluster)} characters):")
+                for char_name in cluster:
+                    print(f"  • {char_name}")
+    
+    elif args.cluster:
+        # Cluster characters
+        print(f"📦 Clustering characters with {args.threshold:.0%} similarity threshold")
+        
+        # Get all draft directories
+        draft_dirs = []
+        if drafts_root.exists():
+            for item in drafts_root.iterdir():
+                if item.is_dir() and (item / "character_sheet.txt").exists():
+                    draft_dirs.append(item)
+        
+        if not draft_dirs:
+            print("✗ No drafts found")
+            sys.exit(1)
+        
+        analyzer = SimilarityAnalyzer()
+        clusters = analyzer.cluster_characters(draft_dirs, min_similarity=args.threshold)
+        
+        print(f"\nFound {len(clusters)} clusters:\n")
+        for i, cluster in enumerate(clusters, 1):
+            print(f"Cluster {i} ({len(cluster)} characters):")
+            for char_name in cluster:
+                print(f"  • {char_name}")
+    
+    else:
+        # Pairwise comparison
+        print(f"🔍 Comparing two characters:")
+        
+        # Find drafts
+        draft1_path = _find_draft(args.draft1, drafts_root)
+        draft2_path = _find_draft(args.draft2, drafts_root)
+        
+        if not draft1_path:
+            print(f"✗ Draft not found: {args.draft1}")
+            sys.exit(1)
+        if not draft2_path:
+            print(f"✗ Draft not found: {args.draft2}")
+            sys.exit(1)
+        
+        # Setup LLM engine if requested
+        use_llm = args.use_llm
+        llm_engine = None
+        
+        if use_llm:
+            from .llm.litellm_engine import LiteLLMEngine
+            from .llm.openai_compat_engine import OpenAICompatEngine
+            from .config import Config
+            
+            config = Config()
+            model = args.model or config.model
+            config.validate_api_key(model)
+            
+            engine_config = {
+                'model': model,
+                'temperature': config.temperature,
+                'max_tokens': config.max_tokens,
+            }
+            
+            if config.engine == "litellm":
+                try:
+                    import litellm
+                    engine = LiteLLMEngine(**engine_config)
+                except ImportError:
+                    print("✗ LiteLLM not installed. Install with: pip install litellm")
+                    sys.exit(1)
+            else:
+                engine = OpenAICompatEngine(**engine_config)
+            
+            llm_engine = engine
+            print("🧠 LLM Deep Analysis enabled")
+        
+        analyzer = SimilarityAnalyzer()
+        result = analyzer.compare_drafts(draft1_path, draft2_path, use_llm=use_llm, llm_engine=llm_engine)
+        
+        if not result:
+            print("✗ Failed to analyze characters")
+            sys.exit(1)
+        
+        if args.format == "json":
+            import json
+            print(json.dumps({
+                "character1": result.character1_name,
+                "character2": result.character2_name,
+                "overall_score": result.overall_score,
+                "compatibility": result.compatibility,
+                "dimension_scores": result.dimension_scores,
+                "conflict_potential": result.conflict_potential,
+                "synergy_potential": result.synergy_potential,
+                "commonalities": result.commonalities,
+                "differences": result.differences,
+                "relationship_suggestions": result.relationship_suggestions,
+            }, indent=2))
+        else:
+            print(format_similarity_report(result))
 
 
 if __name__ == "__main__":
