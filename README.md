@@ -1,20 +1,6 @@
-# Character Generator (Blueprint UI)
+# Character Generator (Blueprint Pack)
 
-A powerful prompt blueprint system for generating consistent, high-quality character assets from a single **SEED**. Features an interactive terminal UI, full CLI automation, multi-provider LLM support, and advanced character analysis tools.
-
-## Table of Contents
-
-- [Quick Start](#quick-start)
-- [Key Features](#key-features)
-- [Documentation](#documentation)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Similarity Analyzer](#similarity-analyzer)
-- [Configuration](#configuration)
-- [Contributing](#contributing)
-- [License](#license)
-
----
+A comprehensive prompt blueprint system for compiling consistent character assets from a single **SEED**. Includes interactive terminal UI (TUI), graphical UI (GUI), and CLI with keyboard shortcuts, batch operations, and multi-provider LLM support.
 
 ## Quick Start
 
@@ -33,436 +19,339 @@ pip install litellm  # optional, for 100+ providers
 bpui
 ```
 
-### Option 2: CLI Mode (Scriptable)
+### Option 2: Graphical UI (Qt6)
 
-Run commands directly from the terminal for automation:
+Launch the modern Qt6-based GUI:
 
 ```bash
-# Compile a character
+# Install dependencies
+pip install PySide6
+
+# Launch GUI
+bpui
+```
+
+### Option 3: CLI Mode (Scriptable)
+
+Compile characters from command line for automation:
+
+```bash
+# Single character compilation
 bpui compile --seed "Noir detective with psychic abilities" --mode NSFW
+
+# Batch compilation from file
+bpui batch --input seeds.txt --mode NSFW --continue-on-error
+
+# Generate seeds
+bpui seed-gen --input genres.txt --out "seed output/noir.txt"
+
+# Validate a character pack
+bpui validate drafts/20240203_150000_character_name
+
+# Export to output directory
+bpui export "Character Name" drafts/20240203_150000_character_name --model gpt4
 
 # Analyze character similarity
 bpui similarity "character1" "character2" --use-llm
-
-# Generate seeds from genres
-bpui seed-gen --input genres.txt --out seeds.txt
-
-# Validate and export
-bpui validate drafts/20240203_150000_character_name
-bpui export "Character Name" drafts/20240203_150000_character_name --model gpt4
 ```
 
----
+## Features
 
-## Key Features
+### 🎭 Character Generation
 
-### 🎯 Character Generation
-
-**7-Asset Suite Generation:**
-- System prompt (≤300 tokens)
-- Post history behavior layer (≤300 tokens)
-- Structured character sheet
-- Second-person intro scene
-- Markdown intro page
-- AUTOMATIC1111 image prompt
-- Suno V5 song prompt
-
-**Quality Features:**
-- Strict hierarchy for consistency
-- Asset isolation preventing contradictions
-- Deterministic output for reproducibility
-- Content mode support (SFW/NSFW/Platform-Safe)
+- **7-Asset Suite**: Generate system_prompt, post_history, character_sheet, intro_scene, intro_page, a1111_prompt, suno_prompt from a single SEED
+- **Strict Hierarchy**: Ensures consistency across all assets
+- **Asset Isolation**: Prevents downstream contradictions
+- **Deterministic Output**: Reproducible results for the same seed
 
 ### 🤖 LLM Integration
 
-**Multi-Provider Support:**
-- LiteLLM: 100+ providers (OpenAI, Anthropic, DeepSeek, Google, Cohere, Mistral, etc.)
-- OpenAI-compatible: Local models (Ollama, LM Studio, vLLM, etc.)
-- Provider-specific API keys auto-selection
-- Real-time streaming output
-
-### 🎮 User Interfaces
-
-**Terminal UI (TUI):**
-- Full keyboard shortcuts across all screens
-- Real-time generation progress
-- Asset editing with live validation
-- LLM chat assistant for conversational refinement
-- Draft browser and management
-
-**Qt6 GUI:**
-- Modern graphical interface
-- Character browsing and review
-- Blueprint browser and editor
-- Template manager and wizard
-
-**CLI:**
-- Scriptable commands for automation
-- Batch operations
-- All features accessible via command line
-
-### 🔧 Workflow Tools
-
-- **Batch Compilation**: Generate multiple characters from seed files
-- **Seed Generator**: Create seed lists from genre/theme inputs
-- **Draft Management**: Browse, review, and edit generated characters
-- **Validation**: Integrated checker for placeholders and consistency
-- **Export Integration**: Properly structured output for multiple platforms
-- **Offspring Generator**: Create hybrid characters from two parents
+- **Multi-Provider Support**: LiteLLM for 100+ providers (OpenAI, Anthropic, DeepSeek, Google, Cohere, Mistral, etc.)
+- **OpenAI-Compatible**: Support for local models (Ollama, LM Studio, vLLM, etc.)
+- **Provider-Specific API Keys**: Auto-selected based on model
+- **Streaming Support**: Real-time generation feedback
+- **LLM Chat Assistant**: Interactive refinement in Review screen
 
 ### 📊 Similarity Analyzer
 
-Compare characters to find commonalities, differences, and relationship potential:
+- **Character Comparison**: Compare two characters to find commonalities and differences
+- **Multi-Dimensional Scoring**: Personality, values, goals, background, conflict/synergy potential
+- **LLM-Powered Analysis**: Deep narrative insights, story opportunities, scene suggestions, dialogue styles, relationship arcs
+- **Redundancy Detection**: Identify when characters are too similar (low/medium/high/extreme levels)
+- **Rework Suggestions**: Actionable ideas to differentiate similar characters
+- **Merge Recommendations**: Suggest merging extreme duplicates (>95% similar)
+- **Batch Operations**: Compare all pairs or cluster similar characters
+- **Triple-Interface Support**: Available in CLI, TUI, and GUI
 
-- **Basic Comparison**: Multi-dimensional similarity scoring
-  - Personality traits overlap
-  - Core values alignment
-  - Goals and motivation matching
-  - Background element analysis
-  - Conflict and synergy potential
+### 👶 Advanced Features
 
-- **LLM-Powered Deep Analysis** (optional):
-  - Narrative dynamics and interaction patterns
-  - Story opportunities and plot hooks
-  - Scene suggestions with setting and action
-  - Dialogue style analysis
-  - Relationship arc development
+- **Offspring Generator**: Create child characters from two parents, combining traits and values
+- **Seed Generator**: Generate seed lists from genre/theme inputs
+- **Draft Index**: Searchable index of all generated characters with filtering
+- **Metadata Tracking**: Automatic tracking of generation parameters, lineage, and tags
 
-- **Redundancy Detection**:
-  - Four-level assessment (low/medium/high/extreme)
-  - Specific issue identification
-  - Actionable rework suggestions
-  - Merge recommendations for extreme duplicates
+### 🛠️ Workflow Tools
 
-- **Batch Operations**:
-  - Compare all character pairs in a directory
-  - Cluster similar characters with configurable thresholds
-  - JSON output for integration
+- **Batch Compilation**: Compile multiple characters from seed files with progress tracking
+- **Asset Editing**: Edit and save generated assets with live validation
+- **Draft Management**: Browse and review all generated characters
+- **Integrated Validation**: Checks for placeholders, mode consistency, user-authorship violations
+- **Export Integration**: Creates properly structured output directories with multiple presets
 
-### 🌍 Moreau Virus / Morphosis Support
+### 🖥️ User Interfaces
+
+**Terminal UI (TUI):**
+- Keyboard shortcuts across all screens
+- Real-time streaming output
+- Draft browser with search
+- Interactive LLM chat assistant
+- Similarity analyzer with batch operations
+
+**Graphical UI (GUI):**
+- Modern Qt6 interface
+- Blueprint browser and editor
+- Template manager and wizard
+- Asset designer for custom assets
+- Similarity analyzer widget
+- Dependency resolver
+
+**Command Line Interface (CLI):**
+- Scriptable commands for automation
+- Comprehensive help system
+- All TUI features available via CLI flags
+
+### 🎨 Export System
+
+Multiple export presets for different platforms:
+
+- **ChubAI**: Character cards for Chub AI platform
+- **TavernAI**: Character info for SillyTavern
+- **RisuAI**: Format for Risu character gallery
+- **Raw**: Unprocessed character data
+
+### 📝 Moreau Virus / Morphosis Support
 
 - Automatic lore application for furry/anthro/scalie characters
 - Functional trait handling (anatomy, clothing, social context)
 - Morphosis counterculture integration
 - Respects canon constraints (2-year timeline, vaccine, prevalence)
 
----
-
 ## Documentation
 
-### Core Documentation
-- **[docs/README.md](docs/README.md)** - Documentation index and navigation
-- **[docs/FEATURE_AUDIT.md](docs/FEATURE_AUDIT.md)** - Complete feature audit report
-- **[docs/SIMILARITY_ENHANCEMENTS.md](docs/SIMILARITY_ENHANCEMENTS.md)** - Similarity analyzer documentation
-- **[QUICKSTART.md](QUICKSTART.md)** - Quick reference guide
+- **Project README**: [README.md](README.md) - This file
+- **Quick Start**: [QUICKSTART.md](QUICKSTART.md) - Quick reference guide
+- **TUI Guide**: [bpui/README.md](bpui/README.md) - TUI documentation and keyboard shortcuts
+- **Feature Audit**: [docs/FEATURE_AUDIT.md](docs/FEATURE_AUDIT.md) - Complete feature audit
+- **Similarity Analyzer**: [docs/SIMILARITY_ENHANCEMENTS.md](docs/SIMILARITY_ENHANCEMENTS.md) - Detailed documentation
+- **API Docs**: Generate with `make docs` and view at `docs/api/bpui/`
+- **Documentation Index**: [docs/README.md](docs/README.md) - Navigation hub for all documentation
 
-### Guides
-- **[bpui/README.md](bpui/README.md)** - Complete TUI documentation
-- **[bpui/docs/INSTALL.md](bpui/docs/INSTALL.md)** - Installation guide
-- **[bpui/docs/IMPLEMENTATION.md](bpui/docs/IMPLEMENTATION.md)** - Implementation details
+## Repository Structure
 
-### API Documentation
-- Generate with: `make docs`
-- View at: `docs/api/bpui/`
-
-### Genre Guide
-The README includes a comprehensive genre quickstart defining:
-- Core genre presets (Romance, Thriller, Horror, Fantasy, Sci-Fi, Comedy)
-- Cross-genre structural systems
-- Design principles for consistent storytelling
-
----
+```
+character-generator/
+├── blueprints/              # All prompt blueprints
+│   ├── rpbotgenerator.md       # Main orchestrator
+│   ├── system_prompt.md        # System prompt spec
+│   ├── post_history.md         # Behavior layer
+│   ├── character_sheet.md      # Character data structure
+│   ├── intro_scene.md          # Opening scene
+│   ├── intro_page.md           # Markdown intro
+│   ├── a1111.md               # Image prompt (A1111)
+│   ├── a1111_sdxl_comfyui.md   # SDXL alternate
+│   └── suno.md                 # Song prompt (Suno V5)
+├── bpui/                   # Python package
+│   ├── cli.py                  # CLI entry point
+│   ├── config.py               # Configuration
+│   ├── prompting.py            # Blueprint loading
+│   ├── similarity.py           # Similarity analyzer
+│   ├── parse_blocks.py         # Parser
+│   ├── llm/                    # LLM adapters
+│   ├── gui/                    # Qt6 GUI
+│   └── tui/                    # Textual TUI
+├── tools/                   # Shell scripts
+│   ├── export_character.sh     # Export helper
+│   └── validate_pack.py        # Validation script
+├── docs/                    # Documentation
+├── output/                  # Exported characters
+├── drafts/                  # Generated drafts
+└── tests/                   # Test suite
+```
 
 ## Installation
 
-### Quick Installation
+### Quick Install
 
 ```bash
 # Clone repository
 git clone https://github.com/MaeveOfFae/character-generator.git
 cd character-generator
 
-# Using launcher script (recommended)
-./run_bpui.sh
-
-# Manual installation
-python3 -m venv .venv
+# Create virtual environment
+python -m venv .venv
 source .venv/bin/activate
+
+# Install with LiteLLM support (recommended)
+pip install -e ".[litellm]"
+
+# Or basic install (OpenAI-compatible only)
 pip install -e .
 ```
 
-### Optional Dependencies
+### Dependencies
 
-```bash
-# For LiteLLM (100+ providers)
-pip install litellm
+**Required:**
+- Python 3.11+
+- textual (TUI)
+- rich (TUI styling)
+- tomli-w (TOML parsing)
+- httpx (HTTP client)
 
-# For GUI (Qt6)
-pip install PySide6
+**Optional (for LiteLLM):**
+- litellm (100+ LLM providers)
 
-# For TUI
-pip install textual rich tomli-w httpx
-```
-
-### Verification
-
-```bash
-# Run TUI
-bpui
-
-# Run GUI
-bpui gui
-
-# Test connection
-bpui --help
-```
-
----
-
-## Usage
-
-### Generate a Character
-
-**TUI:**
-```
-bpui → Compile from Seed → Enter seed → Choose mode → Compile
-```
-
-**CLI:**
-```bash
-bpui compile --seed "Your seed here" --mode NSFW
-```
-
-### Seed Examples
-
-Good seeds imply power dynamic, emotional temperature, tension axis, and relationship:
-
-- "Strict museum curator who hates being noticed, but can't stop watching {{user}}"
-- "Street medic with a savior complex, protective toward {{user}}, terrified of abandonment"
-- "Corporate fixer: polite menace, offers {{user}} a deal they can't afford to accept"
-- "Moreau (canine) bartender at Morphosis venue, knows everyone's secrets, protective of {{user}}"
-- "Exhausted single parent, attracted to {{user}}, guilt about wanting something for themselves"
-
-### Batch Operations
-
-```bash
-# Compile multiple characters
-bpui batch --input seeds.txt --mode NSFW --continue-on-error
-
-# Generate seeds
-echo "Noir\nCyberpunk\nFantasy" > genres.txt
-bpui seed-gen --input genres.txt --out seeds.txt
-```
-
-### Draft Management
-
-```bash
-# Browse drafts
-bpui → Open Drafts → Select draft → Review/Edit
-
-# Validate
-bpui validate drafts/20240203_150000_character_name
-
-# Export
-bpui export "Character Name" drafts/20240203_150000_character_name --model gpt4
-```
-
----
-
-## Similarity Analyzer
-
-The similarity analyzer helps you understand relationships between characters and identify redundancy.
-
-### Basic Comparison
-
-```bash
-# Compare two characters
-bpui similarity "character1" "character2"
-
-# With similarity threshold clustering
-bpui similarity drafts --cluster --threshold 0.75
-```
-
-### LLM-Powered Analysis
-
-```bash
-# Enable deep narrative analysis
-bpui similarity "character1" "character2" --use-llm
-
-# Analyze all pairs with LLM
-bpui similarity drafts --all --use-llm
-```
-
-### Redundancy Detection
-
-The analyzer identifies four levels of character redundancy:
-
-| Level | Score | Action |
-|--------|--------|--------|
-| **Low** | <75% | No action needed |
-| **Medium** | 75-85% | Optional differentiation |
-| **High** | 85-95% | Recommended rework |
-| **Extreme** | >95% | Consider merging |
-
-**Outputs include:**
-- Redundancy score with visual indicator
-- Specific issues detected (overlapping traits, values, backgrounds)
-- Rework suggestions for each character
-- Merge recommendations (extreme only)
-- Uniqueness score
-
-### Batch Analysis
-
-```bash
-# Compare all pairs in drafts directory
-bpui similarity drafts --all --use-llm
-
-# JSON output for integration
-bpui similarity "char1" "char2" --use-llm --format json
-```
-
-See [docs/SIMILARITY_ENHANCEMENTS.md](docs/SIMILARITY_ENHANCEMENTS.md) for complete documentation.
-
----
+**Optional (for GUI):**
+- PySide6 (Qt6 bindings)
 
 ## Configuration
 
-### Settings File
-
-Create `.bpui.toml` in the project root:
+Configuration is handled via `.bpui.toml` file:
 
 ```toml
-[llm]
+# LLM Provider
 engine = "litellm"  # or "openai_compatible"
 model = "openai/gpt-4"
 api_key_env = "OPENAI_API_KEY"
-base_url = ""  # only for openai_compatible
 
-[generation]
+# OpenAI-compatible settings
+base_url = ""  # e.g., "http://localhost:11434/v1" for Ollama
+
+# Generation settings
 temperature = 0.7
 max_tokens = 4096
+batch_max_concurrent = 5
 
-[batch]
-max_concurrent = 3
-rate_limit_delay = 1.0
+# Logging
+log_level = "INFO"
+log_file = ""  # Optional log file path
 ```
 
-### Provider Examples
+## Usage Examples
 
-**OpenAI:**
-```toml
-engine = "litellm"
-model = "openai/gpt-4"
-api_key_env = "OPENAI_API_KEY"
+### Generate a Character
+
+```bash
+# TUI/GUI: Use the interface
+# CLI:
+bpui compile --seed "Strict museum curator who can't stop watching {{user}}" --mode SFW
 ```
 
-**Anthropic Claude:**
-```toml
-engine = "litellm"
-model = "anthropic/claude-3-opus-20240229"
-api_key_env = "ANTHROPIC_API_KEY"
+### Compare Characters
+
+```bash
+# Basic comparison
+bpui similarity "character1" "character2"
+
+# With LLM deep analysis
+bpui similarity "character1" "character2" --use-llm
+
+# Compare all pairs in drafts directory
+bpui similarity drafts --all --use-llm
+
+# Cluster similar characters
+bpui similarity drafts --cluster --threshold 0.75
 ```
 
-**Ollama (Local):**
-```toml
-engine = "openai_compatible"
-model = "llama3.1"
-base_url = "http://localhost:11434/v1"
+### Generate Offspring
+
+```bash
+bpui offspring \
+  --parent1 "Parent1" \
+  --parent2 "Parent2" \
+  --mode NSFW
 ```
 
----
+### Batch Compile
 
-## Repository Structure
-
-```
-character-generator/
-├── blueprints/              # Prompt blueprints
-│   ├── rpbotgenerator.md        # Main orchestrator
-│   ├── system_prompt.md         # System prompt template
-│   ├── character_sheet.md      # Character structure
-│   ├── intro_scene.md          # Opening scene
-│   ├── intro_page.md           # Markdown intro
-│   ├── a1111.md               # Image prompt
-│   └── suno.md                 # Song prompt
-├── bpui/                   # Core application
-│   ├── cli.py                # CLI entry point
-│   ├── config.py             # Configuration
-│   ├── similarity.py          # Similarity analyzer
-│   ├── prompting.py          # Blueprint loading
-│   ├── parse_blocks.py        # Parser
-│   ├── llm/                  # LLM adapters
-│   ├── tui/                  # Terminal UI
-│   └── gui/                  # Qt6 GUI
-├── tools/                  # Shell scripts
-├── docs/                   # Documentation
-├── tests/                  # Test suite
-├── drafts/                 # Auto-saved drafts
-└── output/                 # Exported characters
+```bash
+bpui batch \
+  --input seeds.txt \
+  --mode NSFW \
+  --continue-on-error \
+  --max-concurrent 3
 ```
 
----
+## SEED Guidelines
 
-## Contributing
+Good seeds imply:
+- **Power Dynamic**: Who has leverage and why
+- **Emotional Temperature**: Tension level of the relationship
+- **Tension Axis**: What creates conflict
+- **Why {{user}} Matters**: Role, connection, obligation (without asserting user actions)
 
-We welcome contributions! Please read:
+**Example Seeds:**
+- "Street medic with a savior complex, protective toward {{user}}, terrified of abandonment"
+- "Moreau (canine) bartender at Morphosis venue, knows everyone's secrets"
+- "Corporate fixer: polite menace, offers {{user}} a deal they can't afford to accept"
 
-- [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
-- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) - Code of conduct
-- [SECURITY.md](SECURITY.md) - Security policy
+## Content Modes
 
-### Development
+- **SFW**: No explicit sexual content; "fade to black" if sexuality implied
+- **NSFW**: Explicit content allowed if implied by seed
+- **Platform-Safe**: Avoid explicit content and platform-risky extremes
+
+Specify mode in TUI, CLI (`--mode SFW`), or inline in seed (e.g., "Mode: SFW").
+
+## Testing
+
+```bash
+# Run all tests
+pytest
+
+# Run specific test file
+pytest tests/unit/test_similarity.py
+
+# With coverage
+pytest --cov=bpui tests/
+```
+
+## Development
 
 ```bash
 # Install in development mode
-pip install -e ".[litellm,gui]"
+pip install -e .
 
-# Run tests
-pytest
-
-# Run with coverage
-pytest --cov=bpui tests/
+# Run TUI from source
+python -m bpui.cli
 
 # Format code
 black bpui/ tests/
 
 # Type checking
 mypy bpui/
+
+# Generate API docs
+make docs
 ```
 
----
+## Contributing
 
-## Troubleshooting
+We welcome contributions! Please read:
 
-### Common Issues
-
-**Can't connect to LLM:**
-1. Check API key in Settings or environment variable
-2. Use "Test Connection" in Settings
-3. Verify base_url for OpenAI-compatible providers
-4. Ensure model name matches provider format
-
-**Parse errors:**
-- Increase max_tokens in Settings
-- Try a more capable model
-- Simplify seed
-
-**Import errors:**
-```bash
-pip install textual rich tomli-w httpx
-pip install litellm  # for LLM support
-pip install PySide6  # for GUI
-```
-
----
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) - Community guidelines
+- [SECURITY.md](SECURITY.md) - Security policy
 
 ## License
 
-This project is licensed under the same terms as the parent repository.
-
----
+[BSD 3-Clause License](LICENSE) - See LICENSE file for details
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/MaeveOfFae/character-generator/issues)
-- **Documentation**: [docs/README.md](docs/README.md)
-- **Quick Reference**: [QUICKSTART.md](QUICKSTART.md)
+- **Documentation**: [docs/](docs/) - Complete documentation
+- **Issues**: Report bugs at GitHub Issues
+- **Discussions**: Use GitHub Discussions for questions
+
+---
+
+*Blueprint Pack Character Generator - Compiling Consistent Characters from Seeds*
