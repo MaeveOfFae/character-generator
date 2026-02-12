@@ -1,6 +1,20 @@
-# Character Generator (Blueprint Pack)
+# Character Generator (Blueprint UI)
 
-A comprehensive prompt blueprint system for compiling consistent character assets from a single **SEED**. Includes an interactive terminal UI (bpui) with keyboard shortcuts, batch operations, and multi-provider LLM support.
+A powerful prompt blueprint system for generating consistent, high-quality character assets from a single **SEED**. Features an interactive terminal UI, full CLI automation, multi-provider LLM support, and advanced character analysis tools.
+
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Key Features](#key-features)
+- [Documentation](#documentation)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Similarity Analyzer](#similarity-analyzer)
+- [Configuration](#configuration)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
 
 ## Quick Start
 
@@ -9,7 +23,7 @@ A comprehensive prompt blueprint system for compiling consistent character asset
 Launch the interactive TUI with full keyboard navigation:
 
 ```bash
-# Using the provided launcher (recommended - auto-creates venv)
+# Using provided launcher (recommended - auto-creates venv)
 ./run_bpui.sh
 
 # Or install manually
@@ -19,230 +33,209 @@ pip install litellm  # optional, for 100+ providers
 bpui
 ```
 
-**TUI Features:**
-
-- **Keyboard Shortcuts** - Fast navigation (Q to quit, Enter to compile, Tab to switch tabs, etc.)
-- **Multi-Provider LLM Support** - OpenAI, Anthropic, DeepSeek, Google, Cohere, Mistral, and 100+ more via LiteLLM
-- **LLM Chat Assistant** - Interactive chat panel in Review screen for refining assets conversationally
-- **Batch Operations** - Compile multiple characters from seed files
-- **Asset Editing** - Edit and save generated assets with live validation
-- **Draft Management** - Browse and review all generated characters
-- **Seed Generator** - Generate seed lists from genre/theme inputs
-- **Similarity Analyzer** - Compare characters to find commonalities, differences, and relationship potential
-- **Real-time Streaming** - Watch generation progress in real-time
-
-See [bpui/README.md](bpui/README.md) for complete TUI documentation and keyboard shortcuts reference.
-
 ### Option 2: CLI Mode (Scriptable)
 
-Compile characters from the command line for automation:
+Run commands directly from the terminal for automation:
 
 ```bash
-# Single character compilation
+# Compile a character
 bpui compile --seed "Noir detective with psychic abilities" --mode NSFW
-
-# Batch compilation from file
-bpui batch --input seeds.txt --mode NSFW --continue-on-error
-
-# Generate seeds
-bpui seed-gen --input genres.txt --out "seed output/noir.txt"
-
-# Validate a character pack
-bpui validate drafts/20240203_150000_character_name
-
-# Export to output directory
-bpui export "Character Name" drafts/20240203_150000_character_name --model gpt4
 
 # Analyze character similarity
 bpui similarity "character1" "character2" --use-llm
 
-# Compare all character pairs
-bpui similarity drafts --all --use-llm
+# Generate seeds from genres
+bpui seed-gen --input genres.txt --out seeds.txt
 
-# Cluster similar characters
-bpui similarity drafts --cluster --threshold 0.75
+# Validate and export
+bpui validate drafts/20240203_150000_character_name
+bpui export "Character Name" drafts/20240203_150000_character_name --model gpt4
 ```
 
-### Option 3: Direct LLM invocation
-
-1. Pick a SEED (see examples below)
-2. Invoke the orchestrator (`blueprints/rpbotgenerator.md`) with the SEED
-3. Parse the 7-codeblock output
-4. Export using `tools/export_character.sh`
-
-## Documentation
-
-- **TUI Guide:** [bpui/README.md](bpui/README.md)
-- **API Docs:** Generate with `make docs` and view at `docs/api/bpui/`
-- **API Docs README:** [docs/api/README.md](docs/api/README.md)
-- **Feature Audit:** [docs/FEATURE_AUDIT.md](docs/FEATURE_AUDIT.md) - Complete feature audit report
-- **Similarity Analyzer:** [docs/SIMILARITY_ENHANCEMENTS.md](docs/SIMILARITY_ENHANCEMENTS.md) - Detailed documentation
-
-## Contributing
-
-We welcome contributions! Please read:
-
-- [CONTRIBUTING.md](CONTRIBUTING.md)
-- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
-- [SECURITY.md](SECURITY.md)
-
-## Repository Structure
-
-```
-character-generator/
-├── blueprints/          # All prompt blueprints (orchestrator + asset specs)
-│   ├── rpbotgenerator.md       # Main orchestrator
-│   ├── system_prompt.md        # ≤300 token system prompt
-│   ├── post_history.md         # ≤300 token behavior layer
-│   ├── character_sheet.md      # Structured character data
-│   ├── intro_scene.md          # Opening scene
-│   ├── intro_page.md           # Markdown intro page
-│   ├── a1111.md                # AUTOMATIC1111 image prompt
-│   ├── a1111_sdxl_comfyui.md   # SDXL alternate layout
-│   └── suno.md                 # Suno V5 song prompt
-├── bpui/                # Terminal UI application (Python package)
-│   ├── cli.py                  # CLI entry point
-│   ├── config.py               # Configuration management
-│   ├── prompting.py            # Blueprint loading
-│   ├── similarity.py           # Character similarity analyzer
-│   ├── parse_blocks.py         # 7-codeblock parser
-│   ├── llm/                    # LLM adapters (LiteLLM + OpenAI-compatible)
-│   ├── gui/                    # Qt6 GUI screens
-│   └── tui/                    # Textual screens (home, compile, review, etc.)
-├── tools/               # Shell scripts (export, validation)
-│   ├── export_character.sh     # Export compiled characters
-│   ├── validate_pack.py        # Validation script
-│   └── seed-gen.md             # Seed generator blueprint
-├── output/              # Exported character packs
-├── drafts/              # Auto-saved generation drafts
-├── fixtures/            # Test fixtures and samples
-└── tests/               # Unit tests
-```
-
-## Files (what each blueprint produces)
-
-All blueprints are in the `blueprints/` folder:
-
-- `blueprints/rpbotgenerator.md`: Orchestrator spec that coordinates all outputs from one SEED.
-- `blueprints/system_prompt.md`: Character system prompt (≤300 tokens, paragraph-only).
-- `blueprints/post_history.md`: Post-history behavior layer (≤300 tokens, paragraph-only).
-- `blueprints/character_sheet.md`: Structured character sheet (blueprint fields + lists).
-- `blueprints/intro_scene.md`: Second-person intro scene (ends with an open loop to {{user}}).
-- `blueprints/intro_page.md`: Markdown intro page (platform-agnostic; no HTML/CSS).
-- `blueprints/a1111.md`: Modular A1111 image prompt layout.
-- `blueprints/a1111_sdxl_comfyui.md`: SDXL-first alternate image prompt layout (AUTOMATIC1111 + ComfyUI).
-- `blueprints/suno.md`: Suno V5 song prompt layout.
-- `blueprints/chub_rules.md`: Reference notes about Chub AI character fields and macros.
-
-## Minimal workflow
-
-1) Pick a SEED that implies:
-   - a power dynamic,
-   - an emotional temperature,
-   - a tension axis.
-   - why {{user}} matters (relationship/connection), without narrating {{user}} actions
-
-2) Invoke the orchestrator (`blueprints/rpbotgenerator.md`) with the SEED.
-
-3) Paste each generated asset into the relevant destination (system prompt, post history, greeting/scene, intro page markdown, etc.).
-
-## Seed generation (seed lists)
-
-- Use `seed-gen` as a seed-list prompt blueprint, then save the resulting seed lists into `seed output/` (no headings/numbering; seeds only).
-- If you want wilder/high-concept seeds, tag for it explicitly (e.g., `high-concept`, `surreal`, `absurd`). Otherwise `seed-gen` defaults to grounded, human-scale premises.
-- Seeds may reference `{{user}}` only as a relationship/connection anchor (role, leverage, dependency, obligation); do not assert `{{user}}` actions, choices, dialogue, thoughts, emotions, sensations, or consent.
-- Moreau support: use tags like `moreau` / `anthro` / `scalie` / `draconic` and optionally `morphosis` / `morpho` / `beastcore` to generate lore-aware seeds (see `main_Moreau Virus_Morphosis combo book_world_info.json`).
-
-## Content mode (SFW/NSFW/Platform-Safe)
-
-The orchestrator supports optional content mode specification:
-
-- **SFW**: No explicit sexual content; "fade to black" if sexuality implied
-- **NSFW**: Explicit content allowed if implied by seed
-- **Platform-Safe**: Avoid explicit content and platform-risky extremes; use nonsexual tension
-
-Specify mode in TUI, CLI (`--mode SFW`), or inline in seed (e.g., "Mode: SFW").
+---
 
 ## Key Features
 
-### Asset Generation
+### 🎯 Character Generation
 
-- **7-asset suite** from single SEED: system_prompt, post_history, character_sheet, intro_scene, intro_page, a1111_prompt, suno_prompt
-- **Strict hierarchy** ensures consistency across all assets
-- **Asset isolation** prevents downstream contradictions
-- **Deterministic output** for reproducible results
+**7-Asset Suite Generation:**
+- System prompt (≤300 tokens)
+- Post history behavior layer (≤300 tokens)
+- Structured character sheet
+- Second-person intro scene
+- Markdown intro page
+- AUTOMATIC1111 image prompt
+- Suno V5 song prompt
 
-### LLM Support
+**Quality Features:**
+- Strict hierarchy for consistency
+- Asset isolation preventing contradictions
+- Deterministic output for reproducibility
+- Content mode support (SFW/NSFW/Platform-Safe)
 
-- **LiteLLM integration** supports 100+ providers (OpenAI, Anthropic, DeepSeek, Google, Cohere, Mistral, etc.)
-- **OpenAI-compatible** local models (Ollama, LM Studio, vLLM, etc.)
-- **Provider-specific API keys** auto-selected based on model
-- **Streaming support** for real-time feedback
+### 🤖 LLM Integration
 
-### Workflow Tools
+**Multi-Provider Support:**
+- LiteLLM: 100+ providers (OpenAI, Anthropic, DeepSeek, Google, Cohere, Mistral, etc.)
+- OpenAI-compatible: Local models (Ollama, LM Studio, vLLM, etc.)
+- Provider-specific API keys auto-selection
+- Real-time streaming output
 
-- **Keyboard shortcuts** across all TUI screens
-- **Batch compilation** from seed files
-- **Asset editing** with dirty tracking and validation
-- **LLM chat assistant** in Review screen for conversational asset refinement
-- **Draft management** with browser and review
-- **Integrated validation** checks for placeholders, mode consistency, user-authorship violations
-- **Export integration** creates properly structured output directories
+### 🎮 User Interfaces
 
-### LLM Chat Assistant
+**Terminal UI (TUI):**
+- Full keyboard shortcuts across all screens
+- Real-time generation progress
+- Asset editing with live validation
+- LLM chat assistant for conversational refinement
+- Draft browser and management
 
-- **Interactive refinement** - Chat with LLM about any asset in the Review screen
-- **Context-aware** - LLM has access to the asset blueprint, current content, and character sheet
-- **Auto-apply edits** - LLM can provide edited versions that are automatically applied
-- **Conversational workflow** - Ask questions, request changes, get suggestions iteratively
-- **Toggle with C key** - Chat panel slides in/out without losing history
-- **Multi-turn support** - Full conversation history maintained for context
+**Qt6 GUI:**
+- Modern graphical interface
+- Character browsing and review
+- Blueprint browser and editor
+- Template manager and wizard
 
-### Similarity Analyzer
+**CLI:**
+- Scriptable commands for automation
+- Batch operations
+- All features accessible via command line
 
-- **Character comparison** - Compare two characters to find commonalities and differences
-- **LLM-powered analysis** - Deep narrative insights, story opportunities, and relationship arcs
-- **Redundancy detection** - Identify when characters are too similar
-- **Rework suggestions** - Actionable ideas to differentiate characters
-- **Merge recommendations** - Suggest merging extreme duplicates (>95% similar)
-- **Batch operations** - Compare all pairs or cluster similar characters
-- **Multi-dimensional scoring** - Personality, values, goals, background, conflict/synergy potential
-- **CLI/TUI/GUI support** - Available in all interfaces with `--use-llm` flag
+### 🔧 Workflow Tools
 
-### Moreau Virus / Morphosis Support
+- **Batch Compilation**: Generate multiple characters from seed files
+- **Seed Generator**: Create seed lists from genre/theme inputs
+- **Draft Management**: Browse, review, and edit generated characters
+- **Validation**: Integrated checker for placeholders and consistency
+- **Export Integration**: Properly structured output for multiple platforms
+- **Offspring Generator**: Create hybrid characters from two parents
+
+### 📊 Similarity Analyzer
+
+Compare characters to find commonalities, differences, and relationship potential:
+
+- **Basic Comparison**: Multi-dimensional similarity scoring
+  - Personality traits overlap
+  - Core values alignment
+  - Goals and motivation matching
+  - Background element analysis
+  - Conflict and synergy potential
+
+- **LLM-Powered Deep Analysis** (optional):
+  - Narrative dynamics and interaction patterns
+  - Story opportunities and plot hooks
+  - Scene suggestions with setting and action
+  - Dialogue style analysis
+  - Relationship arc development
+
+- **Redundancy Detection**:
+  - Four-level assessment (low/medium/high/extreme)
+  - Specific issue identification
+  - Actionable rework suggestions
+  - Merge recommendations for extreme duplicates
+
+- **Batch Operations**:
+  - Compare all character pairs in a directory
+  - Cluster similar characters with configurable thresholds
+  - JSON output for integration
+
+### 🌍 Moreau Virus / Morphosis Support
 
 - Automatic lore application for furry/anthro/scalie characters
 - Functional trait handling (anatomy, clothing, social context)
 - Morphosis counterculture integration
 - Respects canon constraints (2-year timeline, vaccine, prevalence)
 
-## Adjustment Note
+---
 
-If the seed is thin or a constraint must be bent, the orchestrator may emit a first “Adjustment Note” codeblock with one line describing the adjustment. All assets remain clean in their own codeblocks/files.
+## Documentation
 
-## Export helper
+### Core Documentation
+- **[docs/README.md](docs/README.md)** - Documentation index and navigation
+- **[docs/FEATURE_AUDIT.md](docs/FEATURE_AUDIT.md)** - Complete feature audit report
+- **[docs/SIMILARITY_ENHANCEMENTS.md](docs/SIMILARITY_ENHANCEMENTS.md)** - Similarity analyzer documentation
+- **[QUICKSTART.md](QUICKSTART.md)** - Quick reference guide
 
-- `tools/export_character.sh` can export from files: `./tools/export_character.sh "character_name" "source_dir" [llm_model]`
+### Guides
+- **[bpui/README.md](bpui/README.md)** - Complete TUI documentation
+- **[bpui/docs/INSTALL.md](bpui/docs/INSTALL.md)** - Installation guide
+- **[bpui/docs/IMPLEMENTATION.md](bpui/docs/IMPLEMENTATION.md)** - Implementation details
 
-### Export contract (expected filenames)
+### API Documentation
+- Generate with: `make docs`
+- View at: `docs/api/bpui/`
 
-When exporting from files, `source_dir/` is expected to contain:
+### Genre Guide
+The README includes a comprehensive genre quickstart defining:
+- Core genre presets (Romance, Thriller, Horror, Fantasy, Sci-Fi, Comedy)
+- Cross-genre structural systems
+- Design principles for consistent storytelling
 
-- `system_prompt.txt`
-- `post_history.txt`
-- `character_sheet.txt`
-- `intro_scene.txt`
-- `intro_page.md`
-- `a1111_prompt.txt`
-- `suno_prompt.txt`
+---
 
-Optional alternate image prompt:
+## Installation
 
-- `a1111_sdxl_prompt.txt`
+### Quick Installation
 
-## SEED examples
+```bash
+# Clone repository
+git clone https://github.com/MaeveOfFae/character-generator.git
+cd character-generator
 
-Good seeds imply power dynamic, emotional temperature, tension axis, and why {{user}} matters:
+# Using launcher script (recommended)
+./run_bpui.sh
+
+# Manual installation
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
+
+### Optional Dependencies
+
+```bash
+# For LiteLLM (100+ providers)
+pip install litellm
+
+# For GUI (Qt6)
+pip install PySide6
+
+# For TUI
+pip install textual rich tomli-w httpx
+```
+
+### Verification
+
+```bash
+# Run TUI
+bpui
+
+# Run GUI
+bpui gui
+
+# Test connection
+bpui --help
+```
+
+---
+
+## Usage
+
+### Generate a Character
+
+**TUI:**
+```
+bpui → Compile from Seed → Enter seed → Choose mode → Compile
+```
+
+**CLI:**
+```bash
+bpui compile --seed "Your seed here" --mode NSFW
+```
+
+### Seed Examples
+
+Good seeds imply power dynamic, emotional temperature, tension axis, and relationship:
 
 - "Strict museum curator who hates being noticed, but can't stop watching {{user}}"
 - "Street medic with a savior complex, protective toward {{user}}, terrified of abandonment"
@@ -250,29 +243,184 @@ Good seeds imply power dynamic, emotional temperature, tension axis, and why {{u
 - "Moreau (canine) bartender at Morphosis venue, knows everyone's secrets, protective of {{user}}"
 - "Exhausted single parent, attracted to {{user}}, guilt about wanting something for themselves"
 
-## Testing
-
-Run the test suite:
+### Batch Operations
 
 ```bash
-# All tests
-pytest
+# Compile multiple characters
+bpui batch --input seeds.txt --mode NSFW --continue-on-error
 
-# Specific test file
-pytest tests/unit/test_batch.py
-
-# With coverage
-pytest --cov=bpui tests/
+# Generate seeds
+echo "Noir\nCyberpunk\nFantasy" > genres.txt
+bpui seed-gen --input genres.txt --out seeds.txt
 ```
 
-## Development
+### Draft Management
+
+```bash
+# Browse drafts
+bpui → Open Drafts → Select draft → Review/Edit
+
+# Validate
+bpui validate drafts/20240203_150000_character_name
+
+# Export
+bpui export "Character Name" drafts/20240203_150000_character_name --model gpt4
+```
+
+---
+
+## Similarity Analyzer
+
+The similarity analyzer helps you understand relationships between characters and identify redundancy.
+
+### Basic Comparison
+
+```bash
+# Compare two characters
+bpui similarity "character1" "character2"
+
+# With similarity threshold clustering
+bpui similarity drafts --cluster --threshold 0.75
+```
+
+### LLM-Powered Analysis
+
+```bash
+# Enable deep narrative analysis
+bpui similarity "character1" "character2" --use-llm
+
+# Analyze all pairs with LLM
+bpui similarity drafts --all --use-llm
+```
+
+### Redundancy Detection
+
+The analyzer identifies four levels of character redundancy:
+
+| Level | Score | Action |
+|--------|--------|--------|
+| **Low** | <75% | No action needed |
+| **Medium** | 75-85% | Optional differentiation |
+| **High** | 85-95% | Recommended rework |
+| **Extreme** | >95% | Consider merging |
+
+**Outputs include:**
+- Redundancy score with visual indicator
+- Specific issues detected (overlapping traits, values, backgrounds)
+- Rework suggestions for each character
+- Merge recommendations (extreme only)
+- Uniqueness score
+
+### Batch Analysis
+
+```bash
+# Compare all pairs in drafts directory
+bpui similarity drafts --all --use-llm
+
+# JSON output for integration
+bpui similarity "char1" "char2" --use-llm --format json
+```
+
+See [docs/SIMILARITY_ENHANCEMENTS.md](docs/SIMILARITY_ENHANCEMENTS.md) for complete documentation.
+
+---
+
+## Configuration
+
+### Settings File
+
+Create `.bpui.toml` in the project root:
+
+```toml
+[llm]
+engine = "litellm"  # or "openai_compatible"
+model = "openai/gpt-4"
+api_key_env = "OPENAI_API_KEY"
+base_url = ""  # only for openai_compatible
+
+[generation]
+temperature = 0.7
+max_tokens = 4096
+
+[batch]
+max_concurrent = 3
+rate_limit_delay = 1.0
+```
+
+### Provider Examples
+
+**OpenAI:**
+```toml
+engine = "litellm"
+model = "openai/gpt-4"
+api_key_env = "OPENAI_API_KEY"
+```
+
+**Anthropic Claude:**
+```toml
+engine = "litellm"
+model = "anthropic/claude-3-opus-20240229"
+api_key_env = "ANTHROPIC_API_KEY"
+```
+
+**Ollama (Local):**
+```toml
+engine = "openai_compatible"
+model = "llama3.1"
+base_url = "http://localhost:11434/v1"
+```
+
+---
+
+## Repository Structure
+
+```
+character-generator/
+├── blueprints/              # Prompt blueprints
+│   ├── rpbotgenerator.md        # Main orchestrator
+│   ├── system_prompt.md         # System prompt template
+│   ├── character_sheet.md      # Character structure
+│   ├── intro_scene.md          # Opening scene
+│   ├── intro_page.md           # Markdown intro
+│   ├── a1111.md               # Image prompt
+│   └── suno.md                 # Song prompt
+├── bpui/                   # Core application
+│   ├── cli.py                # CLI entry point
+│   ├── config.py             # Configuration
+│   ├── similarity.py          # Similarity analyzer
+│   ├── prompting.py          # Blueprint loading
+│   ├── parse_blocks.py        # Parser
+│   ├── llm/                  # LLM adapters
+│   ├── tui/                  # Terminal UI
+│   └── gui/                  # Qt6 GUI
+├── tools/                  # Shell scripts
+├── docs/                   # Documentation
+├── tests/                  # Test suite
+├── drafts/                 # Auto-saved drafts
+└── output/                 # Exported characters
+```
+
+---
+
+## Contributing
+
+We welcome contributions! Please read:
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) - Code of conduct
+- [SECURITY.md](SECURITY.md) - Security policy
+
+### Development
 
 ```bash
 # Install in development mode
-pip install -e .
+pip install -e ".[litellm,gui]"
 
-# Run TUI from source
-python -m bpui.cli
+# Run tests
+pytest
+
+# Run with coverage
+pytest --cov=bpui tests/
 
 # Format code
 black bpui/ tests/
@@ -281,169 +429,40 @@ black bpui/ tests/
 mypy bpui/
 ```
 
-## Genre quickstart
+---
 
-## Genre Quickstart — Expanded & Complete
+## Troubleshooting
 
-This document defines **genre as operational physics**, not vibes.  
-Each genre specifies defaults for pacing, power, sensory focus, dialogue, and common failure modes.  
-Global rules at the end prevent tone drift and narrative amnesia.
+### Common Issues
+
+**Can't connect to LLM:**
+1. Check API key in Settings or environment variable
+2. Use "Test Connection" in Settings
+3. Verify base_url for OpenAI-compatible providers
+4. Ensure model name matches provider format
+
+**Parse errors:**
+- Increase max_tokens in Settings
+- Try a more capable model
+- Simplify seed
+
+**Import errors:**
+```bash
+pip install textual rich tomli-w httpx
+pip install litellm  # for LLM support
+pip install PySide6  # for GUI
+```
 
 ---
 
-## Core Genre Presets
+## License
 
-### Romance / Slice-of-Life
-
-- **Pacing:** Slow ramps; micro-beats over plot turns. Routine and silence count as progress.
-- **Power default:** Balanced or gently asymmetric; boundaries remain visible, even when unspoken.
-- **Sensory:** Warm palettes; touch, fabric, domestic soundscapes (dishes, footsteps, breath).
-- **Dialogue:** Indirect; emotionally dense subtext over explicit statements.
-- **Failure mode:** Rushing intimacy; dissolving boundaries “because it’s cute.”
+This project is licensed under the same terms as the parent repository.
 
 ---
 
-### Thriller / Noir
+## Support
 
-- **Pacing:** Constant forward pressure; every scene alters leverage.
-- **Power default:** Asymmetric and unstable; someone always knows more.
-- **Sensory:** Cold light, confined spaces, sharp edges, ticking clocks.
-- **Dialogue:** Clipped, evasive; questions answered with half-truths.
-- **Failure mode:** Over-explaining motives; softening consequences.
-
----
-
-### Horror
-
-- **Pacing:** Escalation through repetition + variation; delay the reveal.
-- **Power default:** Biased *against* {{user}} unless explicitly subverted.
-- **Sensory:** Sound, texture, bodily awareness; visuals arrive late.
-- **Agency:** Vulnerability is the hook; survival ≠ control.
-- **Failure mode:** Lore dumps; spectacle replacing dread.
-
----
-
-### Fantasy
-
-- **Pacing:** Episodic beats anchored to place, ritual, and consequence.
-- **Power default:** Rule-bound; magic always costs something tangible.
-- **Worldbuilding:** Concrete, tactile detail over mythic summaries.
-- **Sensory:** Magic alters weight, smell, temperature, or sound.
-- **Failure mode:** Abstract lore; soft magic solving problems cleanly.
-
----
-
-### Sci-Fi / Cyberpunk
-
-- **Pacing:** Brisk but fragmented; scenes feel transactional.
-- **Power default:** Systems exert more pressure than individuals.
-- **Tech:** Texture, interface friction, failure states—never lectures.
-- **Aesthetic:** Neon vs shadow; noise vs silence; owned vs rented space.
-- **Failure mode:** Tech fetishism; jargon replacing stakes.
-
----
-
-### Comedy / Lighthearted
-
-- **Pacing:** Rhythm-driven; timing matters more than volume.
-- **Power default:** Flexible, but never consequence-free.
-- **Structure:** Missteps create connection; escalation through callbacks.
-- **Character:** Core flaw remains intact—humor exposes it.
-- **Failure mode:** Joke density dissolving tension or character truth.
-
----
-
-## Missing but Required Categories
-
-### Drama (Stakes-First, Non-Genre)
-
-- **Purpose:** Backbone for scenes driven by interpersonal pressure.
-- **Pacing:** Tension via unresolved wants; scenes end emotionally incomplete.
-- **Power default:** Relational leverage (history, obligation, guilt).
-- **Dialogue:** What’s not said does the work.
-- **Failure mode:** Melodrama; characters explaining feelings instead of acting.
-
----
-
-### Mystery / Investigation
-
-- **Purpose:** Control of knowledge, not danger.
-- **Pacing:** Question → partial answer → better question.
-- **Power default:** Whoever controls information controls the scene.
-- **Structure:** Clues change interpretation, not just plot direction.
-- **Failure mode:** Arbitrary withholding; reveals without prior affordance.
-
----
-
-### Intimacy / Erotic Tension (Non-Explicit)
-
-- **Purpose:** Charge management across multiple genres.
-- **Pacing:** Proximity beats > action beats.
-- **Power default:** Fluctuating; desire creates vulnerability.
-- **Sensory:** Breath, heat, timing, interruption.
-- **Failure mode:** Collapsing tension into payoff too early.
-
----
-
-## Cross-Genre Structural Systems
-
-### Conflict Resolution Modes
-
-Every scene should resolve via **one primary mode**:
-
-- **Deferral:** Nothing solved; pressure increases.
-- **Exchange:** Something is traded (information, trust, access).
-- **Loss:** Someone gives something up.
-- **Revelation:** Context shifts; meaning changes.
-- **Failure mode:** Tidy endings that reset stakes.
-
----
-
-### Emotional Aftermath Handling
-
-- **Rule:** Every high-intensity beat leaves residue.
-- **Tools:** Behavioral callbacks (avoidance, awkwardness, guilt, relief).
-- **Prohibition:** No emotional amnesia between scenes.
-- **Failure mode:** Resetting characters to baseline.
-
----
-
-### Stakes Without Plot
-
-- **Applicable to:** Slice-of-life, romance, drama-heavy scenes.
-- **Stakes types:** Social, emotional, reputational, temporal.
-- **Rule:** If nothing can be lost, compress or cut the scene.
-- **Failure mode:** Pleasant but inert moments.
-
----
-
-### Tone Drift Safeguard (Global)
-
-- **Rule:** Humor, warmth, or competence may *relieve* tension, never erase it.
-- **Check:** What cost still exists after this beat?
-- **Failure mode:** Vibes overpowering narrative logic.
-
----
-
-## Optional Cross-Genre Switches
-
-Use these to hybridize without losing coherence:
-
-- **Escalation curve:** Slow burn / sawtooth / spike-and-release
-- **Power bias:** Toward {{user}} / against {{user}} / oscillating
-- **Boundary visibility:** Explicit / implicit / contested
-- **Sensory lead:** Sound / touch / light / spatial constraint
-
----
-
-## Design Principle (Non-Negotiable)
-
-Genre is not flavor.  
-It defines:
-
-- how power flows,
-- how information moves,
-- how tension resolves,
-- and how consequences linger.
-
-If a scene violates its genre’s power or pacing rules, it will feel wrong regardless of prose quality.
+- **Issues**: [GitHub Issues](https://github.com/MaeveOfFae/character-generator/issues)
+- **Documentation**: [docs/README.md](docs/README.md)
+- **Quick Reference**: [QUICKSTART.md](QUICKSTART.md)
