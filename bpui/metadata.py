@@ -22,6 +22,8 @@ class DraftMetadata:
     favorite: bool = False
     character_name: Optional[str] = None
     template_name: Optional[str] = None  # Name of template used for generation
+    parent_drafts: Optional[List[str]] = None  # Relative paths to parent drafts for lineage tracking
+    offspring_type: Optional[str] = None  # Type of parenting dynamic (harmonious, conflicted, rebellious, etc.)
     
     def __post_init__(self):
         """Set default timestamps if not provided."""
@@ -31,6 +33,8 @@ class DraftMetadata:
             self.modified = self.created
         if self.tags is None:
             self.tags = []
+        if self.parent_drafts is None:
+            self.parent_drafts = []
     
     def to_dict(self) -> dict:
         """Convert to dictionary."""

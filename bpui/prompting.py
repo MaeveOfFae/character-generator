@@ -293,3 +293,74 @@ If the user asks for changes, provide the complete edited asset in a code block.
 
     return prompt
 
+
+def build_offspring_prompt(
+    parent1_assets: dict[str, str],
+    parent2_assets: dict[str, str],
+    parent1_name: str,
+    parent2_name: str,
+    mode: Optional[str] = None,
+    repo_root: Optional[Path] = None
+) -> tuple[str, str]:
+    """Build prompt for offspring generation from two parent characters.
+
+    Args:
+        parent1_assets: Dict of asset names to content for parent 1
+        parent2_assets: Dict of asset names to content for parent 2
+        parent1_name: Name of parent 1 (for reference)
+        parent2_name: Name of parent 2 (for reference)
+        mode: Content mode (SFW/NSFW/Platform-Safe) or None for auto
+        repo_root: Repository root path
+
+    Returns:
+        Tuple of (system_prompt, user_prompt)
+    """
+    # Load the offspring generator blueprint
+    blueprint = load_blueprint("offspring_generator", repo_root)
+    
+    # Use blueprint as system prompt
+    system_prompt = blueprint
+    
+    # Build user prompt with parents' assets
+    user_lines = []
+    
+    # Add mode if specified
+    if mode:
+        user_lines.append(f"Mode: {mode}")
+    
+    # Add parent 1's full character suite
+    user_lines.append(f"\n## PARENT 1: {parent1_name}")
+    user_lines.append("### System Prompt:\n```")
+    user_lines.append(parent1_assets.get("system_prompt", ""))
+    user_lines.append("```")
+    user_lines.append("### Post History:\n```")
+    user_lines.append(parent1_assets.get("post_history", ""))
+    user_lines.append("```")
+    user_lines.append("### Character Sheet:\n```")
+    user_lines.append(parent1_assets.get("character_sheet", ""))
+    user_lines.append("```")
+    user_lines.append("### Intro Scene:\n```")
+    user_lines.append(parent1_assets.get("intro_scene", ""))
+    user_lines.append("```")
+    
+    # Add parent 2's full character suite
+    user_lines.append(f"\n## PARENT 2: {parent2_name}")
+    user_lines.append("### System Prompt:\n```")
+    user_lines.append(parent2_assets.get("system_prompt", ""))
+    user_lines.append("```")
+    user_lines.append("### Post History:\n```")
+    user_lines.append(parent2_assets.get("post_history", ""))
+    user_lines.append("```")
+    user_lines.append("### Character Sheet:\n```")
+    user_lines.append(parent2_assets.get("character_sheet", ""))
+    user_lines.append("```")
+    user_lines.append("### Intro Scene:\n```")
+    user_lines.append(parent2_assets.get("intro_scene", ""))
+    user_lines.append("```")
+    
+    # Instruction
+    user_lines.append("\n## INSTRUCTION:")
+    user_lines.append("Analyze how these two parents would shape a new character's upbringing and generate the offspring's SEED.")
+    
+    return system_prompt, "\n".join(user_lines)
+

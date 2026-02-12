@@ -64,6 +64,12 @@ class HomeWidget(QWidget):
         batch_btn.clicked.connect(lambda: self.main_window.show_batch())
         btn_layout.addWidget(batch_btn)
         
+        offspring_btn = QPushButton("👶 Offspring Generator")
+        offspring_btn.setFixedSize(200, 50)
+        offspring_btn.setStyleSheet("font-size: 14px; font-weight: bold;")
+        offspring_btn.clicked.connect(lambda: self.main_window.show_offspring())
+        btn_layout.addWidget(offspring_btn)
+        
         validate_btn = QPushButton("✓ Validate Directory")
         validate_btn.setFixedSize(200, 50)
         validate_btn.setStyleSheet("font-size: 14px; font-weight: bold;")

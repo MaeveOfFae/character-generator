@@ -34,6 +34,7 @@ class MainWindow(QMainWindow):
         from .seed_generator import SeedGeneratorScreen
         from .validate import ValidateScreen
         from .template_manager import TemplateManagerScreen
+        from .offspring import OffspringWidget
         
         self.home = HomeWidget(self.config, self)
         self.compile = CompileWidget(self.config, self)
@@ -41,6 +42,7 @@ class MainWindow(QMainWindow):
         self.seed_gen = SeedGeneratorScreen(self, self.config)
         self.validate = ValidateScreen(self, self.config)
         self.template_manager = TemplateManagerScreen(self, self.config)
+        self.offspring = OffspringWidget(self.config, self)
         
         # Add screens to stack
         self.stack.addWidget(self.home)
@@ -49,6 +51,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.seed_gen)
         self.stack.addWidget(self.validate)
         self.stack.addWidget(self.template_manager)
+        self.stack.addWidget(self.offspring)
         
         # Status bar
         self.status_bar = QStatusBar()
@@ -89,6 +92,11 @@ class MainWindow(QMainWindow):
         """Show template manager screen."""
         self.stack.setCurrentWidget(self.template_manager)
         self.status_bar.showMessage("Template Manager")
+    
+    def show_offspring(self):
+        """Show offspring generator screen."""
+        self.stack.setCurrentWidget(self.offspring)
+        self.status_bar.showMessage("Offspring Generator")
     
     def show_review(self, draft_dir, assets):
         """Show review screen."""

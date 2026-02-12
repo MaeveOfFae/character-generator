@@ -30,4 +30,4 @@ where = ["."]
 include = ["bpui*"]
 
 [tool.setuptools.package-data]
-bpui = ["../blueprints/*.md", "../tools/*.sh", "../tools/*.py", "../tools/*.md"]
+bpui = ["../blueprints/**/*.md", "../tools/*.sh", "../tools/*.py", "../tools/*.md"]

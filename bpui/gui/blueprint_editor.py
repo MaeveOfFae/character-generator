@@ -312,6 +312,19 @@ version: {version}
             )
             return
         
+        # Validate before saving
+        validation = self.validate_blueprint()
+        if not validation["valid"]:
+            error_msg = "\\n".join(validation["errors"])
+            reply = QMessageBox.question(
+                self,
+                "Blueprint Validation Failed",
+                f"The blueprint has errors:\\n\\n{error_msg}\\n\\nSave anyway?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.No:
+                return
+        
         try:
             content = self.get_full_content()
             self.blueprint_path.write_text(content)
@@ -323,6 +336,58 @@ version: {version}
             
         except Exception as e:
             QMessageBox.critical(self, "Save Error", f"Failed to save blueprint:\\n{e}")
+    
+    def validate_blueprint(self) -> dict:
+        """Validate blueprint structure and content.
+        
+        Returns:
+            Dict with 'valid' (bool) and 'errors' (list of strings)
+        """
+        errors = []
+        
+        # Validate name
+        name = self.name_edit.text().strip()
+        if not name:
+            errors.append("Blueprint name is required")
+        
+        # Validate description
+        description = self.description_edit.text().strip()
+        if not description:
+            errors.append("Blueprint description is required")
+        
+        # Validate version
+        version = f"{self.version_major.value()}.{self.version_minor.value()}"
+        if not self.version_major.value() > 0:
+            errors.append("Version major must be at least 1")
+        
+        # Validate content
+        content = self.content_edit.toPlainText().strip()
+        if not content:
+            errors.append("Blueprint content is required")
+        else:
+            # Check for common blueprint sections
+            content_lower = content.lower()
+            
+            # Should have some kind of agent/role definition
+            if "agent" not in content_lower and "you are" not in content_lower:
+                errors.append("Blueprint should define an agent role (e.g., 'You are the Blueprint Agent')")
+            
+            # Should have instructions
+            if len(content.split('\\n')) < 3:
+                errors.append("Blueprint content seems too short - add more instructions")
+        
+        # Check for template placeholders that should be replaced
+        if "{PLACEHOLDER}" in content or "[PLACEHOLDER]" in content:
+            errors.append("Blueprint contains placeholder text that should be replaced")
+        
+        # Check for proper formatting
+        if not any(header in content for header in ["#", "##", "###"]):
+            errors.append("Blueprint should include section headers (#, ##, ###) for better organization")
+        
+        return {
+            "valid": len(errors) == 0,
+            "errors": errors
+        }
     
     def save_to_template(self, template_dir: Path, filename: str) -> bool:
         """Save blueprint to a template directory.

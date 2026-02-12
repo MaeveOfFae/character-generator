@@ -74,6 +74,18 @@ def main():
     batch_parser.add_argument("--resume", action="store_true", help="Resume last incomplete batch")
     batch_parser.add_argument("--clean-batch-state", action="store_true", help="Clean up old batch state files")
 
+    # Offspring command
+    offspring_parser = subparsers.add_parser("offspring", help="Generate offspring from two parent characters")
+    offspring_parser.add_argument("--parent1", required=True, help="Path or name of parent 1 draft")
+    offspring_parser.add_argument("--parent2", required=True, help="Path or name of parent 2 draft")
+    offspring_parser.add_argument(
+        "--mode",
+        choices=["SFW", "NSFW", "Platform-Safe"],
+        help="Content mode (default: auto)",
+    )
+    offspring_parser.add_argument("--out", help="Output directory (default: drafts/)")
+    offspring_parser.add_argument("--model", help="Model override")
+
     args = parser.parse_args()
     
     # Setup logging before any commands
@@ -113,6 +125,8 @@ def main():
         run_export(args)
     elif args.command == "rebuild-index":
         run_rebuild_index(args)
+    elif args.command == "offspring":
+        asyncio.run(run_offspring(args))
     
     # Print profiling report if enabled
     if args.profile:
@@ -749,6 +763,187 @@ def run_rebuild_index(args):
             logger.info("  %s: %d", mode, count)
     else:
         logger.info("Index rebuilt successfully")
+
+
+async def run_offspring(args):
+    """Run offspring generation from CLI."""
+    from .config import Config
+    from .llm.litellm_engine import LiteLLMEngine
+    from .llm.openai_compat_engine import OpenAICompatEngine
+    from .prompting import build_offspring_prompt, build_asset_prompt
+    from .parse_blocks import extract_single_asset, extract_character_name, ASSET_ORDER
+    from .pack_io import create_draft_dir, load_draft
+    from .metadata import DraftMetadata
+    
+    logger = logging.getLogger(__name__)
+    config = Config()
+    
+    # Validate API key
+    model = args.model or config.model
+    config.validate_api_key(model)
+    
+    # Find parent drafts
+    drafts_root = Path.cwd() / "drafts"
+    parent1_path = _find_draft(args.parent1, drafts_root)
+    parent2_path = _find_draft(args.parent2, drafts_root)
+    
+    if not parent1_path:
+        print(f"✗ Parent 1 not found: {args.parent1}")
+        sys.exit(1)
+    if not parent2_path:
+        print(f"✗ Parent 2 not found: {args.parent2}")
+        sys.exit(1)
+    
+    # Load parent assets
+    parent1_assets = load_draft(parent1_path)
+    parent2_assets = load_draft(parent2_path)
+    
+    # Get parent names
+    p1_metadata = DraftMetadata.load(parent1_path)
+    p2_metadata = DraftMetadata.load(parent2_path)
+    parent1_name = p1_metadata.character_name if p1_metadata and p1_metadata.character_name else parent1_path.name
+    parent2_name = p2_metadata.character_name if p2_metadata and p2_metadata.character_name else parent2_path.name
+    
+    print(f"👶 Generating offspring from:")
+    print(f"   Parent 1: {parent1_name}")
+    print(f"   Parent 2: {parent2_name}")
+    print(f"   Mode: {args.mode or 'Auto'}")
+    print(f"   Model: {model}")
+    
+    # Create engine
+    engine_config = {
+        "model": model,
+        "api_key": config.api_key,
+        "temperature": config.temperature,
+        "max_tokens": config.max_tokens,
+    }
+    
+    if config.engine == "litellm":
+        try:
+            engine = LiteLLMEngine(**engine_config)
+        except ImportError as e:
+            logger.error("LiteLLM not installed. Install with: pip install litellm")
+            logger.error("Or configure engine=openai-compat in .bpui.toml for OpenAI-compatible APIs")
+            sys.exit(1)
+    else:
+        engine_config["base_url"] = config.base_url
+        engine = OpenAICompatEngine(**engine_config)
+    
+    # Step 1: Generate offspring seed
+    print("\n⏳ Generating offspring seed...")
+    
+    system_prompt, user_prompt = build_offspring_prompt(
+        parent1_assets=parent1_assets,
+        parent2_assets=parent2_assets,
+        parent1_name=parent1_name,
+        parent2_name=parent2_name,
+        mode=args.mode
+    )
+    
+    output_text = await engine.generate(system_prompt, user_prompt)
+    offspring_seed = output_text.strip()
+    
+    if not offspring_seed:
+        print("✗ Failed to generate offspring seed")
+        sys.exit(1)
+    
+    print(f"✓ Offspring seed generated ({len(offspring_seed)} chars)")
+    print(f"   Preview: {offspring_seed[:100]}{'...' if len(offspring_seed) > 100 else ''}")
+    
+    # Step 2: Generate full character suite
+    print("\n⏳ Generating full character suite...")
+    
+    assets = {}
+    character_name = None
+    
+    for asset_name in ASSET_ORDER:
+        print(f"   → {asset_name}...", end=" ", flush=True)
+        
+        system_prompt, user_prompt = build_asset_prompt(
+            asset_name, offspring_seed, args.mode, assets
+        )
+        
+        output = await engine.generate(system_prompt, user_prompt)
+        asset_content = extract_single_asset(output, asset_name)
+        assets[asset_name] = asset_content
+        
+        print(f"✓")
+        
+        if asset_name == "character_sheet" and not character_name:
+            character_name = extract_character_name(asset_content)
+    
+    if not character_name:
+        character_name = "offspring_character"
+    
+    # Save draft with lineage metadata
+    print(f"\n⏳ Saving draft...")
+    
+    # Get relative paths for parents
+    drafts_root_abs = drafts_root.resolve()
+    parent1_rel = str(parent1_path.relative_to(drafts_root_abs)) if parent1_path else ""
+    parent2_rel = str(parent2_path.relative_to(drafts_root_abs)) if parent2_path else ""
+    
+    draft_dir = create_draft_dir(
+        assets,
+        character_name,
+        seed=offspring_seed,
+        mode=args.mode,
+        model=model
+    )
+    
+    # Update metadata with lineage
+    metadata = DraftMetadata.load(draft_dir)
+    if metadata:
+        metadata.parent_drafts = [parent1_rel, parent2_rel]
+        metadata.offspring_type = "generated"
+        metadata.save(draft_dir)
+    
+    print(f"✓ Saved to: {draft_dir}")
+    print(f"✓ Lineage: {parent1_rel} + {parent2_rel}")
+
+
+def _find_draft(identifier: str, drafts_root: Path) -> Path | None:
+    """Find a draft by name or path.
+    
+    Args:
+        identifier: Draft name or path
+        drafts_root: Root directory for drafts
+        
+    Returns:
+        Path to draft directory or None
+    """
+    from .metadata import DraftMetadata
+    
+    # If it's an absolute path, use it directly
+    path = Path(identifier)
+    if path.is_absolute() and path.is_dir():
+        return path
+    
+    # If relative path exists, use it
+    if path.is_dir():
+        return path
+    
+    # Search in drafts directory by name
+    if not drafts_root.exists():
+        return None
+    
+    # Try exact match first
+    for draft_path in drafts_root.iterdir():
+        if draft_path.is_dir() and not draft_path.name.startswith("."):
+            # Check directory name
+            if draft_path.name == identifier:
+                return draft_path
+            
+            # Check metadata character name
+            metadata = DraftMetadata.load(draft_path)
+            if metadata and metadata.character_name == identifier:
+                return draft_path
+            
+            # Check if identifier is in directory name (partial match)
+            if identifier.lower() in draft_path.name.lower():
+                return draft_path
+    
+    return None
 
 
 if __name__ == "__main__":

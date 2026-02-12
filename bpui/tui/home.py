@@ -15,8 +15,9 @@ class HomeScreen(Screen):
         ("2", "action_batch", "Batch"),
         ("3", "action_seed_gen", "Seed Gen"),
         ("4", "action_drafts", "Drafts"),
-        ("5", "action_validate", "Validate"),
-        ("6", "action_settings", "Settings"),
+        ("5", "action_offspring", "Offspring"),
+        ("6", "action_validate", "Validate"),
+        ("7", "action_settings", "Settings"),
     ]
 
     CSS = """
@@ -64,8 +65,9 @@ class HomeScreen(Screen):
             yield Button("📦 [2] Batch Compile", id="batch")
             yield Button("🎲 [3] Seed Generator", id="seed-gen")
             yield Button("📁 [4] Open Drafts", id="drafts")
-            yield Button("✓ [5] Validate Directory", id="validate")
-            yield Button("⚙️  [6] Settings", id="settings")
+            yield Button("👶 [5] Offspring Generator", id="offspring")
+            yield Button("✓ [6] Validate Directory", id="validate")
+            yield Button("⚙️  [7] Settings", id="settings")
             yield Button("❌ [Q] Quit", id="quit", variant="error")
         yield Footer()
 
@@ -91,6 +93,9 @@ class HomeScreen(Screen):
         elif event.button.id == "validate":
             from .validate_screen import ValidateScreen
             self.app.push_screen(ValidateScreen(self.config))
+        elif event.button.id == "offspring":
+            from .offspring import OffspringScreen
+            self.app.push_screen(OffspringScreen(self.config))
     
     def action_quit(self) -> None:
         """Quit the application."""
@@ -125,3 +130,8 @@ class HomeScreen(Screen):
         """Open settings screen."""
         from .settings import SettingsScreen
         self.app.push_screen(SettingsScreen(self.config))
+    
+    def action_offspring(self) -> None:
+        """Open offspring generator screen."""
+        from .offspring import OffspringScreen
+        self.app.push_screen(OffspringScreen(self.config))

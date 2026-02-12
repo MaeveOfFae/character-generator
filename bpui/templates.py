@@ -107,13 +107,14 @@ class TemplateManager:
             return None
         
         # Define the default 7 assets with hierarchy
+        # Note: These reference the shared blueprints from templates/example_minimal
         assets = [
             AssetDefinition(
                 name="system_prompt",
                 required=True,
                 depends_on=[],
                 description="System-level behavioral instructions",
-                blueprint_file="system_prompt.md"
+                blueprint_file="../../system/system_prompt.md"
             ),
             AssetDefinition(
                 name="post_history",
@@ -148,7 +149,7 @@ class TemplateManager:
                 required=True,
                 depends_on=["character_sheet"],
                 description="Stable Diffusion image generation prompt",
-                blueprint_file="a1111.md"
+                blueprint_file="../../examples/a1111_sdxl_comfyui.md"
             ),
             AssetDefinition(
                 name="suno",
@@ -164,7 +165,7 @@ class TemplateManager:
             version="3.1",
             description="Official 7-asset template for RPBotGenerator",
             assets=assets,
-            path=self.official_dir
+            path=self.official_dir / "templates" / "example_minimal"
         )
     
     def _load_template(self, template_dir: Path) -> Optional[Template]:
@@ -449,10 +450,34 @@ class TemplateManager:
         if blueprint_path.exists():
             return blueprint_path.read_text(encoding='utf-8')
         
-        # Try official blueprints as fallback
+        # Handle relative paths (like ../../system/system_prompt.md)
+        if "/" in asset.blueprint_file:
+            # Resolve relative to template path
+            resolved_path = (template.path / asset.blueprint_file).resolve()
+            if resolved_path.exists():
+                return resolved_path.read_text(encoding='utf-8')
+        
+        # Try official blueprints directories as fallback
         if not template.is_official:
-            official_path = self.official_dir / asset.blueprint_file
-            if official_path.exists():
-                return official_path.read_text(encoding='utf-8')
+            # Try in template-specific blueprint directories
+            for blueprint_dir in self.official_dir.glob("templates/*/"):
+                official_path = blueprint_dir / asset.blueprint_file
+                if official_path.exists():
+                    return official_path.read_text(encoding='utf-8')
+            
+            # Try in system directory
+            system_path = self.official_dir / "system" / asset.blueprint_file
+            if system_path.exists():
+                return system_path.read_text(encoding='utf-8')
+            
+            # Try in examples directory
+            examples_path = self.official_dir / "examples" / asset.blueprint_file
+            if examples_path.exists():
+                return examples_path.read_text(encoding='utf-8')
+            
+            # Finally, try direct path from blueprints root
+            root_path = self.official_dir / asset.blueprint_file
+            if root_path.exists():
+                return root_path.read_text(encoding='utf-8')
         
         return None

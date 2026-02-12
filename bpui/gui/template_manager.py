@@ -3,7 +3,7 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QListWidget, QListWidgetItem, QTextEdit, QMessageBox, QInputDialog,
-    QFileDialog
+    QFileDialog, QDialog
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
@@ -16,6 +16,7 @@ class TemplateManagerScreen(QWidget):
     def __init__(self, parent, config):
         super().__init__(parent)
         self.config = config
+        self.parent_window = parent
         self.templates = []
         self.selected_template = None
         
@@ -26,11 +27,36 @@ class TemplateManagerScreen(QWidget):
         """Setup the UI."""
         layout = QVBoxLayout(self)
         
+        # Header with back button and title
+        header_layout = QHBoxLayout()
+        
+        # Back button
+        self.back_btn = QPushButton("← Back")
+        self.back_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4a2d5f;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #5a3d6f;
+            }
+        """)
+        self.back_btn.clicked.connect(self.go_back)
+        header_layout.addWidget(self.back_btn)
+        
+        header_layout.addStretch()
+        
         # Title
         title = QLabel("🎨 Template Manager")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #9b59b6; margin: 10px;")
-        layout.addWidget(title)
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #9b59b6;")
+        header_layout.addWidget(title)
+        
+        header_layout.addStretch()
+        
+        layout.addLayout(header_layout)
         
         # Instructions
         instructions = QLabel(
@@ -148,6 +174,11 @@ class TemplateManagerScreen(QWidget):
         self.status_label = QLabel("")
         self.status_label.setStyleSheet("color: #888; margin: 5px;")
         layout.addWidget(self.status_label)
+    
+    def go_back(self):
+        """Return to home screen."""
+        if self.parent_window:
+            self.parent_window.show_home()
     
     def load_templates(self):
         """Load available templates."""

@@ -15,6 +15,7 @@ class ValidateScreen(QWidget):
     def __init__(self, parent, config):
         super().__init__(parent)
         self.config = config
+        self.parent_window = parent
         
         self.setup_ui()
     
@@ -105,9 +106,8 @@ class ValidateScreen(QWidget):
     
     def go_back(self):
         """Go back to home screen."""
-        main_window = self.parent()  # type: ignore
-        if main_window and hasattr(main_window, 'show_home'):
-            main_window.show_home()  # type: ignore
+        if self.parent_window and hasattr(self.parent_window, 'show_home'):
+            self.parent_window.show_home()
     
     def browse_directory(self):
         """Browse for directory."""
