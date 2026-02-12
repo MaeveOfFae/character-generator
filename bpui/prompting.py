@@ -1,7 +1,7 @@
 """Prompt construction and blueprint loading."""
 
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Any
 from .profiler import profile
 
 
@@ -139,6 +139,129 @@ def build_orchestrator_prompt(
         user_lines.append(f"Mode: {mode}")
     user_lines.append(f"SEED: {seed}")
 
+    return system_prompt, "\n".join(user_lines)
+
+
+def build_similarity_prompt(
+    profile1: Any,
+    profile2: Any
+) -> tuple[str, str]:
+    """Build LLM prompt for character similarity analysis.
+
+    Args:
+        profile1: First character profile (CharacterProfile)
+        profile2: Second character profile (CharacterProfile)
+
+    Returns:
+        Tuple of (system_prompt, user_prompt)
+    """
+    
+    system_prompt = """You are an expert character analyst specializing in understanding character relationships, dynamics, and narrative potential. Your task is to deeply analyze two characters and provide insights about how they would interact in a story.
+
+You will receive structured character profiles containing:
+- Basic information (name, age, gender, species, occupation)
+- Personality traits
+- Core values and beliefs
+- Motivations and goals
+- Fears and weaknesses
+- Narrative role and power level
+
+Your analysis should focus on:
+
+1. **Narrative Dynamics**: How these characters would interact, the tension or harmony between them, and what makes their relationship interesting for readers.
+
+2. **Story Opportunities**: Specific plot hooks, conflicts, or situations that would arise from their relationship.
+
+3. **Scene Suggestions**: 2-3 specific scene ideas that would showcase their dynamic (setting, situation, what happens).
+
+4. **Dialogue Style**: How they would talk to each other - conversational patterns, tone, verbal conflicts, etc.
+
+5. **Relationship Arc**: How their relationship might evolve over a story - beginning, middle, and end states.
+
+Provide your response as JSON with this structure:
+
+```json
+{
+  "narrative_dynamics": "2-3 paragraphs describing the core dynamic",
+  "story_opportunities": [
+    "opportunity 1",
+    "opportunity 2",
+    "opportunity 3"
+  ],
+  "scene_suggestions": [
+    "Scene 1 description with setting and action",
+    "Scene 2 description with setting and action",
+    "Scene 3 description with setting and action"
+  ],
+  "dialogue_style": "Description of their conversational patterns",
+  "relationship_arc": "Description of how their relationship would develop"
+}
+```
+
+Be specific, insightful, and focus on narrative potential. Consider:
+- Would they clash or complement each other?
+- What secrets or conflicts could emerge?
+- How would they challenge each other to grow?
+- What would readers find compelling about their relationship?
+- What themes or conflicts would their relationship explore?"""
+
+    # Build user prompt with character profiles
+    user_lines = []
+    
+    # Character 1
+    user_lines.append(f"## CHARACTER 1: {profile1.name or 'Character 1'}")
+    user_lines.append(f"**Age**: {profile1.age or 'Unknown'}")
+    user_lines.append(f"**Gender**: {profile1.gender or 'Unknown'}")
+    user_lines.append(f"**Species**: {profile1.species or 'Unknown'}")
+    user_lines.append(f"**Occupation**: {profile1.occupation or 'Unknown'}")
+    user_lines.append(f"**Role**: {profile1.role or 'Unknown'}")
+    user_lines.append(f"**Power Level**: {profile1.power_level or 'Unknown'}")
+    user_lines.append(f"**Mode**: {profile1.mode or 'Unknown'}")
+    
+    if profile1.personality_traits:
+        user_lines.append(f"**Personality Traits**: {', '.join(profile1.personality_traits[:10])}")
+    
+    if profile1.core_values:
+        user_lines.append(f"**Core Values**: {', '.join(profile1.core_values[:10])}")
+    
+    if profile1.motivations:
+        user_lines.append(f"**Motivations**: {', '.join(profile1.motivations[:10])}")
+    
+    if profile1.goals:
+        user_lines.append(f"**Goals**: {', '.join(profile1.goals[:10])}")
+    
+    if profile1.fears:
+        user_lines.append(f"**Fears**: {', '.join(profile1.fears[:10])}")
+    
+    # Character 2
+    user_lines.append(f"\n## CHARACTER 2: {profile2.name or 'Character 2'}")
+    user_lines.append(f"**Age**: {profile2.age or 'Unknown'}")
+    user_lines.append(f"**Gender**: {profile2.gender or 'Unknown'}")
+    user_lines.append(f"**Species**: {profile2.species or 'Unknown'}")
+    user_lines.append(f"**Occupation**: {profile2.occupation or 'Unknown'}")
+    user_lines.append(f"**Role**: {profile2.role or 'Unknown'}")
+    user_lines.append(f"**Power Level**: {profile2.power_level or 'Unknown'}")
+    user_lines.append(f"**Mode**: {profile2.mode or 'Unknown'}")
+    
+    if profile2.personality_traits:
+        user_lines.append(f"**Personality Traits**: {', '.join(profile2.personality_traits[:10])}")
+    
+    if profile2.core_values:
+        user_lines.append(f"**Core Values**: {', '.join(profile2.core_values[:10])}")
+    
+    if profile2.motivations:
+        user_lines.append(f"**Motivations**: {', '.join(profile2.motivations[:10])}")
+    
+    if profile2.goals:
+        user_lines.append(f"**Goals**: {', '.join(profile2.goals[:10])}")
+    
+    if profile2.fears:
+        user_lines.append(f"**Fears**: {', '.join(profile2.fears[:10])}")
+    
+    user_lines.append("\n## TASK")
+    user_lines.append("Provide a deep analysis of these two characters' relationship potential.")
+    user_lines.append("Return your response as valid JSON following the structure specified in the system prompt.")
+    
     return system_prompt, "\n".join(user_lines)
 
 
