@@ -1117,20 +1117,24 @@ class AgentActionHandler(QObject):
         else:
             return {"success": False, "message": "Seed generator not available"}
         
-        # Get seed generator widget
+        # Get seed generator widget (attribute is named 'seed_gen' not 'seed_generator')
         seed_gen = None
-        if hasattr(self.main_window, 'seed_generator'):
-            seed_gen = self.main_window.seed_generator  # type: ignore[attr-defined]
+        if hasattr(self.main_window, 'seed_gen'):
+            seed_gen = self.main_window.seed_gen  # type: ignore[attr-defined]
         
         if not seed_gen:
-            return {"success": False, "message": "Could not access seed generator"}
+            return {"success": False, "message": "Could not access seed generator widget"}
         
         # Set genre input and count
         if hasattr(seed_gen, 'genre_input'):
             seed_gen.genre_input.setPlainText(genres)
+        else:
+            return {"success": False, "message": "Seed generator missing genre_input field"}
         
         if hasattr(seed_gen, 'count_spin'):
             seed_gen.count_spin.setValue(count)
+        else:
+            return {"success": False, "message": "Seed generator missing count_spin field"}
         
         # Start generation
         if genres.strip():
@@ -1140,6 +1144,8 @@ class AgentActionHandler(QObject):
                     "success": True,
                     "message": f"Started generating seeds for genres: {genres[:50]}..."
                 }
+            else:
+                return {"success": False, "message": "Seed generator missing generate_seeds method"}
         else:
             # Surprise mode
             if hasattr(seed_gen, 'surprise_me'):
@@ -1148,6 +1154,8 @@ class AgentActionHandler(QObject):
                     "success": True,
                     "message": "Started generating surprise seeds"
                 }
+            else:
+                return {"success": False, "message": "Seed generator missing surprise_me method"}
         
         return {"success": False, "message": "Could not start seed generation"}
     
