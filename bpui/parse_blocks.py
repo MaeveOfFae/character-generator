@@ -1,6 +1,7 @@
 """Strict codeblock parser for blueprint outputs."""
 
 import re
+from pathlib import Path
 from typing import Optional, Dict, List, TYPE_CHECKING
 from .profiler import profile
 
@@ -50,14 +51,18 @@ def get_asset_filename(asset_name: str, template: Optional['Template'] = None) -
             if asset.name == asset_name:
                 # If blueprint_file is specified, use it as base for filename
                 if asset.blueprint_file:
+                    # Extract just the filename (basename) from path
+                    blueprint_path = Path(asset.blueprint_file)
+                    filename = blueprint_path.name
+                    
                     # Keep .md extension if present, otherwise assume .txt
-                    if asset.blueprint_file.endswith('.md'):
-                        return asset.blueprint_file
-                    elif asset.blueprint_file.endswith('.txt'):
-                        return asset.blueprint_file
+                    if filename.endswith('.md'):
+                        return filename
+                    elif filename.endswith('.txt'):
+                        return filename
                     else:
                         # Blueprint file without extension, add .txt
-                        return asset.blueprint_file if '.' in asset.blueprint_file else f"{asset.blueprint_file}.txt"
+                        return filename if '.' in filename else f"{filename}.txt"
                 break
     
     # Fall back to default mapping

@@ -39,23 +39,16 @@ class CompileWorker(QThread):
             self.error.emit(str(e))
     
     async def _compile(self):
-        """Perform compilation."""
-        from ..prompting import build_orchestrator_prompt
+        """Perform compilation using sequential generation (like TUI)."""
+        from ..prompting import build_asset_prompt
         from ..llm.litellm_engine import LiteLLMEngine
-        from ..parse_blocks import parse_blueprint_output
-        from ..pack_io import save_draft
+        from ..parse_blocks import extract_single_asset, extract_character_name, ASSET_ORDER
+        from ..pack_io import create_draft_dir
         from datetime import datetime
         
-        # Build prompt with template support
-        system_prompt, user_prompt = build_orchestrator_prompt(
-            self.seed, 
-            self.mode,
-            template=self.template
-        )
         self.output.emit(f"Compiling with seed: {self.seed}\n")
-        if self.template:
-            self.output.emit(f"Using template: {self.template.name} ({len(self.template.assets)} assets)\n")
-        self.output.emit(f"Mode: {self.mode}\n\n")
+        self.output.emit(f"Mode: {self.mode or 'Auto'}\n")
+        self.output.emit("\nStarting sequential generation...\n\n")
         
         # Get LLM engine
         engine = LiteLLMEngine(
@@ -65,20 +58,52 @@ class CompileWorker(QThread):
             api_version=self.config.api_version
         )
         
-        # Generate
-        self.output.emit("Generating assets...\n\n")
-        response = ""
-        async for chunk in engine.generate_stream(system_prompt, user_prompt):
-            response += chunk
-            self.output.emit(chunk)
+        # Generate each asset sequentially
+        assets = {}
+        character_name = None
         
-        # Parse
-        self.output.emit("\n\nParsing output...\n")
-        assets = parse_blueprint_output(response, template=self.template)
+        for asset_name in ASSET_ORDER:
+            self.output.emit(f"→ Generating {asset_name}...\n")
+            
+            # Build prompt with prior assets as context
+            system_prompt, user_prompt = build_asset_prompt(
+                asset_name, self.seed, self.mode, assets
+            )
+            
+            # Generate this asset
+            raw_output = ""
+            async for chunk in engine.generate_stream(system_prompt, user_prompt):
+                raw_output += chunk
+                self.output.emit(chunk)
+            
+            # Parse this asset
+            try:
+                asset_content = extract_single_asset(raw_output, asset_name)
+                assets[asset_name] = asset_content
+                self.output.emit(f"\n✓ {asset_name} complete ({len(asset_content)} chars)\n\n")
+                
+                # Extract character name from character_sheet once available
+                if asset_name == "character_sheet" and not character_name:
+                    character_name = extract_character_name(asset_content)
+                    if character_name:
+                        self.output.emit(f"Character: {character_name}\n\n")
+            
+            except Exception as e:
+                self.output.emit(f"\n✗ Failed to parse {asset_name}: {e}\n")
+                raise
         
-        # Save
-        self.output.emit("Saving draft...\n")
-        draft_dir = save_draft(assets, self.seed, self.mode, self.config.model, template=self.template)
+        if not character_name:
+            character_name = "unnamed_character"
+        
+        # Save draft with metadata
+        self.output.emit("\nSaving draft...\n")
+        draft_dir = create_draft_dir(
+            assets, 
+            character_name,
+            seed=self.seed,
+            mode=self.mode,
+            model=self.config.model
+        )
         
         self.output.emit(f"\n✓ Saved to: {draft_dir}\n")
         

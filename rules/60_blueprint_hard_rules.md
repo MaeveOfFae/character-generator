@@ -18,8 +18,10 @@ These are non-negotiable.
 
 ## character_sheet
 
-- Follow section order and field names EXACTLY.
-- Fill every bracketed placeholder (no "[Age]" etc left unfilled).
+- **CRITICAL: Use ONLY the structure shown in the blueprint. Do NOT use alternative formats like [Character]/[Profile]/[Attributes] sections.**
+- **Field names must match EXACTLY: "name:", "age:", "occupation:", "heritage:", "Core Concept:", "Appearance:", "Personality:", "Strengths:", "Flaws:", etc.**
+- Follow section order and field names EXACTLY as shown in the blueprint.
+- Fill every bracketed placeholder (no "[Age]", "[Name]", "[Strength]" left unfilled).
 - Keep lists tight and functional; paragraphs brief.
 - No moral sanitization unless content mode demands it.
 - Output ONLY inside a single plaintext code block. No commentary.

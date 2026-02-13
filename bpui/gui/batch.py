@@ -31,12 +31,10 @@ class BatchWorker(QThread):
             self.finished.emit(False, f"Fatal error: {e}")
     
     async def _run_async(self):
-        """Async batch compilation with parallel execution."""
+        """Async batch compilation with parallel execution using sequential generation."""
         import asyncio
         from ..config import Config
         from ..llm.litellm_engine import LiteLLMEngine
-        from ..prompting import build_orchestrator_prompt
-        from ..parse_blocks import parse_blueprint_output, extract_character_name, ASSET_FILENAMES
         from ..pack_io import create_draft_dir
         
         total = len(self.seeds)
@@ -61,24 +59,38 @@ class BatchWorker(QThread):
         semaphore = asyncio.Semaphore(max_concurrent)
         
         async def compile_one(seed, index):
-            """Compile one seed."""
+            """Compile one seed using sequential generation."""
             nonlocal completed, failed
             
             async with semaphore:
                 await asyncio.sleep(rate_limit)
                 
                 try:
-                    # Build prompt
-                    system_prompt, user_prompt = build_orchestrator_prompt(seed, self.mode)
+                    # Import sequential generation components
+                    from ..prompting import build_asset_prompt
+                    from ..parse_blocks import extract_single_asset, extract_character_name, ASSET_ORDER
                     
-                    # Generate
-                    output = await engine.generate(system_prompt, user_prompt)
+                    # Generate each asset sequentially
+                    assets = {}
+                    character_name = None
                     
-                    # Parse
-                    assets = parse_blueprint_output(output)
+                    for asset_name in ASSET_ORDER:
+                        # Build prompt with prior assets as context
+                        system_prompt, user_prompt = build_asset_prompt(
+                            asset_name, seed, self.mode, assets
+                        )
+                        
+                        # Generate this asset
+                        output = await engine.generate(system_prompt, user_prompt)
+                        
+                        # Parse this asset
+                        asset_content = extract_single_asset(output, asset_name)
+                        assets[asset_name] = asset_content
+                        
+                        # Extract character name from character_sheet once available
+                        if asset_name == "character_sheet" and not character_name:
+                            character_name = extract_character_name(asset_content)
                     
-                    # Extract name
-                    character_name = extract_character_name(assets.get("character_sheet", ""))
                     if not character_name:
                         character_name = f"character_{index:03d}"
                     
