@@ -1,7 +1,7 @@
 """Main window for Qt6 GUI."""
 
 from PySide6.QtWidgets import (
-    QMainWindow, QStackedWidget, QStatusBar
+    QMainWindow, QStackedWidget, QStatusBar, QSplitter
 )
 from PySide6.QtCore import Qt
 
@@ -10,6 +10,13 @@ from .compile import CompileWidget
 from .review import ReviewWidget
 from .batch import BatchScreen
 from .theme import ThemeManager
+from .agent_chatbox import AgentChatbox
+from .agent_context import (
+    AgentContextManager,
+    ReviewScreenContextProvider,
+    CompileScreenContextProvider,
+    HomeScreenContextProvider
+)
 
 
 class MainWindow(QMainWindow):
@@ -21,14 +28,30 @@ class MainWindow(QMainWindow):
         self.theme_manager = ThemeManager(config)
         
         self.setWindowTitle("Blueprint UI")
-        self.setGeometry(100, 100, 1400, 900)
+        self.setGeometry(100, 100, 1800, 900)
         
         # Apply theme to entire window
         self.theme_manager.apply_theme(self)
         
+        # Context manager
+        self.context_manager = AgentContextManager(self)
+        
+        # Main splitter for layout
+        self.main_splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.setCentralWidget(self.main_splitter)
+        
         # Stacked widget for screens
         self.stack = QStackedWidget()
-        self.setCentralWidget(self.stack)
+        self.main_splitter.addWidget(self.stack)
+        
+        # Agent chatbox sidebar
+        self.agent_chatbox = AgentChatbox(self.config, self)
+        self.main_splitter.addWidget(self.agent_chatbox)
+        
+        # Set splitter sizes (70% main content, 30% chatbox)
+        self.main_splitter.setSizes([1260, 540])
+        self.main_splitter.setStretchFactor(0, 7)
+        self.main_splitter.setStretchFactor(1, 3)
         
         # Create screens
         from .seed_generator import SeedGeneratorScreen
@@ -56,6 +79,10 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.offspring)
         self.stack.addWidget(self.similarity)
         
+        # Register context providers (after screens are created)
+        self.context_manager.register_provider("home", HomeScreenContextProvider(self.home))
+        self.context_manager.register_provider("compile", CompileScreenContextProvider(self.compile))
+        
         # Status bar
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
@@ -71,40 +98,48 @@ class MainWindow(QMainWindow):
         """Show home screen."""
         self.stack.setCurrentWidget(self.home)
         self.home.refresh()
+        self.context_manager.update_context("home")
     
     def show_compile(self, seed=""):
         """Show compile screen."""
         self.compile.set_seed(seed)
         self.stack.setCurrentWidget(self.compile)
+        self.context_manager.update_context("compile")
     
     def show_batch(self):
         """Show batch screen."""
         self.stack.setCurrentWidget(self.batch)
+        self.context_manager.update_context("batch", "Batch Processing")
     
     def show_seed_generator(self):
         """Show seed generator screen."""
         self.stack.setCurrentWidget(self.seed_gen)
         self.status_bar.showMessage("Seed Generator")
+        self.context_manager.update_context("seed_generator")
     
     def show_validate(self):
         """Show validate screen."""
         self.stack.setCurrentWidget(self.validate)
         self.status_bar.showMessage("Validate Directory")
+        self.context_manager.update_context("validate", "Validation")
     
     def show_template_manager(self):
         """Show template manager screen."""
         self.stack.setCurrentWidget(self.template_manager)
         self.status_bar.showMessage("Template Manager")
+        self.context_manager.update_context("template_manager", "Template Manager")
     
     def show_offspring(self):
         """Show offspring generator screen."""
         self.stack.setCurrentWidget(self.offspring)
         self.status_bar.showMessage("Offspring Generator")
+        self.context_manager.update_context("offspring", "Offspring Generator")
     
     def show_similarity(self):
         """Show similarity analyzer screen."""
         self.stack.setCurrentWidget(self.similarity)
         self.status_bar.showMessage("Similarity Analyzer")
+        self.context_manager.update_context("similarity", "Similarity Analyzer")
     
     def show_review(self, draft_dir, assets):
         """Show review screen."""
@@ -119,6 +154,11 @@ class MainWindow(QMainWindow):
         
         self.stack.addWidget(review)
         self.stack.setCurrentWidget(review)
+        
+        # Register context provider for this review widget
+        from .agent_context import ReviewScreenContextProvider
+        self.context_manager.register_provider("review", ReviewScreenContextProvider(review))
+        self.context_manager.update_context("review")
     
     def refresh_all_highlighters(self):
         """Refresh syntax highlighters in all review widgets."""
