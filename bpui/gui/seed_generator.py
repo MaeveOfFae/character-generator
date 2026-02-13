@@ -301,8 +301,7 @@ class SeedGeneratorScreen(QWidget):
         # Get main window and switch to compile with this seed
         main_window = self.window()
         if hasattr(main_window, 'compile') and hasattr(main_window, 'show_compile'):
-            # Type: ignore - we've checked these attributes exist
-            main_window.compile.seed_input.setText(seed)  # type: ignore
-            main_window.show_compile()  # type: ignore
+            # Pass seed to show_compile to avoid it being cleared
+            main_window.show_compile(seed)  # type: ignore
             self.status_label.setText(f"✓ Using seed: {seed[:50]}...")
             self.status_label.setStyleSheet("color: #4a4;")

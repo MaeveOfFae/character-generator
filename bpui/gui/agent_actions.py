@@ -685,14 +685,11 @@ class AgentActionHandler(QObject):
     
     def _compile_character(self, seed: str, mode: str = "Auto") -> Dict[str, Any]:
         """Compile a character."""
-        # Navigate to compile screen
-        self.main_window.show_compile()
+        # Navigate to compile screen with seed
+        self.main_window.show_compile(seed)
         
         # Get compile widget
         compile_widget = self.main_window.compile
-        
-        # Set seed and mode
-        compile_widget.seed_input.setText(seed)
         
         # Set mode
         mode_index = compile_widget.mode_combo.findText(mode)
@@ -1181,10 +1178,9 @@ class AgentActionHandler(QObject):
         
         seed = seed_gen.seeds[seed_index]
         
-        # Use the seed
-        if hasattr(self.main_window, 'compile'):
-            self.main_window.compile.seed_input.setText(seed)
-            self.main_window.show_compile()
+        # Use the seed - navigate to compile and set the seed
+        if hasattr(self.main_window, 'show_compile'):
+            self.main_window.show_compile(seed)  # Pass seed to show_compile
             return {
                 "success": True,
                 "message": f"Using seed: {seed[:50]}..."
