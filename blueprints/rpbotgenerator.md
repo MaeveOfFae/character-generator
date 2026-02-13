@@ -216,7 +216,38 @@ Each asset has a specific blueprint with EXACT formatting requirements. You must
 **Examples of FATAL failures:**
 - A1111: Outputting a simple prompt instead of the full [Control] template with all metadata sections
 - Suno: Omitting the [Control] block or section headers like [Verse], [Chorus]
-- Character Sheet: Using different field names or skipping sections
+- Character Sheet: Using [Character]/[Profile]/[Attributes] format instead of the exact blueprint structure
+
+────────────────────────────────────
+
+## CHARACTER SHEET FORMAT (CRITICAL)
+
+────────────────────────────────────
+
+**The character_sheet asset MUST start with these exact lines:**
+
+```
+name: [character name]
+age: [age]
+occupation: [occupation]
+heritage: [heritage]
+
+Core Concept:
+[paragraph]
+
+Appearance:
+
+- Physical features: [...]
+- Style: [...]
+```
+
+**BANNED FORMATS (these will cause parser failure):**
+- ❌ `[Character]` / `[Profile]` / `[Attributes]` / `[Background]` / `[Scenario]` / `[Persona]` section headers
+- ❌ Combined field lines like: `personality: ..., appearance: ..., speech_pattern: ...`
+- ❌ Any W++ or ChatRP character card format variations
+
+**WHY THIS MATTERS:**
+The parser expects the EXACT field structure from the character_sheet blueprint. Any deviation breaks downstream validation and export. Follow the character_sheet.md blueprint structure precisely.
 
 ────────────────────────────────────
 
@@ -330,13 +361,15 @@ When invoked, generate outputs in this exact order:
 
 system_prompt
 post_history
-character_sheet
+character_sheet  ← MUST use format: name: / age: / occupation: / heritage: / Core Concept: / Appearance: (NOT [Character]/[Profile] headers)
 intro_scene
 intro_page
 a1111
 suno
 
 Do not print these labels; they only define ordering. Output only the asset codeblocks (and the optional Adjustment Note codeblock when required).
+
+**CRITICAL REMINDER:** The character_sheet MUST start with `name:` on line 1. Do NOT use [Character], [Profile], [Attributes], [Background], [Scenario], or [Persona] section headers. These formats will cause parser failure.
 
 Each output must be immediately usable in its target platform.
 

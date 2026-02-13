@@ -324,7 +324,18 @@ class AgentWorker(QThread):
             if isinstance(value, str):
                 parts.append(f"{key}: {value[:500]}{'...' if len(value) > 500 else ''}")
             elif isinstance(value, dict):
-                parts.append(f"{key}: {len(value)} items")
+                # Special handling for nested dictionaries like "assets"
+                if key == "assets":
+                    parts.append(f"\n{key}:")
+                    for asset_name, asset_content in value.items():
+                        if isinstance(asset_content, str):
+                            # Show full asset content for key assets
+                            parts.append(f"  {asset_name}:")
+                            parts.append(f"    {asset_content[:2000]}{'...' if len(asset_content) > 2000 else ''}")
+                        else:
+                            parts.append(f"  {asset_name}: {str(asset_content)}")
+                else:
+                    parts.append(f"{key}: {len(value)} items")
             elif isinstance(value, list):
                 parts.append(f"{key}: {len(value)} items")
             else:
