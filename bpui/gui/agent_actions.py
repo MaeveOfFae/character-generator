@@ -1,8 +1,12 @@
 """Agent action system for performing operations in the GUI."""
 
 from typing import Dict, Any, List, Callable, Optional
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Signal, QTimer
 import json
+import time
+import traceback
+from functools import wraps
+from collections import defaultdict
 
 
 # Action tool definitions for LLM
@@ -301,12 +305,24 @@ AGENT_TOOLS = [
                 "required": ["draft_name"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_current_draft_metadata",
+            "description": "Get metadata for the currently open draft in review mode (name, model, seed, mode, tags, genre, etc.)",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        }
     }
 ]
 
 
 class AgentActionHandler(QObject):
-    """Handles execution of agent actions."""
+    """Handles execution of agent actions with error handling, timeouts, and circuit breaker."""
     
     action_completed = Signal(str, bool, str)  # action_name, success, message
     
@@ -318,6 +334,18 @@ class AgentActionHandler(QObject):
         """
         super().__init__()
         self.main_window = main_window
+        
+        # Configuration
+        self.DEFAULT_TIMEOUT = 30.0  # seconds
+        self.MAX_RETRIES = 2
+        self.CIRCUIT_BREAKER_THRESHOLD = 3  # failures before opening circuit
+        self.CIRCUIT_BREAKER_TIMEOUT = 60.0  # seconds to wait before retry
+        
+        # Circuit breaker state
+        self._failure_counts: Dict[str, int] = defaultdict(int)
+        self._circuit_open: Dict[str, float] = {}  # action_name -> timestamp when opened
+        self._last_error: Dict[str, str] = {}  # action_name -> last error message
+        
         self._actions: Dict[str, Callable] = {
             "navigate_to_screen": self._navigate_to_screen,
             "edit_current_asset": self._edit_current_asset,
@@ -336,35 +364,246 @@ class AgentActionHandler(QObject):
             "get_generated_seeds": self._get_generated_seeds,
             "start_batch_compilation": self._start_batch_compilation,
             "validate_character_pack": self._validate_character_pack,
+            "get_current_draft_metadata": self._get_current_draft_metadata,
         }
     
-    def execute_action(self, action_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute an agent action.
+    def execute_action(self, action_name: str, arguments: Dict[str, Any], timeout: Optional[float] = None) -> Dict[str, Any]:
+        """Execute an agent action with error handling, timeout, and circuit breaker.
         
         Args:
             action_name: Name of the action to execute
             arguments: Action arguments
+            timeout: Timeout in seconds (uses DEFAULT_TIMEOUT if not specified)
         
         Returns:
-            Result dict with success status and message
+            Result dict with success status, message, and optional error details
         """
         if action_name not in self._actions:
             return {
                 "success": False,
-                "message": f"Unknown action: {action_name}"
+                "message": f"Unknown action: {action_name}",
+                "error_type": "unknown_action"
             }
+        
+        # Check circuit breaker
+        if action_name in self._circuit_open:
+            time_since_open = time.time() - self._circuit_open[action_name]
+            if time_since_open < self.CIRCUIT_BREAKER_TIMEOUT:
+                return {
+                    "success": False,
+                    "message": f"Action '{action_name}' temporarily disabled due to repeated failures. Last error: {self._last_error.get(action_name, 'unknown')}. Retry in {int(self.CIRCUIT_BREAKER_TIMEOUT - time_since_open)}s.",
+                    "error_type": "circuit_breaker_open",
+                    "retry_after": int(self.CIRCUIT_BREAKER_TIMEOUT - time_since_open)
+                }
+            else:
+                # Timeout expired, reset circuit breaker
+                del self._circuit_open[action_name]
+                self._failure_counts[action_name] = 0
+        
+        # Validate arguments
+        validation_result = self._validate_arguments(action_name, arguments)
+        if not validation_result["valid"]:
+            return {
+                "success": False,
+                "message": f"Invalid arguments: {validation_result['error']}",
+                "error_type": "validation_error",
+                "suggestion": validation_result.get("suggestion")
+            }
+        
+        # Execute with retry logic
+        timeout_seconds = timeout or self.DEFAULT_TIMEOUT
+        last_error: Optional[str] = None
+        error_type = "execution_error"  # default
+        attempt = 0
+        
+        for attempt in range(self.MAX_RETRIES + 1):
+            try:
+                # Execute with timeout
+                result = self._execute_with_timeout(
+                    action_name,
+                    arguments,
+                    timeout_seconds
+                )
+                
+                # Success - reset failure count
+                if action_name in self._failure_counts:
+                    self._failure_counts[action_name] = 0
+                
+                self.action_completed.emit(action_name, True, result.get("message", ""))
+                return result
+                
+            except TimeoutError as e:
+                last_error = f"Action timed out after {timeout_seconds}s"
+                error_type = "timeout"
+                # Don't retry on timeout
+                break
+                
+            except ValueError as e:
+                # Validation or argument errors - don't retry
+                last_error = f"Invalid input: {str(e)}"
+                error_type = "validation_error"
+                break
+                
+            except Exception as e:
+                last_error = str(e)
+                error_type = "execution_error"
+                
+                # For transient errors, retry
+                if attempt < self.MAX_RETRIES:
+                    # Exponential backoff
+                    wait_time = 0.5 * (2 ** attempt)
+                    time.sleep(wait_time)
+                    continue
+                break
+        
+        # All retries failed
+        self._failure_counts[action_name] += 1
+        error_message = last_error or "Unknown error"
+        self._last_error[action_name] = error_message
+        
+        # Check if we should open circuit breaker
+        if self._failure_counts[action_name] >= self.CIRCUIT_BREAKER_THRESHOLD:
+            self._circuit_open[action_name] = time.time()
+            error_msg = f"Action '{action_name}' failed {self._failure_counts[action_name]} times. Circuit breaker activated. {error_message}"
+        else:
+            error_msg = f"Action failed after {self.MAX_RETRIES + 1} attempts: {error_message}"
+        
+        self.action_completed.emit(action_name, False, error_msg)
+        
+        return {
+            "success": False,
+            "message": error_msg,
+            "error_type": error_type,
+            "attempts": attempt + 1,
+            "suggestion": self._get_error_suggestion(action_name, error_type, error_message)
+        }
+    
+    def _execute_with_timeout(self, action_name: str, arguments: Dict[str, Any], timeout: float) -> Dict[str, Any]:
+        """Execute action with timeout.
+        
+        Note: This is a simple timeout implementation. For production,
+        consider using QTimer or threading.Timer for true async timeout.
+        """
+        start_time = time.time()
         
         try:
             result = self._actions[action_name](**arguments)
-            self.action_completed.emit(action_name, True, result.get("message", ""))
+            
+            elapsed = time.time() - start_time
+            if elapsed > timeout:
+                raise TimeoutError(f"Action exceeded timeout of {timeout}s")
+            
+            # Ensure result is a dict
+            if not isinstance(result, dict):
+                result = {"success": True, "message": str(result)}
+            
+            # Add timing info
+            result["execution_time"] = round(elapsed, 2)
+            
             return result
+            
         except Exception as e:
-            error_msg = f"Action failed: {str(e)}"
-            self.action_completed.emit(action_name, False, error_msg)
-            return {
-                "success": False,
-                "message": error_msg
-            }
+            elapsed = time.time() - start_time
+            if elapsed > timeout:
+                raise TimeoutError(f"Action exceeded timeout of {timeout}s")
+            raise
+    
+    def _validate_arguments(self, action_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate action arguments against tool definition."""
+        # Find tool definition
+        tool_def = None
+        for tool in AGENT_TOOLS:
+            if tool["function"]["name"] == action_name:
+                tool_def = tool["function"]
+                break
+        
+        if not tool_def:
+            return {"valid": True}  # No validation available
+        
+        params = tool_def.get("parameters", {})
+        required = params.get("required", [])
+        properties = params.get("properties", {})
+        
+        # Check required parameters
+        for req_param in required:
+            if req_param not in arguments:
+                return {
+                    "valid": False,
+                    "error": f"Missing required parameter: {req_param}",
+                    "suggestion": f"Add '{req_param}' parameter to the action call"
+                }
+        
+        # Validate parameter types and enums
+        for param_name, param_value in arguments.items():
+            if param_name not in properties:
+                continue
+            
+            prop = properties[param_name]
+            
+            # Check enum values
+            if "enum" in prop:
+                if param_value not in prop["enum"]:
+                    return {
+                        "valid": False,
+                        "error": f"Invalid value for {param_name}: {param_value}",
+                        "suggestion": f"Use one of: {', '.join(prop['enum'])}"
+                    }
+            
+            # Basic type checking
+            expected_type = prop.get("type")
+            if expected_type == "string" and not isinstance(param_value, str):
+                return {
+                    "valid": False,
+                    "error": f"Parameter {param_name} must be a string",
+                    "suggestion": f"Convert {param_name} to string"
+                }
+            elif expected_type == "boolean" and not isinstance(param_value, bool):
+                return {
+                    "valid": False,
+                    "error": f"Parameter {param_name} must be a boolean",
+                    "suggestion": f"Use true or false for {param_name}"
+                }
+            elif expected_type == "integer" and not isinstance(param_value, int):
+                return {
+                    "valid": False,
+                    "error": f"Parameter {param_name} must be an integer",
+                    "suggestion": f"Convert {param_name} to integer"
+                }
+        
+        return {"valid": True}
+    
+    def _get_error_suggestion(self, action_name: str, error_type: str, error_msg: str) -> str:
+        """Get helpful suggestion based on error type."""
+        suggestions = {
+            "timeout": "Try breaking the task into smaller steps or navigate to the correct screen first.",
+            "validation_error": "Check the parameter values and types match the expected format.",
+            "circuit_breaker_open": "This action has failed multiple times. Try a different approach or check if you're on the correct screen.",
+            "unknown_action": "Use get_screen_state to see what actions are available."
+        }
+        
+        base_suggestion = suggestions.get(error_type, "Try a different approach or check the current state with get_screen_state.")
+        
+        # Add action-specific suggestions
+        if "review" in action_name and "Not on review screen" in error_msg:
+            return "Navigate to review screen first using navigate_to_screen('review')."
+        elif "compile" in action_name and "Not on compile screen" in error_msg:
+            return "Navigate to compile screen first using navigate_to_screen('compile')."
+        elif "draft" in action_name.lower():
+            return "Make sure you have drafts available. Use list_available_drafts to check."
+        
+        return base_suggestion
+    
+    def reset_circuit_breaker(self, action_name: Optional[str] = None):
+        """Reset circuit breaker for specific action or all actions."""
+        if action_name:
+            if action_name in self._circuit_open:
+                del self._circuit_open[action_name]
+            if action_name in self._failure_counts:
+                self._failure_counts[action_name] = 0
+        else:
+            self._circuit_open.clear()
+            self._failure_counts.clear()
+            self._last_error.clear()
     
     def _navigate_to_screen(self, screen: str) -> Dict[str, Any]:
         """Navigate to a screen."""
@@ -499,7 +738,11 @@ class AgentActionHandler(QObject):
         return {"success": True, "message": f"Opened draft: {draft_name}"}
     
     def _export_character(self, name: Optional[str] = None) -> Dict[str, Any]:
-        """Export character pack."""
+        """Export character pack.
+        
+        Note: The 'name' parameter is currently not used by the underlying export system.
+        The export dialog will prompt for the character name if needed.
+        """
         current_screen = self.main_window.stack.currentWidget()
         
         from .review import ReviewWidget
@@ -508,10 +751,13 @@ class AgentActionHandler(QObject):
         
         review_widget = current_screen
         
-        # Trigger export
+        # Trigger export (name parameter not currently supported by export_pack)
         if hasattr(review_widget, 'export_pack'):
             review_widget.export_pack()
-            return {"success": True, "message": "Export started"}
+            msg = "Export dialog opened"
+            if name:
+                msg += f" (Note: Suggested name '{name}' - please enter in dialog)"
+            return {"success": True, "message": msg}
         else:
             return {"success": False, "message": "Export not available"}
     
@@ -532,6 +778,9 @@ class AgentActionHandler(QObject):
         from .seed_generator import SeedGeneratorScreen
         from .batch import BatchScreen
         from .validate import ValidateScreen
+        from .template_manager import TemplateManagerScreen
+        from .offspring import OffspringWidget
+        from .similarity import SimilarityWidget
         
         if isinstance(current_screen, ReviewWidget):
             screen_info["screen_name"] = "review"
@@ -648,6 +897,71 @@ class AgentActionHandler(QObject):
             # Get validation results
             if hasattr(current_screen, 'results_text'):
                 results = current_screen.results_text.toPlainText()
+                if results:
+                    screen_info["elements"]["has_results"] = True
+                    screen_info["elements"]["results_preview"] = results[:500]
+        
+        elif isinstance(current_screen, TemplateManagerScreen):
+            screen_info["screen_name"] = "template_manager"
+            
+            # Get selected template
+            if hasattr(current_screen, 'selected_template'):
+                screen_info["elements"]["selected_template"] = current_screen.selected_template
+            
+            # Get templates count
+            if hasattr(current_screen, 'templates'):
+                screen_info["elements"]["templates_count"] = len(current_screen.templates)
+                if current_screen.templates:
+                    screen_info["elements"]["templates_preview"] = current_screen.templates[:5]
+            
+            # Get template list selection
+            if hasattr(current_screen, 'templates_list'):
+                current_item = current_screen.templates_list.currentItem()
+                if current_item:
+                    screen_info["elements"]["selected_template_item"] = current_item.text()
+        
+        elif isinstance(current_screen, OffspringWidget):
+            screen_info["screen_name"] = "offspring"
+            
+            # Get parent info
+            if hasattr(current_screen, 'parent1_name'):
+                screen_info["elements"]["parent1"] = current_screen.parent1_name or "[Not selected]"
+            if hasattr(current_screen, 'parent2_name'):
+                screen_info["elements"]["parent2"] = current_screen.parent2_name or "[Not selected]"
+            
+            # Check if parents are loaded
+            has_parent1 = hasattr(current_screen, 'parent1_path') and current_screen.parent1_path
+            has_parent2 = hasattr(current_screen, 'parent2_path') and current_screen.parent2_path
+            screen_info["elements"]["both_parents_selected"] = has_parent1 and has_parent2
+            
+            # Check if offspring generation is running
+            if hasattr(current_screen, 'generation_thread') and current_screen.generation_thread:
+                screen_info["elements"]["is_generating"] = current_screen.generation_thread.isRunning()
+            else:
+                screen_info["elements"]["is_generating"] = False
+        
+        elif isinstance(current_screen, SimilarityWidget):
+            screen_info["screen_name"] = "similarity"
+            
+            # Get search/comparison mode
+            if hasattr(current_screen, 'comparison_mode'):
+                screen_info["elements"]["comparison_mode"] = current_screen.comparison_mode  # type: ignore[attr-defined]
+            
+            # Get selected characters
+            if hasattr(current_screen, 'selected_char1'):
+                screen_info["elements"]["character1"] = current_screen.selected_char1 or "[Not selected]"  # type: ignore[attr-defined]
+            if hasattr(current_screen, 'selected_char2'):
+                screen_info["elements"]["character2"] = current_screen.selected_char2 or "[Not selected]"  # type: ignore[attr-defined]
+            
+            # Check if analysis is running
+            if hasattr(current_screen, 'analysis_running'):
+                screen_info["elements"]["is_analyzing"] = current_screen.analysis_running  # type: ignore[attr-defined]
+            else:
+                screen_info["elements"]["is_analyzing"] = False
+            
+            # Get results if available
+            if hasattr(current_screen, 'results_text'):
+                results = current_screen.results_text.toPlainText()  # type: ignore[attr-defined]
                 if results:
                     screen_info["elements"]["has_results"] = True
                     screen_info["elements"]["results_preview"] = results[:500]
@@ -966,3 +1280,56 @@ class AgentActionHandler(QObject):
             }
         
         return {"success": False, "message": "Could not start validation"}
+    
+    def _get_current_draft_metadata(self) -> Dict[str, Any]:
+        """Get metadata for the currently open draft in review mode."""
+        current_screen = self.main_window.stack.currentWidget()
+        
+        from .review import ReviewWidget
+        if not isinstance(current_screen, ReviewWidget):
+            return {"success": False, "message": "Not on review screen"}
+        
+        review_widget = current_screen
+        
+        if not review_widget.draft_dir:
+            return {"success": False, "message": "No draft currently open"}
+        
+        try:
+            from ..metadata import DraftMetadata
+            metadata = DraftMetadata.load(review_widget.draft_dir)
+            
+            if not metadata:
+                return {
+                    "success": True,
+                    "message": "Draft open but no metadata found",
+                    "draft_name": review_widget.draft_dir.name,
+                    "draft_path": str(review_widget.draft_dir)
+                }
+            
+            # Return full metadata
+            return {
+                "success": True,
+                "message": "Retrieved draft metadata",
+                "metadata": {
+                    "draft_name": review_widget.draft_dir.name,
+                    "draft_path": str(review_widget.draft_dir),
+                    "character_name": metadata.character_name,
+                    "seed": metadata.seed,
+                    "mode": metadata.mode,
+                    "model": metadata.model,
+                    "template_name": metadata.template_name,
+                    "tags": metadata.tags or [],
+                    "genre": metadata.genre,
+                    "favorite": metadata.favorite,
+                    "created": metadata.created,
+                    "modified": metadata.modified,
+                    "parent_drafts": metadata.parent_drafts or [],
+                    "offspring_type": metadata.offspring_type,
+                }
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"Failed to load metadata: {str(e)}",
+                "draft_name": review_widget.draft_dir.name
+            }

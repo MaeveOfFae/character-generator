@@ -54,7 +54,7 @@ class AgentWorker(QThread):
             self.error.emit(str(e))
     
     async def _generate(self):
-        """Perform LLM generation with optional tool calling."""
+        """Perform LLM generation with optional tool calling and robust error handling."""
         from ..llm.litellm_engine import LiteLLMEngine
         
         # Build full messages list
@@ -74,106 +74,217 @@ class AgentWorker(QThread):
         full_messages.extend(self.messages)
         
         # Create engine
-        engine = LiteLLMEngine(
-            model=self.config.model,
-            api_key=self.config.get_api_key_for_model(self.config.model),
-            base_url=self.config.api_base_url,
-            api_version=self.config.api_version,
-            temperature=self.personality.temperature,
-            max_tokens=self.personality.max_tokens
-        )
+        try:
+            engine = LiteLLMEngine(
+                model=self.config.model,
+                api_key=self.config.get_api_key_for_model(self.config.model),
+                base_url=self.config.api_base_url,
+                api_version=self.config.api_version,
+                temperature=self.personality.temperature,
+                max_tokens=self.personality.max_tokens
+            )
+        except Exception as e:
+            raise Exception(f"Failed to create LLM engine: {str(e)}")
         
         # Loop for tool calling
         max_iterations = 10  # Prevent infinite loops
         iteration = 0
         final_response = ""
+        consecutive_errors = 0
+        max_consecutive_errors = 3
         
         while iteration < max_iterations:
             iteration += 1
             
-            # Generate with optional tools
-            if self.use_tools and self.action_handler:
-                # Use non-streaming for tool calls
-                import litellm
-                response = await litellm.acompletion(
-                    model=self.config.model,
-                    messages=full_messages,
-                    temperature=self.personality.temperature,
-                    max_tokens=self.personality.max_tokens,
-                    api_key=self.config.get_api_key_for_model(self.config.model),
-                    tools=AGENT_TOOLS,
-                    tool_choice="auto",
-                    stream=False,
-                    **engine.extra_params
-                )
-                
-                message = response.choices[0].message  # type: ignore[attr-defined]
-                
-                # Check for tool calls
-                if hasattr(message, 'tool_calls') and message.tool_calls:
-                    # Execute tool calls
-                    tool_results = []
+            try:
+                # Generate with optional tools
+                if self.use_tools and self.action_handler:
+                    # Use non-streaming for tool calls
+                    import litellm
                     
-                    for tool_call in message.tool_calls:
-                        tool_name = tool_call.function.name
-                        tool_args = json.loads(tool_call.function.arguments)
-                        
-                        # Emit tool call started
-                        self.tool_call_started.emit(tool_name, tool_args)
-                        
-                        # Execute action
-                        result = self.action_handler.execute_action(tool_name, tool_args)
-                        
-                        # Emit tool call completed
-                        self.tool_call_completed.emit(
-                            tool_name,
-                            result.get("success", False),
-                            result.get("message", "")
+                    try:
+                        response = await litellm.acompletion(
+                            model=self.config.model,
+                            messages=full_messages,
+                            temperature=self.personality.temperature,
+                            max_tokens=self.personality.max_tokens,
+                            api_key=self.config.get_api_key_for_model(self.config.model),
+                            tools=AGENT_TOOLS,
+                            tool_choice="auto",
+                            stream=False,
+                            timeout=60.0,  # 60 second timeout for LLM calls
+                            **engine.extra_params
                         )
+                    except Exception as llm_error:
+                        # LLM API error - report to user and try to recover
+                        error_msg = f"LLM API error: {str(llm_error)}"
+                        self.chunk_received.emit(f"\n[Error: {error_msg}]\n")
                         
-                        # Add tool result to messages
-                        tool_results.append({
-                            "role": "tool",
-                            "tool_call_id": tool_call.id,
-                            "name": tool_name,
-                            "content": json.dumps(result)
+                        consecutive_errors += 1
+                        if consecutive_errors >= max_consecutive_errors:
+                            raise Exception(f"Too many consecutive LLM errors: {error_msg}")
+                        
+                        # Add error to conversation for recovery
+                        full_messages.append({
+                            "role": "system",
+                            "content": f"Previous request failed with error: {error_msg}. Please try again with a simpler approach."
                         })
+                        continue
                     
-                    # Add assistant message with tool calls
-                    tool_calls_list = []
-                    for tc in message.tool_calls:
-                        tool_calls_list.append({
-                            "id": tc.id,
-                            "type": "function",
-                            "function": {
-                                "name": tc.function.name,
-                                "arguments": tc.function.arguments
-                            }
+                    message = response.choices[0].message  # type: ignore[attr-defined]
+                    
+                    # Reset error counter on success
+                    consecutive_errors = 0
+                    
+                    # Check for tool calls
+                    if hasattr(message, 'tool_calls') and message.tool_calls:
+                        # Execute tool calls
+                        tool_results = []
+                        all_tools_succeeded = True
+                        
+                        for tool_call in message.tool_calls:
+                            tool_name = "unknown"  # default
+                            try:
+                                tool_name = tool_call.function.name
+                                
+                                # Parse arguments with error handling
+                                try:
+                                    tool_args = json.loads(tool_call.function.arguments)
+                                except json.JSONDecodeError as e:
+                                    # JSON parsing failed
+                                    result = {
+                                        "success": False,
+                                        "message": f"Invalid JSON arguments: {str(e)}",
+                                        "error_type": "json_parse_error",
+                                        "suggestion": "Ensure arguments are valid JSON format"
+                                    }
+                                    tool_args = {}
+                                    all_tools_succeeded = False
+                                else:
+                                    # Emit tool call started
+                                    self.tool_call_started.emit(tool_name, tool_args)
+                                    
+                                    # Execute action with error handling
+                                    try:
+                                        result = self.action_handler.execute_action(tool_name, tool_args)
+                                        if not result.get("success", False):
+                                            all_tools_succeeded = False
+                                    except Exception as action_error:
+                                        # Catch any unexpected errors from action handler
+                                        result = {
+                                            "success": False,
+                                            "message": f"Unexpected error: {str(action_error)}",
+                                            "error_type": "unexpected_error",
+                                            "suggestion": "Check if you're on the correct screen or try a different approach"
+                                        }
+                                        all_tools_succeeded = False
+                                
+                                # Emit tool call completed
+                                self.tool_call_completed.emit(
+                                    tool_name,
+                                    result.get("success", False),
+                                    result.get("message", "")
+                                )
+                                
+                                # Format result with helpful information for LLM
+                                result_content = json.dumps(result)
+                                
+                                # Add tool result to messages
+                                tool_results.append({
+                                    "role": "tool",
+                                    "tool_call_id": tool_call.id,
+                                    "name": tool_name,
+                                    "content": result_content
+                                })
+                                
+                            except Exception as tool_error:
+                                # Unexpected error in tool call handling
+                                error_result = {
+                                    "success": False,
+                                    "message": f"Tool call error: {str(tool_error)}",
+                                    "error_type": "tool_call_error"
+                                }
+                                tool_results.append({
+                                    "role": "tool",
+                                    "tool_call_id": tool_call.id,
+                                    "name": tool_name,
+                                    "content": json.dumps(error_result)
+                                })
+                                all_tools_succeeded = False
+                        
+                        # Add assistant message with tool calls
+                        tool_calls_list = []
+                        for tc in message.tool_calls:
+                            tool_calls_list.append({
+                                "id": tc.id,
+                                "type": "function",
+                                "function": {
+                                    "name": tc.function.name,
+                                    "arguments": tc.function.arguments
+                                }
+                            })
+                        
+                        full_messages.append({
+                            "role": "assistant",
+                            "content": message.content or "",
+                            "tool_calls": tool_calls_list  # type: ignore[typeddict-item]
                         })
-                    
-                    full_messages.append({
-                        "role": "assistant",
-                        "content": message.content or "",
-                        "tool_calls": tool_calls_list  # type: ignore[typeddict-item]
-                    })
-                    
-                    # Add tool results
-                    full_messages.extend(tool_results)  # type: ignore[arg-type]
-                    
-                    # Continue loop to get final response
-                    continue
+                        
+                        # Add tool results
+                        full_messages.extend(tool_results)  # type: ignore[arg-type]
+                        
+                        # If tools failed, give LLM guidance
+                        if not all_tools_succeeded:
+                            full_messages.append({
+                                "role": "system",
+                                "content": "Some tools failed. Review the error messages and try a different approach. You can use get_screen_state to check the current state before taking actions."
+                            })
+                        
+                        # Continue loop to get final response
+                        continue
+                    else:
+                        # No tool calls, we have final response
+                        final_response = message.content or ""
+                        if final_response:
+                            self.chunk_received.emit(final_response)
+                        break
                 else:
-                    # No tool calls, we have final response
-                    final_response = message.content or ""
-                    if final_response:
-                        self.chunk_received.emit(final_response)
+                    # Regular streaming without tools
+                    try:
+                        async for chunk in engine.generate_chat_stream(full_messages):
+                            final_response += chunk
+                            self.chunk_received.emit(chunk)
+                    except Exception as stream_error:
+                        raise Exception(f"Streaming error: {str(stream_error)}")
                     break
-            else:
-                # Regular streaming without tools
+                    
+            except Exception as iter_error:
+                # Iteration-level error
+                consecutive_errors += 1
+                error_msg = f"Iteration {iteration} failed: {str(iter_error)}"
+                self.chunk_received.emit(f"\n[Error: {error_msg}]\n")
+                
+                if consecutive_errors >= max_consecutive_errors:
+                    raise Exception(f"Too many consecutive errors. Last: {error_msg}")
+                
+                # Try to recover
+                full_messages.append({
+                    "role": "system",
+                    "content": f"Error occurred: {error_msg}. Please simplify your approach."
+                })
+                continue
+        
+        # Check if we hit max iterations
+        if iteration >= max_iterations and not final_response:
+            self.chunk_received.emit(f"\n[Warning: Reached maximum tool calling iterations ({max_iterations}). Requesting final response...]\n")
+            # Try one more time without tools to get a response
+            try:
                 async for chunk in engine.generate_chat_stream(full_messages):
                     final_response += chunk
                     self.chunk_received.emit(chunk)
-                break
+            except Exception as e:
+                final_response = f"I encountered too many tool calls and couldn't complete the task. Error: {str(e)}"
+                self.chunk_received.emit(final_response)
         
         return final_response.strip()
     
