@@ -9,6 +9,9 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from pathlib import Path
 
+from .template_editor import TemplateEditor
+from .template_wizard import TemplateWizard
+
 
 class TemplateManagerScreen(QWidget):
     """Template manager screen."""
@@ -401,8 +404,6 @@ class TemplateManagerScreen(QWidget):
     
     def new_template(self):
         """Create a new template using the wizard."""
-        from .template_wizard import TemplateWizard
-        
         wizard = TemplateWizard(self)
         if wizard.exec() == QDialog.DialogCode.Accepted:
             self.load_templates()
@@ -412,15 +413,9 @@ class TemplateManagerScreen(QWidget):
         if not self.selected_template or self.selected_template.is_official:
             return
         
-        # TODO: Implement template editing
-        # For now, just show a message
-        QMessageBox.information(
-            self,
-            "Edit Template",
-            f"Template editing coming soon!\n\n"
-            f"You can manually edit the template.toml file at:\n"
-            f"{self.selected_template.path / 'template.toml'}"
-        )
+        editor = TemplateEditor(self, template=self.selected_template)
+        if editor.exec() == QDialog.DialogCode.Accepted:
+            self.load_templates()
     
     def duplicate_template(self):
         """Duplicate the selected template."""

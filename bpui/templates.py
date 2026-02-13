@@ -277,6 +277,37 @@ class TemplateManager:
             path=template_dir
         )
     
+    def save_template(self, template: Template):
+        """Save a template to its path.
+
+        Args:
+            template: The template to save.
+        """
+        if not template.path.exists():
+            template.path.mkdir(parents=True, exist_ok=True)
+
+        manifest_data = {
+            "template": {
+                "name": template.name,
+                "version": template.version,
+                "description": template.description
+            },
+            "assets": [
+                {
+                    "name": asset.name,
+                    "required": asset.required,
+                    "depends_on": asset.depends_on,
+                    "description": asset.description,
+                    "blueprint_file": asset.blueprint_file or f"{asset.name}.md"
+                }
+                for asset in template.assets
+            ]
+        }
+        
+        manifest_path = template.path / "template.toml"
+        with open(manifest_path, "wb") as f:
+            tomli_w.dump(manifest_data, f)
+    
     def validate_template(self, template: Template) -> Dict[str, List[str]]:
         """Validate a template for correctness.
         
