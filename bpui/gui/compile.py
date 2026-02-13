@@ -41,22 +41,24 @@ class CompileWorker(QThread):
     async def _compile(self):
         """Perform compilation using sequential generation (like TUI)."""
         from ..prompting import build_asset_prompt
-        from ..llm.litellm_engine import LiteLLMEngine
+        from ..llm.factory import create_engine
         from ..parse_blocks import extract_single_asset, extract_character_name, ASSET_ORDER
         from ..pack_io import create_draft_dir
         from datetime import datetime
-        
+
         self.output.emit(f"Compiling with seed: {self.seed}\n")
         self.output.emit(f"Mode: {self.mode or 'Auto'}\n")
         self.output.emit("\nStarting sequential generation...\n\n")
-        
-        # Get LLM engine
-        engine = LiteLLMEngine(
-            model=self.config.model,
-            api_key=self.config.get_api_key_for_model(self.config.model),
-            base_url=self.config.api_base_url,
-            api_version=self.config.api_version
-        )
+
+        # Get LLM engine using factory
+        try:
+            engine = create_engine(
+                self.config,
+                temperature=self.config.temperature,
+                max_tokens=self.config.max_tokens,
+            )
+        except (ImportError, ValueError) as e:
+            raise RuntimeError(f"Failed to create engine: {e}")
         
         # Generate each asset sequentially
         assets = {}

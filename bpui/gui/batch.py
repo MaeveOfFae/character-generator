@@ -34,22 +34,21 @@ class BatchWorker(QThread):
         """Async batch compilation with parallel execution using sequential generation."""
         import asyncio
         from ..config import Config
-        from ..llm.litellm_engine import LiteLLMEngine
+        from ..llm.factory import create_engine
         from ..pack_io import create_draft_dir
-        
+
         total = len(self.seeds)
         completed = 0
         failed = 0
-        
-        # Create LLM engine
+
+        # Create LLM engine using factory
         try:
-            engine = LiteLLMEngine(
-                model=self.config.model,
-                api_key=self.config.get_api_key_for_model(self.config.model),
-                base_url=self.config.api_base_url,
-                api_version=self.config.api_version
+            engine = create_engine(
+                self.config,
+                temperature=self.config.temperature,
+                max_tokens=self.config.max_tokens,
             )
-        except Exception as e:
+        except (ImportError, ValueError, RuntimeError) as e:
             self.finished.emit(False, f"Failed to initialize LLM: {e}")
             return
         

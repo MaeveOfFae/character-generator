@@ -234,28 +234,21 @@ class SimilarityWidget(QWidget):
         llm_engine = None
         
         if use_llm:
-            from bpui.llm.litellm_engine import LiteLLMEngine
-            from bpui.llm.openai_compat_engine import OpenAICompatEngine
-            
+            from bpui.llm.factory import create_engine
+
             try:
                 config = Config()
-                
-                # Build engine config
-                engine_config = {
-                    'model': config.model,
-                    'temperature': config.temperature,
-                    'max_tokens': config.max_tokens,
-                }
-                
-                # Create appropriate engine
-                if config.engine == "litellm":
-                    engine = LiteLLMEngine(**engine_config)
-                else:
-                    engine = OpenAICompatEngine(**engine_config)
-                
+
+                # Create engine using factory
+                engine = create_engine(
+                    config,
+                    temperature=config.temperature,
+                    max_tokens=config.max_tokens,
+                )
+
                 llm_engine = engine
                 self.results_text.setText("Comparing characters with LLM analysis...")
-            except Exception as e:
+            except (ImportError, ValueError, RuntimeError) as e:
                 QMessageBox.warning(
                     self, "LLM Error",
                     f"Could not initialize LLM engine: {e}\n"

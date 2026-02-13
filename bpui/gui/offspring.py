@@ -429,42 +429,32 @@ class OffspringThread(QThread):
     async def _run_async(self):
         """Async implementation of offspring generation."""
         try:
-            from ..llm.litellm_engine import LiteLLMEngine
-            from ..llm.openai_compat_engine import OpenAICompatEngine
+            from ..llm.factory import create_engine
             from ..prompting import build_offspring_prompt, build_asset_prompt
             from ..parse_blocks import extract_single_asset, extract_character_name, ASSET_ORDER
             from ..pack_io import create_draft_dir
             from ..metadata import DraftMetadata
-            
+
             self.log_signal.emit("Initializing offspring generation...")
-            
+
             # Check API key
             if not self.config.api_key:
                 raise Exception("No API key configured. Configure in Settings.")
-            
+
             self.log_signal.emit(f"Parents: {self.parent1_name} + {self.parent2_name}")
             self.log_signal.emit(f"Mode: {self.mode or 'Auto'}")
             self.log_signal.emit(f"Model: {self.config.model}")
-            
-            # Create engine
-            engine_config = {
-                "model": self.config.model,
-                "api_key": self.config.api_key,
-                "temperature": self.config.temperature,
-                "max_tokens": self.config.max_tokens,
-            }
-            
-            if self.config.engine == "litellm":
-                from importlib import import_module
-                try:
-                    import_module('litellm')
-                    engine = LiteLLMEngine(**engine_config)
-                except ImportError:
-                    raise Exception("LiteLLM not installed. Install with: pip install litellm")
-            else:
-                engine_config["base_url"] = self.config.base_url
-                engine = OpenAICompatEngine(**engine_config)
-            
+
+            # Create engine using factory
+            try:
+                engine = create_engine(
+                    self.config,
+                    temperature=self.config.temperature,
+                    max_tokens=self.config.max_tokens,
+                )
+            except (ImportError, ValueError, RuntimeError) as e:
+                raise Exception(f"Failed to create engine: {e}")
+
             # Step 1: Generate offspring seed
             self.log_signal.emit("\nStep 1: Generating offspring seed...")
             

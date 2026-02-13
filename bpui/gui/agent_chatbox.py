@@ -57,13 +57,13 @@ class AgentWorker(QThread):
     
     async def _generate(self):
         """Perform LLM generation with optional tool calling and robust error handling."""
-        from ..llm.litellm_engine import LiteLLMEngine
-        
+        from ..llm.factory import create_engine
+
         # Build full messages list
         full_messages = [
             {"role": "system", "content": self.personality.system_prompt}
         ]
-        
+
         # Add context if available
         if self.context:
             context_str = self._format_context()
@@ -71,21 +71,18 @@ class AgentWorker(QThread):
                 "role": "system",
                 "content": f"Context Information:\n{context_str}\n\nKeep this context in mind when responding."
             })
-        
+
         # Add conversation history
         full_messages.extend(self.messages)
-        
-        # Create engine
+
+        # Create engine using factory
         try:
-            engine = LiteLLMEngine(
-                model=self.config.model,
-                api_key=self.config.get_api_key_for_model(self.config.model),
-                base_url=self.config.api_base_url,
-                api_version=self.config.api_version,
+            engine = create_engine(
+                self.config,
                 temperature=self.personality.temperature,
                 max_tokens=self.personality.max_tokens
             )
-        except Exception as e:
+        except (ImportError, ValueError, RuntimeError) as e:
             raise Exception(f"Failed to create LLM engine: {str(e)}")
         
         # Loop for tool calling

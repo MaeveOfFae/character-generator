@@ -343,40 +343,100 @@ class SettingsDialog(QDialog):
         """Create the general settings tab."""
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        
+
+        # Provider Selection Section
+        provider_label = QLabel("<b>Provider Selection</b>")
+        layout.addWidget(provider_label)
+
+        # Create provider radio buttons
+        provider_layout = QHBoxLayout()
+        from PySide6.QtWidgets import QRadioButton, QButtonGroup
+
+        self.provider_group = QButtonGroup()
+        self.provider_buttons = {}
+
+        providers = [
+            ("google", "Google Gemini"),
+            ("openai", "OpenAI"),
+            ("anthropic", "Anthropic"),
+            ("deepseek", "DeepSeek"),
+            ("litellm", "Other (LiteLLM)")
+        ]
+
+        # Detect current provider from model
+        from ..llm.factory import detect_provider_from_model
+        current_model = self.config.model
+        detected_provider = detect_provider_from_model(current_model)
+        if detected_provider == "unknown":
+            detected_provider = "litellm"
+
+        for provider_id, provider_name in providers:
+            radio = QRadioButton(provider_name)
+            self.provider_buttons[provider_id] = radio
+            self.provider_group.addButton(radio)
+            provider_layout.addWidget(radio)
+
+            # Check if this is the current provider
+            if provider_id == detected_provider:
+                radio.setChecked(True)
+
+            # Connect to update models when provider changes
+            radio.toggled.connect(lambda checked, p=provider_id: self.on_provider_changed(p) if checked else None)
+
+        provider_layout.addStretch()
+        layout.addLayout(provider_layout)
+
+        # Add spacing
+        layout.addSpacing(10)
+
         # Form
         form = QFormLayout()
-        
+
         # Model - use editable combobox for typing/filtering
         self.model_input = QComboBox()
         self.model_input.setEditable(True)
-        self.model_input.setPlaceholderText("e.g., openai/gpt-4")
-        
-        # Populate with available models from litellm
-        available_models = self.get_available_models()
-        self.model_input.addItems(available_models)
-        
+        self.model_input.setPlaceholderText("e.g., gpt-4 or openai/gpt-4")
+
+        # Connect model change to update engine type
+        self.model_input.currentTextChanged.connect(self.update_engine_type_display)
+
+        # Populate with available models for current provider
+        self.populate_models_for_provider(detected_provider)
+
         # Set current model
-        current_model = self.config.model
         index = self.model_input.findText(current_model)
         if index >= 0:
             self.model_input.setCurrentIndex(index)
         else:
             self.model_input.setCurrentText(current_model)
-        
+
         form.addRow("Model:", self.model_input)
-        
+
+        # Engine type indicator
+        self.engine_type_label = QLabel()
+        self.engine_type_label.setStyleSheet("color: #888; font-style: italic;")
+        self.update_engine_type_display()
+        form.addRow("Engine Type:", self.engine_type_label)
+
         # API Key (masked)
         self.api_key_input = QLineEdit()
         self.api_key_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.api_key_input.setPlaceholderText("Enter API key...")
-        
-        # Try to get existing key
-        provider = self.config.model.split("/")[0] if "/" in self.config.model else "openai"
-        existing_key = self.config.get_api_key(provider)
+
+        # Load existing key for detected provider
+        if detected_provider == "litellm":
+            # For litellm, try to extract provider from model
+            if "/" in current_model:
+                provider_key = current_model.split("/")[0]
+            else:
+                provider_key = "openai"
+        else:
+            provider_key = detected_provider
+
+        existing_key = self.config.get_api_key(provider_key)
         if existing_key:
             self.api_key_input.setText(existing_key)
-        
+
         form.addRow("API Key:", self.api_key_input)
         
         # Batch settings
@@ -703,47 +763,159 @@ class SettingsDialog(QDialog):
             pass  # If litellm not available or error, return empty list
         
         return []
-    
+
+    def populate_models_for_provider(self, provider: str):
+        """Populate model dropdown with provider-specific models.
+
+        Args:
+            provider: Provider ID (google, openai, anthropic, deepseek, litellm)
+        """
+        self.model_input.clear()
+
+        if provider == "google":
+            # Native Google models
+            try:
+                from ..llm.google_engine import GoogleEngine
+                models = GoogleEngine.list_models()
+            except ImportError:
+                models = ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.0-pro"]
+            self.model_input.addItems(models)
+
+        elif provider == "openai":
+            # Native OpenAI models
+            try:
+                from ..llm.openai_engine import OpenAIEngine
+                models = OpenAIEngine.list_models()
+            except ImportError:
+                models = ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo", "o1-preview", "o1-mini"]
+            self.model_input.addItems(models)
+
+        elif provider == "anthropic":
+            # Anthropic models (via LiteLLM format)
+            models = [
+                "anthropic/claude-3-5-sonnet-20241022",
+                "anthropic/claude-3-5-haiku-20241022",
+                "anthropic/claude-3-opus-20240229",
+                "anthropic/claude-3-sonnet-20240229",
+            ]
+            self.model_input.addItems(models)
+
+        elif provider == "deepseek":
+            # DeepSeek models (via LiteLLM format)
+            models = [
+                "deepseek/deepseek-chat",
+                "deepseek/deepseek-coder",
+            ]
+            self.model_input.addItems(models)
+
+        else:  # litellm or other
+            # All available models from LiteLLM
+            all_models = self.get_available_models()
+            if all_models:
+                self.model_input.addItems(all_models)
+            else:
+                # Fallback common models in LiteLLM format
+                self.model_input.addItems([
+                    "openai/gpt-4",
+                    "openai/gpt-3.5-turbo",
+                    "anthropic/claude-3-5-sonnet-20241022",
+                    "google/gemini-pro",
+                ])
+
+    def on_provider_changed(self, provider: str):
+        """Handle provider selection change.
+
+        Args:
+            provider: Provider ID that was selected
+        """
+        # Save currently entered text (in case user typed custom model)
+        current_text = self.model_input.currentText()
+
+        # Repopulate models for new provider
+        self.populate_models_for_provider(provider)
+
+        # Try to preserve selection if it makes sense
+        # Otherwise, select first model in list
+        index = self.model_input.findText(current_text)
+        if index >= 0:
+            self.model_input.setCurrentIndex(index)
+        elif self.model_input.count() > 0:
+            self.model_input.setCurrentIndex(0)
+
+        # Update API key field with provider-specific key
+        if provider == "litellm":
+            # For litellm/other, try to get key from first selected model
+            model = self.model_input.currentText()
+            if "/" in model:
+                provider_key = model.split("/")[0]
+            else:
+                provider_key = "openai"  # fallback
+        else:
+            provider_key = provider
+
+        existing_key = self.config.get_api_key(provider_key)
+        if existing_key:
+            self.api_key_input.setText(existing_key)
+        else:
+            self.api_key_input.clear()
+
+    def update_engine_type_display(self):
+        """Update the engine type indicator label."""
+        from ..llm.factory import get_engine_type
+
+        model = self.model_input.currentText().strip()
+        if not model:
+            self.engine_type_label.setText("(No model selected)")
+            return
+
+        try:
+            engine_type = get_engine_type(self.config, model)
+            self.engine_type_label.setText(engine_type)
+        except Exception as e:
+            self.engine_type_label.setText(f"(Error: {e})")
+
     def test_connection(self):
         """Test LLM connection."""
         import time
-        from ..llm.litellm_engine import LiteLLMEngine
-        
+        from ..llm.factory import create_engine, get_engine_type
+
         self.test_status.setText("⏳ Testing connection...")
         self.test_status.setStyleSheet("color: #888;")
-        
+
         # Get current values
         model = self.model_input.currentText().strip()
         api_key = self.api_key_input.text().strip()
-        
+
         if not model:
             self.test_status.setText("❌ Please enter a model")
             self.test_status.setStyleSheet("color: #f44;")
             return
-        
+
         try:
-            # Create engine with current settings
-            engine = LiteLLMEngine(
-                model=model,
-                api_key=api_key if api_key else self.config.get_api_key_for_model(model),
-                base_url=self.config.api_base_url,
-                api_version=self.config.api_version
+            # Create engine with current settings using factory
+            engine = create_engine(
+                self.config,
+                model_override=model,
+                api_key_override=api_key if api_key else None,
             )
-            
+
+            # Show engine type
+            engine_type = get_engine_type(self.config, model)
+
             # Test with simple prompt
             start_time = time.time()
-            
+
             # Run async test in sync context
             import asyncio
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             result = loop.run_until_complete(engine.test_connection())
             loop.close()
-            
+
             latency = int((time.time() - start_time) * 1000)
-            
+
             if result.get("success"):
-                self.test_status.setText(f"✓ Connected! Latency: {latency}ms")
+                self.test_status.setText(f"✓ Connected! Latency: {latency}ms ({engine_type})")
                 self.test_status.setStyleSheet("color: #4a4;")
             else:
                 error = result.get("error", "Unknown error")
@@ -804,14 +976,37 @@ class SettingsDialog(QDialog):
     
     def save_settings(self):
         """Save settings."""
+        from ..llm.factory import detect_provider_from_model
+
         # Update model
-        self.config.set("model", self.model_input.currentText().strip())
-        
-        # Update API key
+        model = self.model_input.currentText().strip()
+        self.config.set("model", model)
+
+        # Update API key for the appropriate provider
         api_key = self.api_key_input.text().strip()
         if api_key:
-            provider = self.config.model.split("/")[0] if "/" in self.config.model else "openai"
-            self.config.set_api_key(provider, api_key)
+            # Detect provider from model name
+            detected_provider = detect_provider_from_model(model)
+
+            # Map detected provider to config key
+            if detected_provider == "google":
+                provider_key = "google"
+            elif detected_provider == "openai":
+                provider_key = "openai"
+            elif detected_provider == "litellm":
+                # For LiteLLM format "provider/model", extract provider
+                if "/" in model:
+                    provider_key = model.split("/")[0]
+                else:
+                    provider_key = "openai"  # fallback
+            else:
+                # Unknown, try to extract from model or use openai as fallback
+                if "/" in model:
+                    provider_key = model.split("/")[0]
+                else:
+                    provider_key = "openai"
+
+            self.config.set_api_key(provider_key, api_key)
         
         # Update batch settings
         try:
@@ -881,29 +1076,31 @@ class RegenerateWorker(QThread):
     
     async def _regenerate(self):
         """Perform regeneration."""
-        from ..llm.litellm_engine import LiteLLMEngine
+        from ..llm.factory import create_engine
         from ..prompting import load_blueprint
-        
-        # Build regeneration prompt
+
+        # Build regenerat prompt
         blueprint = load_blueprint(self.asset_key)
-        
+
         context = f"Current {self.asset_key}:\n{self.assets.get(self.asset_key, '')}\n\n"
         prompt = f"{context}Using this blueprint:\n\n{blueprint}\n\n"
-        
+
         if self.instructions:
             prompt += f"User instructions: {self.instructions}\n\n"
-        
+
         prompt += f"Regenerate only the {self.asset_key} asset. Output only the asset content, no explanations."
-        
+
         self.output.emit(f"Regenerating {self.asset_key}...\n\n")
-        
-        # Create engine
-        engine = LiteLLMEngine(
-            model=self.config.model,
-            api_key=self.config.get_api_key_for_model(self.config.model),
-            base_url=self.config.api_base_url,
-            api_version=self.config.api_version
-        )
+
+        # Create engine using factory
+        try:
+            engine = create_engine(
+                self.config,
+                temperature=self.config.temperature,
+                max_tokens=self.config.max_tokens,
+            )
+        except (ImportError, ValueError, RuntimeError) as e:
+            raise RuntimeError(f"Failed to create engine: {e}")
         
         # Generate
         response = ""

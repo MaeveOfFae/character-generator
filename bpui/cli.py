@@ -172,8 +172,7 @@ async def run_compile(args):
     """Run compilation from CLI."""
     from .config import Config
     logger = logging.getLogger(__name__)
-    from .llm.litellm_engine import LiteLLMEngine
-    from .llm.openai_compat_engine import OpenAICompatEngine
+    from .llm.factory import create_engine
     from .prompting import build_asset_prompt
     from .parse_blocks import extract_single_asset, extract_character_name, ASSET_ORDER
     from .pack_io import create_draft_dir
@@ -188,24 +187,17 @@ async def run_compile(args):
     model = args.model or config.model
     config.validate_api_key(model)
 
-    # Create engine
-    engine_config = {
-        "model": model,
-        "api_key": config.api_key,
-        "temperature": config.temperature,
-        "max_tokens": config.max_tokens,
-    }
-
-    if config.engine == "litellm":
-        try:
-            engine = LiteLLMEngine(**engine_config)
-        except ImportError as e:
-            logger.error("LiteLLM not installed. Install with: pip install litellm")
-            logger.error("Or configure engine=openai-compat in .bpui.toml for OpenAI-compatible APIs")
-            sys.exit(1)
-    else:
-        engine_config["base_url"] = config.base_url
-        engine = OpenAICompatEngine(**engine_config)
+    # Create engine using factory
+    try:
+        engine = create_engine(
+            config,
+            model_override=model if args.model else None,
+            temperature=config.temperature,
+            max_tokens=config.max_tokens,
+        )
+    except (ImportError, ValueError) as e:
+        logger.error(f"Failed to create engine: {e}")
+        sys.exit(1)
 
     # Generate each asset sequentially
     logger.info("Starting sequential generation...")
@@ -255,8 +247,7 @@ async def run_compile(args):
 async def run_seedgen(args):
     """Run seed generator from CLI."""
     from .config import Config
-    from .llm.litellm_engine import LiteLLMEngine
-    from .llm.openai_compat_engine import OpenAICompatEngine
+    from .llm.factory import create_engine
     from .prompting import build_seedgen_prompt
 
     logger = logging.getLogger(__name__)
@@ -278,24 +269,16 @@ async def run_seedgen(args):
     # Build prompt
     system_prompt, user_prompt = build_seedgen_prompt(genre_lines)
 
-    # Create engine
-    engine_config = {
-        "model": config.model,
-        "api_key": config.api_key,
-        "temperature": config.temperature,
-        "max_tokens": config.max_tokens,
-    }
-
-    if config.engine == "litellm":
-        try:
-            engine = LiteLLMEngine(**engine_config)
-        except ImportError as e:
-            logger.error("LiteLLM not installed. Install with: pip install litellm")
-            logger.error("Or configure engine=openai-compat in .bpui.toml for OpenAI-compatible APIs")
-            sys.exit(1)
-    else:
-        engine_config["base_url"] = config.base_url
-        engine = OpenAICompatEngine(**engine_config)
+    # Create engine using factory
+    try:
+        engine = create_engine(
+            config,
+            temperature=config.temperature,
+            max_tokens=config.max_tokens,
+        )
+    except (ImportError, ValueError) as e:
+        logger.error(f"Failed to create engine: {e}")
+        sys.exit(1)
 
     # Generate
     print("⏳ Generating...")
@@ -372,8 +355,7 @@ async def run_batch(args):
     """Run batch compilation from CLI."""
     import asyncio
     from .config import Config
-    from .llm.litellm_engine import LiteLLMEngine
-    from .llm.openai_compat_engine import OpenAICompatEngine
+    from .llm.factory import create_engine
     from .prompting import build_orchestrator_prompt
     from .parse_blocks import parse_blueprint_output, extract_character_name, ASSET_FILENAMES
     from .pack_io import create_draft_dir
@@ -468,24 +450,17 @@ async def run_batch(args):
             }
         )
 
-    # Create engine
-    engine_config = {
-        "model": model,
-        "api_key": config.api_key,
-        "temperature": config.temperature,
-        "max_tokens": config.max_tokens,
-    }
-
-    if config.engine == "litellm":
-        try:
-            engine = LiteLLMEngine(**engine_config)
-        except ImportError as e:
-            logger.error("LiteLLM not installed. Install with: pip install litellm")
-            logger.error("Or configure engine=openai-compat in .bpui.toml for OpenAI-compatible APIs")
-            sys.exit(1)
-    else:
-        engine_config["base_url"] = config.base_url
-        engine = OpenAICompatEngine(**engine_config)
+    # Create engine using factory
+    try:
+        engine = create_engine(
+            config,
+            model_override=model if args.model else None,
+            temperature=config.temperature,
+            max_tokens=config.max_tokens,
+        )
+    except (ImportError, ValueError) as e:
+        logger.error(f"Failed to create engine: {e}")
+        sys.exit(1)
 
     # Use parallel processing if max_concurrent > 1
     if max_concurrent > 1:
@@ -781,13 +756,12 @@ def run_rebuild_index(args):
 async def run_offspring(args):
     """Run offspring generation from CLI."""
     from .config import Config
-    from .llm.litellm_engine import LiteLLMEngine
-    from .llm.openai_compat_engine import OpenAICompatEngine
+    from .llm.factory import create_engine
     from .prompting import build_offspring_prompt, build_asset_prompt
     from .parse_blocks import extract_single_asset, extract_character_name, ASSET_ORDER
     from .pack_io import create_draft_dir, load_draft
     from .metadata import DraftMetadata
-    
+
     logger = logging.getLogger(__name__)
     config = Config()
     
@@ -822,26 +796,19 @@ async def run_offspring(args):
     print(f"   Parent 2: {parent2_name}")
     print(f"   Mode: {args.mode or 'Auto'}")
     print(f"   Model: {model}")
-    
-    # Create engine
-    engine_config = {
-        "model": model,
-        "api_key": config.api_key,
-        "temperature": config.temperature,
-        "max_tokens": config.max_tokens,
-    }
-    
-    if config.engine == "litellm":
-        try:
-            engine = LiteLLMEngine(**engine_config)
-        except ImportError as e:
-            logger.error("LiteLLM not installed. Install with: pip install litellm")
-            logger.error("Or configure engine=openai-compat in .bpui.toml for OpenAI-compatible APIs")
-            sys.exit(1)
-    else:
-        engine_config["base_url"] = config.base_url
-        engine = OpenAICompatEngine(**engine_config)
-    
+
+    # Create engine using factory
+    try:
+        engine = create_engine(
+            config,
+            model_override=model if args.model else None,
+            temperature=config.temperature,
+            max_tokens=config.max_tokens,
+        )
+    except (ImportError, ValueError) as e:
+        logger.error(f"Failed to create engine: {e}")
+        sys.exit(1)
+
     # Step 1: Generate offspring seed
     print("\n⏳ Generating offspring seed...")
     
@@ -1062,30 +1029,24 @@ def run_similarity(args):
         llm_engine = None
         
         if use_llm:
-            from .llm.litellm_engine import LiteLLMEngine
-            from .llm.openai_compat_engine import OpenAICompatEngine
+            from .llm.factory import create_engine
             from .config import Config
-            
+
             config = Config()
             model = args.model or config.model
             config.validate_api_key(model)
-            
-            engine_config = {
-                'model': model,
-                'temperature': config.temperature,
-                'max_tokens': config.max_tokens,
-            }
-            
-            if config.engine == "litellm":
-                try:
-                    import litellm
-                    engine = LiteLLMEngine(**engine_config)
-                except ImportError:
-                    print("✗ LiteLLM not installed. Install with: pip install litellm")
-                    sys.exit(1)
-            else:
-                engine = OpenAICompatEngine(**engine_config)
-            
+
+            try:
+                engine = create_engine(
+                    config,
+                    model_override=model if args.model else None,
+                    temperature=config.temperature,
+                    max_tokens=config.max_tokens,
+                )
+            except (ImportError, ValueError) as e:
+                print(f"✗ Failed to create engine: {e}")
+                sys.exit(1)
+
             llm_engine = engine
             print("🧠 LLM Deep Analysis enabled")
         

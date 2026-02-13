@@ -17,6 +17,7 @@ from .logging_config import setup_logging, get_logger
 
 DEFAULT_CONFIG = {
     "engine": "litellm",
+    "engine_mode": "auto",  # "auto" (detect from model) or "explicit" (use engine field)
     "model": "openai/gpt-4",
     "api_key_env": "OPENAI_API_KEY",
     "api_key": "",  # Legacy single key (deprecated)
@@ -28,6 +29,9 @@ DEFAULT_CONFIG = {
         "max_concurrent": 3,  # Max parallel batch operations
         "rate_limit_delay": 1.0,  # Seconds between batch starts
     },
+    # Provider-specific configurations (optional)
+    "google": {},  # e.g., {"top_k": 40, "top_p": 0.95, "safety_settings": [...]}
+    "openai": {},  # e.g., {"seed": 42, "response_format": "json_object"}
 }
 
 
@@ -256,6 +260,28 @@ class Config:
         if isinstance(api_keys, dict):
             return sorted([k for k, v in api_keys.items() if v])
         return []
+
+    def get_engine_mode(self) -> str:
+        """Get engine mode (auto or explicit).
+
+        Returns:
+            "auto" or "explicit"
+        """
+        return self.get("engine_mode", "auto")
+
+    def get_provider_config(self, provider: str) -> Dict[str, Any]:
+        """Get provider-specific configuration.
+
+        Args:
+            provider: Provider name (e.g., "google", "openai")
+
+        Returns:
+            Dict of provider-specific config, or empty dict if not found
+        """
+        provider_config = self.get(provider, {})
+        if isinstance(provider_config, dict):
+            return provider_config.copy()
+        return {}
 
     @property
     def base_url(self) -> str:
