@@ -36,7 +36,13 @@ class Template:
     @property
     def is_official(self) -> bool:
         """Check if this is an official template."""
-        return "official" in str(self.path) or "blueprints" in str(self.path)
+        official_dir = Path(__file__).parent.parent / "blueprints"
+        try:
+            # Resolve both paths to handle symlinks, etc.
+            return self.path.resolve().is_relative_to(official_dir.resolve())
+        except Exception:
+            # Fallback for any issues with resolving paths on weird filesystems.
+            return "official" in str(self.path) or "blueprints" in str(self.path)
 
 
 class TemplateManager:
