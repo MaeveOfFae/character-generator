@@ -29,7 +29,8 @@ class AgentWorker(QThread):
     error = Signal(str)
     tool_call_started = Signal(str, dict)  # tool_name, arguments
     tool_call_completed = Signal(str, bool, str)  # tool_name, success, result
-    execute_tool_requested = Signal(str, dict, list)  # tool_name, arguments, result_container
+    execute_tool_requested = Signal(str, dict, object)  # tool_name, arguments, result_callback
+    _tool_result_ready = Signal()  # Internal signal to wake up event loop
     
     def __init__(self, config, personality: Personality, messages: list, context: Optional[dict] = None, action_handler: Optional[Any] = None):
         super().__init__()
@@ -165,21 +166,40 @@ class AgentWorker(QThread):
                                     # Emit tool call started
                                     self.tool_call_started.emit(tool_name, tool_args)
                                     
-                                    # Execute action on MAIN THREAD using blocking signal
-                                    # This prevents GUI crashes from worker thread
+                                    # Execute action on MAIN THREAD using signal + event loop
+                                    # Create result container and event loop for waiting
+                                    from PySide6.QtCore import QEventLoop, QTimer
                                     result_container = []
-                                    self.execute_tool_requested.emit(tool_name, tool_args, result_container)
+                                    loop = QEventLoop()
                                     
-                                    # Wait for result with timeout
-                                    timeout_counter = 0
-                                    while len(result_container) == 0 and timeout_counter < 300:  # 30 second timeout
-                                        await asyncio.sleep(0.1)
-                                        timeout_counter += 1
+                                    # Connect internal signal to quit the event loop
+                                    self._tool_result_ready.connect(loop.quit)
+                                    
+                                    # Create callback that fills result and wakes up event loop
+                                    def result_callback(res):
+                                        result_container.append(res)
+                                        self._tool_result_ready.emit()
+                                    
+                                    # Set 30 second timeout
+                                    timeout_timer = QTimer()
+                                    timeout_timer.setSingleShot(True)
+                                    timeout_timer.timeout.connect(loop.quit)
+                                    timeout_timer.start(30000)  # 30 seconds
+                                    
+                                    # Emit signal with callback
+                                    self.execute_tool_requested.emit(tool_name, tool_args, result_callback)
+                                    
+                                    # Wait for result (processes Qt events while waiting)
+                                    loop.exec()
+                                    
+                                    # Clean up
+                                    timeout_timer.stop()
+                                    self._tool_result_ready.disconnect(loop.quit)
                                     
                                     if len(result_container) == 0:
                                         result = {
                                             "success": False,
-                                            "message": "Tool execution timed out (main thread not responding)",
+                                            "message": "Tool execution timed out (no response within 30s)",
                                             "error_type": "timeout"
                                         }
                                     else:
@@ -1053,6 +1073,7 @@ class AgentChatbox(QWidget):
         self.worker.error.connect(self.on_generation_error)
         self.worker.tool_call_started.connect(self.on_tool_call_started)
         self.worker.tool_call_completed.connect(self.on_tool_call_completed)
+        # Use default QueuedConnection (safe across threads, no blocking)
         self.worker.execute_tool_requested.connect(self._execute_tool_on_main_thread)
         self.worker.start()
     
@@ -1078,25 +1099,42 @@ class AgentChatbox(QWidget):
             )
             self.render_chat_history()
     
-    def _execute_tool_on_main_thread(self, tool_name: str, arguments: dict, result_container: list):
+    def _execute_tool_on_main_thread(self, tool_name: str, arguments: dict, result_callback):
         """Execute tool on main thread (signal slot handler).
         
         This method is called via signal from worker thread to ensure all tool
         executions happen on the main GUI thread, preventing Qt crashes.
         
+        CRITICAL: Must run on main thread only. Uses QueuedConnection (default).
+        
         Args:
             tool_name: Name of the tool to execute
             arguments: Tool arguments dict
-            result_container: List that will receive the result (modified in-place)
+            result_callback: Callable that receives the result dict
         """
         try:
+            # Verify we're on the main thread
+            from PySide6.QtWidgets import QApplication
+            app = QApplication.instance()
+            if app and QThread.currentThread() != app.thread():
+                result_callback({
+                    "success": False,
+                    "message": f"CRITICAL: Tool execution on wrong thread",
+                    "error_type": "thread_error"
+                })
+                return
+            
+            # Execute the action
             result = self.action_handler.execute_action(tool_name, arguments)
-            result_container.append(result)
+            result_callback(result)
         except Exception as e:
-            result_container.append({
+            import traceback
+            error_trace = traceback.format_exc()
+            result_callback({
                 "success": False,
                 "message": f"Tool execution error: {str(e)}",
-                "error_type": "execution_error"
+                "error_type": "execution_error",
+                "details": error_trace
             })
     
     def on_chunk_received(self, chunk: str):
