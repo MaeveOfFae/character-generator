@@ -130,15 +130,22 @@ def parse_blueprint_output(text: str, template: Optional['Template'] = None) -> 
         asset_blocks = blocks[start_idx:]
         
         # Determine expected asset order from template or use default
+        if not template:
+            from .templates import TemplateManager
+            manager = TemplateManager()
+            template = manager.get_template("Official RPBotGenerator")
+        
         if template:
-            expected_assets = [asset.name for asset in template.assets]
+            from .topological_sort import topological_sort
+            try:
+                expected_assets = topological_sort(template.assets)
+            except ValueError:
+                expected_assets = [asset.name for asset in template.assets]
             expected_count = len(expected_assets)
             template_name = template.name
         else:
-            expected_assets = ASSET_ORDER
-            expected_count = 7
-            template_name = "Official RPBotGenerator"
-        
+            raise ParseError("Could not determine expected assets: No template provided and default not found.")
+
         # Validate asset count
         if len(asset_blocks) != expected_count:
             # Include preview of blocks for debugging

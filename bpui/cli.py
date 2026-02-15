@@ -36,6 +36,7 @@ def main():
         choices=["SFW", "NSFW", "Platform-Safe"],
         help="Content mode (default: auto)",
     )
+    compile_parser.add_argument("--template", help="Name of template to use (default: Official Aksho)")
     compile_parser.add_argument("--out", help="Output directory (default: drafts/)")
     compile_parser.add_argument("--model", help="Model override")
 
@@ -67,6 +68,7 @@ def main():
         choices=["SFW", "NSFW", "Platform-Safe"],
         help="Content mode for all seeds (default: auto)",
     )
+    batch_parser.add_argument("--template", help="Name of template to use (default: Official Aksho)")
     batch_parser.add_argument("--out-dir", help="Output directory (default: drafts/)")
     batch_parser.add_argument("--model", help="Model override")
     batch_parser.add_argument("--continue-on-error", action="store_true", help="Continue if a seed fails")
@@ -83,6 +85,7 @@ def main():
         choices=["SFW", "NSFW", "Platform-Safe"],
         help="Content mode (default: auto)",
     )
+    offspring_parser.add_argument("--template", help="Name of template to use (default: Official Aksho)")
     offspring_parser.add_argument("--out", help="Output directory (default: drafts/)")
     offspring_parser.add_argument("--model", help="Model override")
     
@@ -174,14 +177,32 @@ async def run_compile(args):
     logger = logging.getLogger(__name__)
     from .llm.factory import create_engine
     from .prompting import build_asset_prompt
-    from .parse_blocks import extract_single_asset, extract_character_name, ASSET_ORDER
+    from .parse_blocks import extract_single_asset, extract_character_name
     from .pack_io import create_draft_dir
+    from .templates import TemplateManager
+    from .topological_sort import topological_sort
 
     config = Config()
 
     logger.info("Compiling seed: %s", args.seed)
     logger.info("Mode: %s", args.mode or 'Auto')
     logger.info("Model: %s", args.model or config.model)
+
+    # Load template
+    manager = TemplateManager()
+    template_name = args.template or "Official Aksho"
+    template = manager.get_template(template_name)
+    if not template:
+        logger.error(f"Template '{template_name}' not found.")
+        sys.exit(1)
+    logger.info("Template: %s", template.name)
+
+    # Get asset order
+    try:
+        asset_order = topological_sort(template.assets)
+    except ValueError as e:
+        logger.error(f"Template error: {e}")
+        sys.exit(1)
 
     # Validate API key
     model = args.model or config.model
@@ -204,12 +225,22 @@ async def run_compile(args):
     assets = {}
     character_name = None
 
-    for asset_name in ASSET_ORDER:
+    for asset_name in asset_order:
         logger.info("Generating %s...", asset_name)
         
+        # Get blueprint content from template
+        blueprint_content = manager.get_blueprint_content(template, asset_name)
+        if not blueprint_content:
+            logger.error(f"Blueprint for asset '{asset_name}' not found in template '{template.name}'. Skipping.")
+            continue
+            
         # Build prompt with prior assets as context
         system_prompt, user_prompt = build_asset_prompt(
-            asset_name, args.seed, args.mode, assets
+            asset_name, 
+            args.seed, 
+            args.mode, 
+            assets,
+            blueprint_content=blueprint_content
         )
         
         # Generate
@@ -360,6 +391,7 @@ async def run_batch(args):
     from .parse_blocks import parse_blueprint_output, extract_character_name, ASSET_FILENAMES
     from .pack_io import create_draft_dir
     from .batch_state import BatchState
+    from .templates import TemplateManager
 
     logger = logging.getLogger(__name__)
     config = Config()
@@ -377,6 +409,15 @@ async def run_batch(args):
     # Validate API key
     model = args.model or config.model
     config.validate_api_key(model)
+    
+    # Load template
+    manager = TemplateManager()
+    template_name = args.template or "Official Aksho"
+    template = manager.get_template(template_name)
+    if not template:
+        logger.error(f"Template '{template_name}' not found.")
+        sys.exit(1)
+    logger.info("Template: %s", template.name)
 
     # Handle resume
     batch_state = None
@@ -447,6 +488,7 @@ async def run_batch(args):
                 "model": args.model or config.model,
                 "temperature": config.temperature,
                 "max_tokens": config.max_tokens,
+                "template": template.name,
             }
         )
 
@@ -472,7 +514,8 @@ async def run_batch(args):
             args=args,
             model=model,
             max_concurrent=max_concurrent,
-            rate_limit_delay=rate_limit_delay
+            rate_limit_delay=rate_limit_delay,
+            template=template
         )
     else:
         # Sequential processing (original behavior)
@@ -481,7 +524,8 @@ async def run_batch(args):
             engine=engine,
             batch_state=batch_state,
             args=args,
-            model=model
+            model=model,
+            template=template
         )
 
     # Summary
@@ -501,7 +545,7 @@ async def run_batch(args):
     sys.exit(1 if failed else 0)
 
 
-async def run_batch_sequential(seeds, engine, batch_state, args, model):
+async def run_batch_sequential(seeds, engine, batch_state, args, model, template):
     """Run batch compilation sequentially (original behavior)."""
     from .prompting import build_orchestrator_prompt
     from .parse_blocks import parse_blueprint_output, extract_character_name, ASSET_FILENAMES
@@ -517,7 +561,7 @@ async def run_batch_sequential(seeds, engine, batch_state, args, model):
 
         try:
             # Build prompt
-            system_prompt, user_prompt = build_orchestrator_prompt(seed, args.mode)
+            system_prompt, user_prompt = build_orchestrator_prompt(seed, args.mode, template=template)
 
             # Generate
             output = ""
@@ -528,7 +572,7 @@ async def run_batch_sequential(seeds, engine, batch_state, args, model):
             print()  # newline
 
             # Parse
-            assets = parse_blueprint_output(output)
+            assets = parse_blueprint_output(output, template=template)
             
             # Extract character name
             character_name = extract_character_name(assets.get("character_sheet", ""))
@@ -583,7 +627,7 @@ async def run_batch_sequential(seeds, engine, batch_state, args, model):
         batch_state.delete_state_file()
 
 
-async def run_batch_parallel(seeds, engine, batch_state, args, model, max_concurrent, rate_limit_delay):
+async def run_batch_parallel(seeds, engine, batch_state, args, model, max_concurrent, rate_limit_delay, template):
     """Run batch compilation with parallel processing."""
     import asyncio
     import random
@@ -652,13 +696,13 @@ async def run_batch_parallel(seeds, engine, batch_state, args, model, max_concur
             
             try:
                 # Build prompt
-                system_prompt, user_prompt = build_orchestrator_prompt(seed, args.mode)
+                system_prompt, user_prompt = build_orchestrator_prompt(seed, args.mode, template=template)
 
                 # Generate (non-streaming for parallel)
                 output = await engine.generate(system_prompt, user_prompt)
 
                 # Parse
-                assets = parse_blueprint_output(output)
+                assets = parse_blueprint_output(output, template=template)
                 
                 # Extract character name
                 character_name = extract_character_name(assets.get("character_sheet", ""))
@@ -758,9 +802,11 @@ async def run_offspring(args):
     from .config import Config
     from .llm.factory import create_engine
     from .prompting import build_offspring_prompt, build_asset_prompt
-    from .parse_blocks import extract_single_asset, extract_character_name, ASSET_ORDER
+    from .parse_blocks import extract_single_asset, extract_character_name
     from .pack_io import create_draft_dir, load_draft
     from .metadata import DraftMetadata
+    from .templates import TemplateManager
+    from .topological_sort import topological_sort
 
     logger = logging.getLogger(__name__)
     config = Config()
@@ -796,6 +842,22 @@ async def run_offspring(args):
     print(f"   Parent 2: {parent2_name}")
     print(f"   Mode: {args.mode or 'Auto'}")
     print(f"   Model: {model}")
+
+    # Load template
+    manager = TemplateManager()
+    template_name = args.template or "Official Aksho"
+    template = manager.get_template(template_name)
+    if not template:
+        logger.error(f"Template '{template_name}' not found.")
+        sys.exit(1)
+    logger.info("Template: %s", template.name)
+
+    # Get asset order
+    try:
+        asset_order = topological_sort(template.assets)
+    except ValueError as e:
+        logger.error(f"Template error: {e}")
+        sys.exit(1)
 
     # Create engine using factory
     try:
@@ -836,11 +898,17 @@ async def run_offspring(args):
     assets = {}
     character_name = None
     
-    for asset_name in ASSET_ORDER:
+    for asset_name in asset_order:
         print(f"   → {asset_name}...", end=" ", flush=True)
         
+        # Get blueprint content from template
+        blueprint_content = manager.get_blueprint_content(template, asset_name)
+        if not blueprint_content:
+            logger.error(f"Blueprint for asset '{asset_name}' not found in template '{template.name}'. Skipping.")
+            continue
+            
         system_prompt, user_prompt = build_asset_prompt(
-            asset_name, offspring_seed, args.mode, assets
+            asset_name, offspring_seed, args.mode, assets, blueprint_content=blueprint_content
         )
         
         output = await engine.generate(system_prompt, user_prompt)

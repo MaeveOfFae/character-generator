@@ -115,6 +115,7 @@ class OffspringScreen(Screen):
         self.parent1_name = ""
         self.parent2_name = ""
         self.is_generating = False
+        self.templates = []
 
     def compose(self) -> ComposeResult:
         """Compose offspring screen."""
@@ -145,6 +146,9 @@ class OffspringScreen(Screen):
                 value="auto",
                 id="mode",
             )
+            
+            yield Static("Template:")
+            yield Select([], id="template")
 
             with Vertical(classes="button-row"):
                 yield Button("▶️  [Enter] Generate Offspring", id="generate", variant="primary", disabled=True)
@@ -155,6 +159,37 @@ class OffspringScreen(Screen):
 
             yield Static("", id="status", classes="status")
         yield Footer()
+        
+    def on_mount(self) -> None:
+        """Load templates when screen is mounted."""
+        self.load_templates()
+
+    def load_templates(self) -> None:
+        """Load templates into the select widget."""
+        from ..templates import TemplateManager
+        template_select = self.query_one("#template", Select)
+        
+        try:
+            manager = TemplateManager()
+            self.templates = manager.list_templates()
+            
+            options = []
+            default_template_name = None
+            for template in self.templates:
+                label = f"{template.name} ({len(template.assets)} assets)"
+                if template.is_official:
+                    label += " ★"
+                    if not default_template_name:
+                        default_template_name = template.name
+                options.append((label, template.name))
+            
+            template_select.set_options(options)
+            
+            if default_template_name:
+                template_select.value = default_template_name
+                
+        except Exception as e:
+            template_select.set_options([ (f"Error: {e}", None) ])
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""
@@ -228,8 +263,9 @@ class OffspringScreen(Screen):
             from ..llm.litellm_engine import LiteLLMEngine
             from ..llm.openai_compat_engine import OpenAICompatEngine
             from ..prompting import build_offspring_prompt, build_asset_prompt
-            from ..parse_blocks import extract_single_asset, extract_character_name, ASSET_ORDER
+            from ..parse_blocks import extract_single_asset, extract_character_name
             from ..pack_io import create_draft_dir
+            from ..topological_sort import topological_sort
             from pathlib import Path
 
             output_log.write("[dim]Modules imported ✓[/dim]")
@@ -239,11 +275,36 @@ class OffspringScreen(Screen):
             mode_select = self.query_one("#mode", Select)
             mode_value = mode_select.value
             mode = None if mode_value == "auto" or mode_value is None else str(mode_value)
+            
+            # Get template
+            template_select = self.query_one("#template", Select)
+            template_name = template_select.value
+            if not template_name:
+                status.update("✗ Please select a template")
+                status.add_class("error")
+                self.is_generating = False
+                return
+            
+            template = next((t for t in self.templates if t.name == template_name), None)
+            if not template:
+                status.update(f"✗ Template '{template_name}' not found")
+                status.add_class("error")
+                self.is_generating = False
+                return
+                
+            try:
+                asset_order = topological_sort(template.assets)
+            except ValueError as e:
+                status.update(f"✗ Template error: {e}")
+                status.add_class("error")
+                self.is_generating = False
+                return
 
             output_log.write(f"\n[bold cyan]Parents:[/]")
             output_log.write(f"[bold cyan]  Parent 1:[/] {self.parent1_name}")
             output_log.write(f"[bold cyan]  Parent 2:[/] {self.parent2_name}")
             output_log.write(f"[bold cyan]  Mode:[/] {mode or 'Auto'}")
+            output_log.write(f"[bold cyan]  Template:[/] {template.name}")
             output_log.write(f"[bold cyan]  Model:[/] {self.config.model}")
             output_log.refresh()
             
@@ -321,7 +382,7 @@ class OffspringScreen(Screen):
             assets = {}
             character_name = None
 
-            for asset_name in ASSET_ORDER:
+            for asset_name in asset_order:
                 output_log.write(f"\n[bold yellow]→ Generating {asset_name}...[/]")
                 output_log.refresh()
                 status.update(f"Generating {asset_name}...")
@@ -419,7 +480,8 @@ class OffspringScreen(Screen):
                 assets,
                 seed=offspring_seed,
                 mode=mode if mode is not None else "Auto",
-                model=self.config.model
+                model=self.config.model,
+                template=template
             ))
 
         except Exception as e:

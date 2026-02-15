@@ -25,6 +25,7 @@ class TemplateEditor(QDialog):
         self.template = template
         self.modified = False
         self.template_manager = TemplateManager()
+        self.blueprint_content_cache = {}
 
         self.setWindowTitle("Template Editor")
         self.resize(1200, 800)
@@ -171,15 +172,18 @@ class TemplateEditor(QDialog):
             item.setData(Qt.ItemDataRole.UserRole, asset)
             self.asset_list.addItem(item)
         
+        self.blueprint_content_cache.clear()
         self.modified = False
 
     def on_asset_selected(self, current, previous):
         """Handle asset selection."""
-        # First, save the previous asset's blueprint content if it was modified
+        # First, save the previous asset's blueprint content to cache
         if previous:
             asset = previous.data(Qt.ItemDataRole.UserRole)
             if asset:
                 self.update_asset_from_ui(asset)
+                if self.blueprint_editor.isEnabled():
+                    self.blueprint_content_cache[asset.name] = self.blueprint_content_edit.toPlainText()
 
         self.blueprint_content_edit.clear()
         if not current:
@@ -198,12 +202,19 @@ class TemplateEditor(QDialog):
         self.asset_description_edit.setText(asset.description)
         self.asset_blueprint_file_edit.setText(asset.blueprint_file or "")
 
-        content = self.template_manager.get_blueprint_content(self.template, asset.name)
-        if content:
-            self.blueprint_content_edit.setPlainText(content)
-            self.blueprint_editor.setEnabled(True)
+        # Load content from cache or from file
+        content = None
+        if asset.name in self.blueprint_content_cache:
+            content = self.blueprint_content_cache[asset.name]
         else:
-            self.blueprint_editor.setEnabled(False)
+            content = self.template_manager.get_blueprint_content(self.template, asset.name)
+
+        if content is not None:
+            self.blueprint_content_edit.setPlainText(content)
+        else:
+            self.blueprint_content_edit.setPlainText("") # Empty for new/missing blueprints
+            
+        self.blueprint_editor.setEnabled(True) # Always enable if an asset is selected
 
     def update_asset_from_ui(self, asset):
         """Update an asset object from the UI fields."""
@@ -223,6 +234,7 @@ class TemplateEditor(QDialog):
             item.setData(Qt.ItemDataRole.UserRole, new_asset)
             self.asset_list.addItem(item)
             self.asset_list.setCurrentItem(item)
+            self.blueprint_content_cache[new_asset.name] = "" # Pre-cache empty content
             self.modified = True
 
     def remove_asset(self):
@@ -240,6 +252,8 @@ class TemplateEditor(QDialog):
         )
         if reply == QMessageBox.StandardButton.Yes:
             self.template.assets.remove(asset)
+            if asset.name in self.blueprint_content_cache:
+                del self.blueprint_content_cache[asset.name]
             self.asset_list.takeItem(self.asset_list.row(current_item))
             self.modified = True
 
@@ -275,6 +289,9 @@ class TemplateEditor(QDialog):
             asset = current_item.data(Qt.ItemDataRole.UserRole)
             if asset:
                 self.update_asset_from_ui(asset)
+                # also save current editor content to cache
+                if self.blueprint_editor.isEnabled():
+                    self.blueprint_content_cache[asset.name] = self.blueprint_content_edit.toPlainText()
 
         # Update template metadata
         self.template.name = self.name_edit.text()
@@ -285,17 +302,19 @@ class TemplateEditor(QDialog):
             # Save the template.toml
             self.template_manager.save_template(self.template)
 
-            # Save the blueprint file for the currently selected asset
-            if current_item:
-                asset = current_item.data(Qt.ItemDataRole.UserRole)
-                if asset and asset.blueprint_file:
-                    assets_dir = self.template.path / "assets"
-                    assets_dir.mkdir(exist_ok=True)
-                    blueprint_path = assets_dir / asset.blueprint_file
-                    blueprint_path.write_text(self.blueprint_content_edit.toPlainText())
+            # Save all blueprint files from cache
+            assets_dir = self.template.path / "assets"
+            assets_dir.mkdir(exist_ok=True)
+            for asset_name, content in self.blueprint_content_cache.items():
+                # Find the asset to get the blueprint_file name
+                asset_to_save = next((a for a in self.template.assets if a.name == asset_name), None)
+                if asset_to_save and asset_to_save.blueprint_file:
+                    blueprint_path = assets_dir / asset_to_save.blueprint_file
+                    blueprint_path.write_text(content)
 
             QMessageBox.information(self, "Save Complete", "Template saved successfully.")
             self.modified = False
+            self.blueprint_content_cache.clear()
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Save Error", f"Failed to save template: {e}")

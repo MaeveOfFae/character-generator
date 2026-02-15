@@ -16,11 +16,12 @@ class BatchWorker(QThread):
     seed_complete = Signal(str, bool, str)  # seed, success, message
     finished = Signal(bool, str)  # success, summary
     
-    def __init__(self, seeds, mode, config):
+    def __init__(self, seeds, mode, config, template):
         super().__init__()
         self.seeds = seeds
         self.mode = mode
         self.config = config
+        self.template = template
         self._running = True
     
     def run(self):
@@ -36,6 +37,7 @@ class BatchWorker(QThread):
         from ..config import Config
         from ..llm.factory import create_engine
         from ..pack_io import create_draft_dir
+        from ..topological_sort import topological_sort
 
         total = len(self.seeds)
         completed = 0
@@ -52,6 +54,16 @@ class BatchWorker(QThread):
             self.finished.emit(False, f"Failed to initialize LLM: {e}")
             return
         
+        if not self.template:
+            self.finished.emit(False, "No template provided for batch compilation.")
+            return
+            
+        try:
+            asset_order = topological_sort(self.template.assets)
+        except ValueError as e:
+            self.finished.emit(False, f"Template error: {e}")
+            return
+
         # Parallel execution with semaphore
         max_concurrent = getattr(self.config, 'batch_max_concurrent', 3)
         rate_limit = getattr(self.config, 'batch_rate_limit_delay', 1.0)
@@ -67,13 +79,13 @@ class BatchWorker(QThread):
                 try:
                     # Import sequential generation components
                     from ..prompting import build_asset_prompt
-                    from ..parse_blocks import extract_single_asset, extract_character_name, ASSET_ORDER
+                    from ..parse_blocks import extract_single_asset, extract_character_name
                     
                     # Generate each asset sequentially
                     assets = {}
                     character_name = None
                     
-                    for asset_name in ASSET_ORDER:
+                    for asset_name in asset_order:
                         # Build prompt with prior assets as context
                         system_prompt, user_prompt = build_asset_prompt(
                             asset_name, seed, self.mode, assets
@@ -132,7 +144,33 @@ class BatchScreen(QWidget):
         super().__init__()
         self.config = config
         self.worker = None
+        self.templates = []
         self.setup_ui()
+
+    def load_templates(self):
+        """Load available templates into combo box."""
+        from ..templates import TemplateManager
+        
+        self.template_combo.clear()
+        
+        try:
+            manager = TemplateManager()
+            self.templates = manager.list_templates()
+            
+            for template in self.templates:
+                label = f"{template.name} ({len(template.assets)} assets)"
+                if template.is_official:
+                    label += " ★"
+                self.template_combo.addItem(label, template.name)
+            
+            # Select official template by default
+            for i, template in enumerate(self.templates):
+                if template.is_official:
+                    self.template_combo.setCurrentIndex(i)
+                    break
+        
+        except Exception as e:
+            self.template_combo.addItem(f"Error loading templates: {e}", None)
     
     def setup_ui(self):
         """Initialize the UI."""
@@ -156,6 +194,15 @@ class BatchScreen(QWidget):
         mode_layout.addStretch()
         layout.addLayout(mode_layout)
         
+        # Template selector
+        template_layout = QHBoxLayout()
+        template_layout.addWidget(QLabel("Template:"))
+        self.template_combo = QComboBox()
+        self.load_templates()
+        template_layout.addWidget(self.template_combo)
+        template_layout.addStretch()
+        layout.addLayout(template_layout)
+
         # Seed input area
         seed_header = QHBoxLayout()
         seed_header.addWidget(QLabel("Seeds (one per line):"))
@@ -249,12 +296,22 @@ class BatchScreen(QWidget):
             QMessageBox.warning(self, "No Seeds", "No valid seeds found")
             return
         
+        # Get template
+        template_name = self.template_combo.currentData()
+        if not template_name:
+            QMessageBox.warning(self, "No Template", "Please select a template.")
+            return
+        template = next((t for t in self.templates if t.name == template_name), None)
+        if not template:
+            QMessageBox.warning(self, "Template Not Found", "Could not find the selected template.")
+            return
+
         # Confirm
         mode = self.mode_combo.currentText()
         reply = QMessageBox.question(
             self,
             "Confirm Batch",
-            f"Start batch compilation of {len(seeds)} seeds in {mode} mode?",
+            f"Start batch compilation of {len(seeds)} seeds in {mode} mode using '{template.name}' template?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         
@@ -274,7 +331,7 @@ class BatchScreen(QWidget):
         self.progress_bar.setValue(0)
         
         # Start worker
-        self.worker = BatchWorker(seeds, mode, self.config)
+        self.worker = BatchWorker(seeds, mode, self.config, template)
         self.worker.progress.connect(self.on_progress)
         self.worker.seed_complete.connect(self.on_seed_complete)
         self.worker.finished.connect(self.on_batch_finished)

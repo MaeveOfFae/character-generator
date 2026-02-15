@@ -1,0 +1,82 @@
+[template]
+name = "Official Aksho"
+version = "1.1"
+description = "Copy of Official RPBotGenerator"
+
+[[assets]]
+name = "initial_message"
+required = true
+depends_on = [
+    "system_prompt",
+    "post_history",
+    "char_personality",
+    "char_background",
+]
+description = "First interaction scenario"
+blueprint_file = "initial_message.md"
+
+[[assets]]
+name = "char_basic_info"
+required = true
+depends_on = [
+    "system_prompt",
+]
+description = ""
+blueprint_file = "char_basic_info.md"
+
+[[assets]]
+name = "char_physical"
+required = true
+depends_on = [
+    "system_prompt",
+    "char_basic_info",
+]
+description = ""
+blueprint_file = "char_physical.md"
+
+[[assets]]
+name = "char_clothing"
+required = true
+depends_on = [
+    "system_prompt",
+    "char_physical",
+]
+description = ""
+blueprint_file = "char_clothing.md"
+
+[[assets]]
+name = "char_personality"
+required = true
+depends_on = [
+    "system_prompt",
+    "char_clothing",
+]
+description = ""
+blueprint_file = "char_personality.md"
+
+[[assets]]
+name = "char_background"
+required = true
+depends_on = [
+    "system_prompt",
+    "char_personality",
+]
+description = ""
+blueprint_file = "char_background.md"
+
+[[assets]]
+name = "system_prompt"
+required = true
+depends_on = []
+description = ""
+blueprint_file = "system_prompt.md"
+
+[[assets]]
+name = "post_history"
+required = true
+depends_on = [
+    "system_prompt",
+    "char_background",
+]
+description = ""
+blueprint_file = "post_history.md"

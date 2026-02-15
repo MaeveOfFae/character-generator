@@ -152,7 +152,7 @@ class ReviewScreen(Screen):
     }
     """
 
-    def __init__(self, config, draft_dir: Path, assets: dict, seed: str = None, mode: str = None, model: str = None):
+    def __init__(self, config, draft_dir: Path, assets: dict, seed: str = None, mode: str = None, model: str = None, template=None):
         """Initialize review screen."""
         super().__init__()
         self.config = config
@@ -163,10 +163,13 @@ class ReviewScreen(Screen):
         self.chat_visible = False
         self.chat_messages: list[dict] = []  # Chat history
         self.chat_generating = False
+        self.template = template
         
         # Load metadata or use provided values
         from ..metadata import DraftMetadata
-        metadata = DraftMetadata.load(draft_dir)
+        metadata = None
+        if draft_dir and draft_dir.exists():
+            metadata = DraftMetadata.load(draft_dir)
         
         if metadata:
             self.seed = metadata.seed
@@ -195,48 +198,23 @@ class ReviewScreen(Screen):
             with Horizontal(id="main-split"):
                 with Vertical(id="left-panel"):
                     with TabbedContent(id="tabs"):
-                        with TabPane("System Prompt", id="system-prompt-tab"):
-                            yield TextArea(
-                                self.assets.get("system_prompt", ""),
-                                id="system_prompt_area",
-                                read_only=True,
-                            )
-                        with TabPane("Post History", id="post-history-tab"):
-                            yield TextArea(
-                                self.assets.get("post_history", ""),
-                                id="post_history_area",
-                                read_only=True,
-                            )
-                        with TabPane("Character Sheet", id="character-sheet-tab"):
-                            yield TextArea(
-                                self.assets.get("character_sheet", ""),
-                                id="character_sheet_area",
-                                read_only=True,
-                            )
-                        with TabPane("Intro Scene", id="intro-scene-tab"):
-                            yield TextArea(
-                                self.assets.get("intro_scene", ""),
-                                id="intro_scene_area",
-                                read_only=True,
-                            )
-                        with TabPane("Intro Page", id="intro-page-tab"):
-                            yield TextArea(
-                                self.assets.get("intro_page", ""),
-                                id="intro_page_area",
-                                read_only=True,
-                            )
-                        with TabPane("A1111", id="a1111-tab"):
-                            yield TextArea(
-                                self.assets.get("a1111", ""),
-                                id="a1111_area",
-                                read_only=True,
-                            )
-                        with TabPane("Suno", id="suno-tab"):
-                            yield TextArea(
-                                self.assets.get("suno", ""),
-                                id="suno_area",
-                                read_only=True,
-                            )
+                        if self.template:
+                            from ..topological_sort import topological_sort
+                            try:
+                                asset_order = topological_sort(self.template.assets)
+                            except ValueError:
+                                asset_order = [a.name for a in self.template.assets]
+                        else:
+                            from ..parse_blocks import ASSET_ORDER
+                            asset_order = ASSET_ORDER
+
+                        for asset_name in asset_order:
+                            with TabPane(asset_name.replace("_", " ").title(), id=f"{asset_name}-tab"):
+                                yield TextArea(
+                                    self.assets.get(asset_name, ""),
+                                    id=f"{asset_name}_area",
+                                    read_only=True,
+                                )
 
                     with Vertical(classes="button-row"):
                         yield Button("✏️  [E] Edit Mode", id="toggle_edit", variant="default")
@@ -555,22 +533,10 @@ class ReviewScreen(Screen):
         
         # Get active tab and map to asset
         tabs = self.query_one("#tabs", TabbedContent)
-        active_tab = str(tabs.active)
+        active_tab_id = str(tabs.active)
         
-        tab_to_asset = {
-            "system-prompt": "system_prompt",
-            "post-history": "post_history",
-            "character-sheet": "character_sheet",
-            "intro-scene": "intro_scene",
-            "intro-page": "intro_page",
-            "a1111": "a1111",
-            "suno": "suno",
-        }
-        
-        asset_name = tab_to_asset.get(active_tab)
-        if not asset_name:
-            validation_log.write(f"[bold red]✗ Unknown tab: {active_tab}[/]")
-            return
+        # Dynamic mapping from active tab ID
+        asset_name = active_tab_id.replace("-tab", "")
         
         validation_log.clear()
         validation_log.write(f"[bold cyan]Regenerating: {asset_name}[/]")
@@ -582,11 +548,24 @@ class ReviewScreen(Screen):
         
         try:
             # Build prior assets dict (only higher-tier assets for hierarchy)
-            from ..parse_blocks import ASSET_ORDER
-            asset_index = ASSET_ORDER.index(asset_name)
+            asset_order = []
+            if self.template:
+                from ..topological_sort import topological_sort
+                try:
+                    asset_order = topological_sort(self.template.assets)
+                except ValueError:
+                    asset_order = [a.name for a in self.template.assets]
+            else:
+                from ..parse_blocks import ASSET_ORDER
+                asset_order = ASSET_ORDER
+            
+            if asset_name not in asset_order:
+                raise ValueError(f"Asset '{asset_name}' not found in template order.")
+
+            asset_index = asset_order.index(asset_name)
             prior_assets = {}
             for i in range(asset_index):
-                prior_name = ASSET_ORDER[i]
+                prior_name = asset_order[i]
                 if prior_name in self.assets:
                     prior_assets[prior_name] = self.assets[prior_name]
             
@@ -650,18 +629,9 @@ class ReviewScreen(Screen):
             validation_log.write(f"[green]✓ Generated {len(new_content)} characters[/]")
             
             # Update TextArea
-            area_mapping = {
-                "system_prompt": "system_prompt_area",
-                "post_history": "post_history_area",
-                "character_sheet": "character_sheet_area",
-                "intro_scene": "intro_scene_area",
-                "intro_page": "intro_page_area",
-                "a1111": "a1111_area",
-                "suno": "suno_area",
-            }
+            area_id = f"{asset_name}_area"
             
-            area_id = area_mapping.get(asset_name)
-            if area_id:
+            try:
                 area = self.query_one(f"#{area_id}", TextArea)
                 area.text = new_content
                 
@@ -676,7 +646,9 @@ class ReviewScreen(Screen):
                 validation_log.write(f"[green]✓ Updated {asset_name} (unsaved)[/]")
                 status.update(f"✓ Regenerated {asset_name} - Save to keep changes")
                 status.add_class("success")
-            
+            except Exception:
+                validation_log.write(f"[bold red]✗ Could not find text area with ID '{area_id}'[/]")
+
         except Exception as e:
             validation_log.write(f"\n[bold red]✗ Error during regeneration: {e}[/]")
             status.update(f"✗ Regeneration failed: {e}")

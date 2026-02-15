@@ -94,21 +94,33 @@ class ReviewWidget(QWidget):
         layout.addWidget(header_frame)
     
     def create_tabs(self, layout):
-        """Create tabbed text editors."""
+        """Create tabbed text editors based on available assets."""
         self.tab_widget = QTabWidget()
         self.tab_widget.setDocumentMode(True)
         
-        tabs_data = [
-            ("System Prompt", "system_prompt"),
-            ("Post History", "post_history"),
-            ("Character Sheet", "character_sheet"),
-            ("Intro Scene", "intro_scene"),
-            ("Intro Page", "intro_page"),
-            ("A1111", "a1111"),
-            ("Suno", "suno"),
-        ]
+        # Dynamic tab names for common assets
+        tab_names = {
+            "system_prompt": "System Prompt",
+            "post_history": "Post History",
+            "character_sheet": "Character Sheet",
+            "intro_scene": "Intro Scene",
+            "intro_page": "Intro Page",
+            "a1111": "A1111",
+            "suno": "Suno",
+            "personality": "Personality",
+            "appearance": "Appearance",
+            "backstory": "Backstory",
+            "world": "World",
+        }
         
-        for tab_name, asset_key in tabs_data:
+        # Create tabs for each asset that exists
+        for asset_key in self.assets.keys():
+            # Get display name or use asset key as fallback
+            tab_name = tab_names.get(asset_key, asset_key.replace("_", " ").title())
+            # Ensure tab_name is never None
+            if tab_name is None:
+                tab_name = asset_key.replace("_", " ").title()
+            
             editor = QPlainTextEdit()
             editor.setReadOnly(True)
             editor.setFont(QFont("Courier New", 11))

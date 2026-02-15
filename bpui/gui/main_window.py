@@ -102,6 +102,7 @@ class MainWindow(QMainWindow):
     
     def show_compile(self, seed=""):
         """Show compile screen."""
+        self.compile.load_templates()
         self.compile.set_seed(seed)
         self.stack.setCurrentWidget(self.compile)
         self.context_manager.update_context("compile")

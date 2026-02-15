@@ -79,6 +79,7 @@ class CompileScreen(Screen):
         self.initial_seed = initial_seed
         self.output_text = ""
         self.is_generating = False
+        self.templates = []
 
     def compose(self) -> ComposeResult:
         """Compose compile screen."""
@@ -103,6 +104,9 @@ class CompileScreen(Screen):
                 value="auto",
                 id="mode",
             )
+            
+            yield Label("Template:", classes="field-label")
+            yield Select([], id="template")
 
             yield Label("Model Override (optional):", classes="field-label")
             yield Input(
@@ -120,6 +124,37 @@ class CompileScreen(Screen):
 
             yield Static("", id="status", classes="status")
         yield Footer()
+
+    def on_mount(self) -> None:
+        """Load templates when screen is mounted."""
+        self.load_templates()
+
+    def load_templates(self) -> None:
+        """Load templates into the select widget."""
+        from ..templates import TemplateManager
+        template_select = self.query_one("#template", Select)
+        
+        try:
+            manager = TemplateManager()
+            self.templates = manager.list_templates()
+            
+            options = []
+            default_template_name = None
+            for template in self.templates:
+                label = f"{template.name} ({len(template.assets)} assets)"
+                if template.is_official:
+                    label += " ★"
+                    if not default_template_name:
+                        default_template_name = template.name
+                options.append((label, template.name))
+            
+            template_select.set_options(options)
+            
+            if default_template_name:
+                template_select.value = default_template_name
+                
+        except Exception as e:
+            template_select.set_options([ (f"Error: {e}", None) ])
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""
@@ -183,14 +218,16 @@ class CompileScreen(Screen):
             from ..llm.litellm_engine import LiteLLMEngine
             from ..llm.openai_compat_engine import OpenAICompatEngine
             from ..prompting import build_asset_prompt
-            from ..parse_blocks import extract_single_asset, extract_character_name, ASSET_ORDER
+            from ..parse_blocks import extract_single_asset, extract_character_name
             from ..pack_io import create_draft_dir
+            from ..topological_sort import topological_sort
 
             output_log.write("[dim]Modules imported ✓[/dim]")
             output_log.refresh()
             
             seed_input = self.query_one("#seed", Input)
             mode_select = self.query_one("#mode", Select)
+            template_select = self.query_one("#template", Select)
             model_override = self.query_one("#model-override", Input)
 
             seed = seed_input.value.strip()
@@ -204,10 +241,36 @@ class CompileScreen(Screen):
             mode_value = mode_select.value
             mode = None if mode_value == "auto" or mode_value is None else str(mode_value)
             model = model_override.value.strip() or self.config.model
+            
+            template_name = template_select.value
+            if not template_name:
+                status.update("✗ Please select a template")
+                status.add_class("error")
+                status.refresh()
+                self.is_generating = False
+                return
+            
+            template = next((t for t in self.templates if t.name == template_name), None)
+            if not template:
+                status.update(f"✗ Template '{template_name}' not found")
+                status.add_class("error")
+                status.refresh()
+                self.is_generating = False
+                return
+                
+            try:
+                asset_order = topological_sort(template.assets)
+            except ValueError as e:
+                status.update(f"✗ Template error: {e}")
+                status.add_class("error")
+                status.refresh()
+                self.is_generating = False
+                return
 
             output_log.write(f"\n[bold cyan]Configuration:[/]")
             output_log.write(f"[bold cyan]  Seed:[/] {seed}")
             output_log.write(f"[bold cyan]  Mode:[/] {mode or 'Auto'}")
+            output_log.write(f"[bold cyan]  Template:[/] {template.name}")
             output_log.write(f"[bold cyan]  Model:[/] {model}")
             output_log.write(f"[bold cyan]  Engine:[/] {self.config.engine}")
             output_log.refresh()
@@ -251,7 +314,7 @@ class CompileScreen(Screen):
             assets = {}
             character_name = None
 
-            for asset_name in ASSET_ORDER:
+            for asset_name in asset_order:
                 output_log.write(f"\n[bold yellow]→ Generating {asset_name}...[/]")
                 output_log.refresh()
                 status.update(f"Generating {asset_name}...")
@@ -353,7 +416,8 @@ class CompileScreen(Screen):
                 assets,
                 seed=seed,
                 mode=mode,
-                model=model
+                model=model,
+                template=template
             ))
 
         except Exception as e:

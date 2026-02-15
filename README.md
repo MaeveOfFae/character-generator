@@ -67,6 +67,7 @@ bpui similarity "character1" "character2" --use-llm
 ### 🤖 LLM Integration
 
 - **Multi-Provider Support**: LiteLLM for 100+ providers (OpenAI, Anthropic, DeepSeek, Google, Cohere, Mistral, etc.)
+- **OpenRouter Integration**: Unified access to multiple AI models through OpenRouter API
 - **OpenAI-Compatible**: Support for local models (Ollama, LM Studio, vLLM, etc.)
 - **Provider-Specific API Keys**: Auto-selected based on model
 - **Streaming Support**: Real-time generation feedback
@@ -143,6 +144,7 @@ Multiple export presets for different platforms:
 - **TUI Guide**: [bpui/README.md](bpui/README.md) - TUI documentation and keyboard shortcuts
 - **Feature Audit**: [docs/FEATURE_AUDIT.md](docs/FEATURE_AUDIT.md) - Complete feature audit
 - **Similarity Analyzer**: [docs/SIMILARITY_ENHANCEMENTS.md](docs/SIMILARITY_ENHANCEMENTS.md) - Detailed documentation
+- **OpenRouter Support**: [docs/OPENROUTER_SUPPORT.md](docs/OPENROUTER_SUPPORT.md) - Using OpenRouter with 100+ models
 - **API Docs**: Generate with `make docs` and view at `docs/api/bpui/`
 - **Documentation Index**: [docs/README.md](docs/README.md) - Navigation hub for all documentation
 
@@ -232,8 +234,13 @@ Configuration is handled via `.bpui.toml` file:
 ```toml
 # LLM Provider
 engine = "litellm"  # or "openai_compatible"
-model = "openai/gpt-4"
-api_key_env = "OPENAI_API_KEY"
+model = "openai/gpt-4"  # or "openrouter/anthropic/claude-3-opus"
+
+# API Keys
+[api_keys]
+openai = "sk-..."
+openrouter = "sk-or-v1-..."  # For OpenRouter models
+anthropic = "sk-ant-..."     # For Anthropic direct access
 
 # OpenAI-compatible settings
 base_url = ""  # e.g., "http://localhost:11434/v1" for Ollama
@@ -247,6 +254,12 @@ batch_max_concurrent = 5
 log_level = "INFO"
 log_file = ""  # Optional log file path
 ```
+
+**Presets Available:**
+- `presets/openrouter.toml` - Preconfigured for OpenRouter models
+- `presets/chubai.toml` - ChubAI format preset
+- `presets/risuai.toml` - RisuAI format preset
+- `presets/tavernai.toml` - TavernAI format preset
 
 ## Usage Examples
 

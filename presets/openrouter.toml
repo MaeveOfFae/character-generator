@@ -1,0 +1,67 @@
+# OpenRouter Preset Configuration
+# This preset demonstrates using OpenRouter to access various AI models
+# 
+# Quick start:
+# 1. Set your OpenRouter API key: bpui config set api_keys.openrouter your-key
+# 2. Copy this preset to your project: cp presets/openrouter.toml .bpui.toml
+# 3. Run: bpui compile template.toml
+
+[model]
+# Select any OpenRouter model from https://openrouter.ai/models
+# Examples:
+# - openrouter/anthropic/claude-3-opus
+# - openrouter/openai/gpt-4
+# - openrouter/meta-llama/llama-3-70b-instruct
+# - openrouter/deepseek/deepseek-chat
+model = "openrouter/anthropic/claude-3-opus"
+
+# Generation parameters
+temperature = 0.7
+max_tokens = 4096
+
+# Engine configuration
+engine_mode = "auto"  # Auto-detects OpenRouter and uses OpenAI-compatible API
+
+[api_keys]
+# Set your OpenRouter API key
+# You can set this via: bpui config set api_keys.openrouter your-key
+# Or uncomment and set it here (not recommended for version control)
+# openrouter = "sk-or-v1-..."
+
+# Optional: Provider-specific keys for specific models
+# These are only needed if you're using OpenRouter with specific provider keys
+# openai = "sk-..."
+# anthropic = "sk-ant-..."
+# google = "AIzaSy..."
+
+[batch]
+# Batch processing settings
+max_concurrent = 3
+rate_limit_delay = 1.0
+
+[output]
+# Output configuration
+format = "toml"
+indent = 2
+
+# Example model selection based on use case:
+# 
+# For creative writing:
+#   model = "openrouter/anthropic/claude-3-opus"
+#   temperature = 0.9
+#   max_tokens = 8192
+#
+# For technical/factual content:
+#   model = "openrouter/openai/gpt-4"
+#   temperature = 0.3
+#   max_tokens = 4096
+#
+# For fast responses:
+#   model = "openrouter/openai/gpt-3.5-turbo"
+#   temperature = 0.7
+#   max_tokens = 2048
+#
+# For budget-conscious generation:
+#   model = "openrouter/meta-llama/llama-3-70b-instruct"
+#   temperature = 0.7
+#   max_tokens = 4096

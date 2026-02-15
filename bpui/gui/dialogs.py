@@ -360,6 +360,7 @@ class SettingsDialog(QDialog):
             ("openai", "OpenAI"),
             ("anthropic", "Anthropic"),
             ("deepseek", "DeepSeek"),
+            ("openrouter", "OpenRouter"),
             ("litellm", "Other (LiteLLM)")
         ]
 

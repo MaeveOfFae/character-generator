@@ -18,7 +18,7 @@ def detect_provider_from_model(model: str) -> str:
         model: Model name (e.g., "gpt-4", "gemini-1.5-pro", "openai/gpt-4")
 
     Returns:
-        Provider name: "google", "openai", "litellm", or "unknown"
+        Provider name: "google", "openai", "openrouter", "litellm", or "unknown"
 
     Examples:
         "gpt-4" -> "openai"
@@ -26,11 +26,16 @@ def detect_provider_from_model(model: str) -> str:
         "o1-preview" -> "openai"
         "gemini-1.5-pro" -> "google"
         "gemini-pro" -> "google"
+        "openrouter/anthropic/claude-3-opus" -> "openrouter" (OpenAI-compatible API)
         "openai/gpt-4" -> "litellm" (slash indicates LiteLLM format)
         "anthropic/claude-3" -> "litellm"
         "random-model" -> "unknown"
     """
-    # If model has slash, it's LiteLLM format provider/model
+    # Check for OpenRouter first (uses OpenAI-compatible API)
+    if model.lower().startswith("openrouter/"):
+        return "openrouter"
+
+    # If model has slash (but not openrouter), it's LiteLLM format provider/model
     if "/" in model:
         return "litellm"
 
@@ -162,6 +167,28 @@ def create_engine(
     elif provider == "openai":
         return _create_openai_engine(
             config, model, api_key_override, temperature, max_tokens, **kwargs
+        )
+
+    elif provider == "openrouter":
+        # OpenRouter uses OpenAI-compatible API
+        api_key = api_key_override or config.get_api_key("openrouter")
+        if not api_key:
+            raise ValueError(
+                f"No API key configured for OpenRouter. "
+                f"Set it with: bpui config set api_keys.openrouter YOUR_API_KEY"
+            )
+
+        # OpenRouter's OpenAI-compatible endpoint
+        base_url = "https://openrouter.ai/api/v1"
+
+        logger.info(f"Using OpenAICompatEngine for OpenRouter model '{model}'")
+        return OpenAICompatEngine(
+            model=model,
+            api_key=api_key,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            base_url=base_url,
+            **kwargs
         )
 
     elif provider == "litellm" or provider == "unknown":
@@ -388,6 +415,9 @@ def get_engine_type(config: "Config", model_override: Optional[str] = None) -> s
             return "OpenAIEngine" if OPENAI_AVAILABLE else "LiteLLMEngine (fallback)"
         except ImportError:
             return "LiteLLMEngine (fallback)"
+
+    elif provider == "openrouter":
+        return "OpenAICompatEngine"
 
     elif provider == "litellm":
         return "LiteLLMEngine"

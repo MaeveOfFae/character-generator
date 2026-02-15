@@ -27,8 +27,34 @@ class OffspringWidget(QWidget):
         self.parent1_name = ""
         self.parent2_name = ""
         self.generation_thread: Optional['OffspringThread'] = None
+        self.templates = []
         
         self.setup_ui()
+    
+    def load_templates(self):
+        """Load available templates into combo box."""
+        from ..templates import TemplateManager
+        
+        self.template_combo.clear()
+        
+        try:
+            manager = TemplateManager()
+            self.templates = manager.list_templates()
+            
+            for template in self.templates:
+                label = f"{template.name} ({len(template.assets)} assets)"
+                if template.is_official:
+                    label += " ★"
+                self.template_combo.addItem(label, template.name)
+            
+            # Select official template by default
+            for i, template in enumerate(self.templates):
+                if template.is_official:
+                    self.template_combo.setCurrentIndex(i)
+                    break
+        
+        except Exception as e:
+            self.template_combo.addItem(f"Error loading templates: {e}", None)
     
     def setup_ui(self):
         """Setup UI."""
@@ -117,6 +143,18 @@ class OffspringWidget(QWidget):
         
         mode_layout.addStretch()
         layout.addLayout(mode_layout)
+
+        # Template selector
+        template_layout = QHBoxLayout()
+        template_label = QLabel("Template:")
+        template_label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        template_layout.addWidget(template_label)
+        self.template_combo = QComboBox()
+        self.template_combo.setFixedWidth(250)
+        self.load_templates()
+        template_layout.addWidget(self.template_combo)
+        template_layout.addStretch()
+        layout.addLayout(template_layout)
         
         layout.addSpacing(10)
         
@@ -235,6 +273,16 @@ class OffspringWidget(QWidget):
         mode_value = self.mode_combo.currentText()
         mode = None if mode_value == "Auto (inherit from parents)" else mode_value
         
+        # Get template
+        template_name = self.template_combo.currentData()
+        if not template_name:
+            QMessageBox.warning(self, "No Template", "Please select a template.")
+            return
+        template = next((t for t in self.templates if t.name == template_name), None)
+        if not template:
+            QMessageBox.warning(self, "Template Not Found", "Could not find the selected template.")
+            return
+
         # Clear output log
         self.output_log.clear()
         self.generate_btn.setEnabled(False)
@@ -250,7 +298,8 @@ class OffspringWidget(QWidget):
             self.parent1_name,
             self.parent2_name,
             mode,
-            self.config
+            self.config,
+            template
         )
         self.generation_thread.log_signal.connect(self.log)
         self.generation_thread.finished_signal.connect(self.generation_finished)
@@ -404,7 +453,7 @@ class OffspringThread(QThread):
     error_signal = Signal(str)
     
     def __init__(self, parent1_path, parent2_path, parent1_assets, parent2_assets,
-                 parent1_name, parent2_name, mode, config):
+                 parent1_name, parent2_name, mode, config, template):
         super().__init__()
         self.parent1_path = parent1_path
         self.parent2_path = parent2_path
@@ -414,6 +463,7 @@ class OffspringThread(QThread):
         self.parent2_name = parent2_name
         self.mode = mode
         self.config = config
+        self.template = template
     
     def run(self):
         """Run offspring generation."""
@@ -431,9 +481,10 @@ class OffspringThread(QThread):
         try:
             from ..llm.factory import create_engine
             from ..prompting import build_offspring_prompt, build_asset_prompt
-            from ..parse_blocks import extract_single_asset, extract_character_name, ASSET_ORDER
+            from ..parse_blocks import extract_single_asset, extract_character_name
             from ..pack_io import create_draft_dir
             from ..metadata import DraftMetadata
+            from ..topological_sort import topological_sort
 
             self.log_signal.emit("Initializing offspring generation...")
 
@@ -477,11 +528,19 @@ class OffspringThread(QThread):
             
             # Step 2: Generate full character suite
             self.log_signal.emit("\nStep 2: Generating full character suite...")
+
+            if not self.template:
+                raise Exception("No template provided for offspring generation.")
+            
+            try:
+                asset_order = topological_sort(self.template.assets)
+            except ValueError as e:
+                raise Exception(f"Template error: {e}")
             
             assets = {}
             character_name = None
             
-            for asset_name in ASSET_ORDER:
+            for asset_name in asset_order:
                 self.log_signal.emit(f"\n→ Generating {asset_name}...")
                 
                 system_prompt, user_prompt = build_asset_prompt(

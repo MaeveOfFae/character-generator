@@ -77,6 +77,16 @@ class TemplateManager:
         official_template = self._create_official_template()
         if official_template:
             templates.append(official_template)
+
+        # Add templates from the blueprints directory
+        if self.official_dir.exists():
+            for template_dir in self.official_dir.iterdir():
+                if template_dir.is_dir():
+                    template = self._load_template(template_dir)
+                    if template:
+                        # Avoid adding duplicates
+                        if not any(t.name == template.name for t in templates):
+                            templates.append(template)
         
         # Add custom templates
         if self.custom_dir.exists():
@@ -84,7 +94,9 @@ class TemplateManager:
                 if template_dir.is_dir():
                     template = self._load_template(template_dir)
                     if template:
-                        templates.append(template)
+                        # Avoid adding duplicates from project blueprints
+                        if not any(t.name == template.name for t in templates):
+                            templates.append(template)
         
         return templates
     
@@ -485,6 +497,7 @@ class TemplateManager:
         # For official templates, try direct path from blueprints root first
         if template.is_official:
             root_path = self.official_dir / asset.blueprint_file
+            print(f"Checking for official blueprint at: {root_path}, exists: {root_path.exists()}")
             if root_path.exists():
                 return root_path.read_text(encoding='utf-8')
         

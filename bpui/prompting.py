@@ -120,8 +120,13 @@ def build_orchestrator_prompt(
     
     # If template provided, modify orchestrator to list custom assets
     if template:
-        # Add template info to orchestrator
-        asset_list = ", ".join([asset.name for asset in template.assets])
+        from .topological_sort import topological_sort
+        try:
+            asset_order = topological_sort(template.assets)
+        except ValueError:
+            asset_order = [asset.name for asset in template.assets] # fallback to unsorted
+        
+        asset_list = ", ".join(asset_order)
         template_override = f"\n\n## TEMPLATE OVERRIDE\n\nUsing custom template: {template.name}\n"
         template_override += f"Generate these assets in order: {asset_list}\n"
         template_override += "Follow the dependency order defined in the template.\n"
@@ -270,7 +275,8 @@ def build_asset_prompt(
     seed: str,
     mode: Optional[str] = None,
     prior_assets: Optional[dict[str, str]] = None,
-    repo_root: Optional[Path] = None
+    repo_root: Optional[Path] = None,
+    blueprint_content: Optional[str] = None,
 ) -> tuple[str, str]:
     """Build prompt for a single asset using its blueprint.
 
@@ -280,6 +286,7 @@ def build_asset_prompt(
         mode: Content mode (SFW/NSFW/Platform-Safe) or None for auto
         prior_assets: Previously generated assets for context
         repo_root: Repository root path
+        blueprint_content: Optional blueprint content to use instead of loading
 
     Returns:
         Tuple of (system_prompt, user_prompt)
@@ -288,7 +295,10 @@ def build_asset_prompt(
     rules = get_rules_for_asset(asset_name, repo_root)
     
     # Load asset blueprint
-    blueprint = load_blueprint(asset_name, repo_root)
+    if blueprint_content:
+        blueprint = blueprint_content
+    else:
+        blueprint = load_blueprint(asset_name, repo_root)
     
     # Combine rules + blueprint for system prompt
     if rules:

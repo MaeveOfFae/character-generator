@@ -42,12 +42,16 @@ class CompileWorker(QThread):
         """Perform compilation using sequential generation (like TUI)."""
         from ..prompting import build_asset_prompt
         from ..llm.factory import create_engine
-        from ..parse_blocks import extract_single_asset, extract_character_name, ASSET_ORDER
+        from ..parse_blocks import extract_single_asset, extract_character_name
         from ..pack_io import create_draft_dir
+        from ..topological_sort import topological_sort
+        from ..templates import TemplateManager
         from datetime import datetime
 
         self.output.emit(f"Compiling with seed: {self.seed}\n")
         self.output.emit(f"Mode: {self.mode or 'Auto'}\n")
+        if self.template:
+            self.output.emit(f"Template: {self.template.name}\n")
         self.output.emit("\nStarting sequential generation...\n\n")
 
         # Get LLM engine using factory
@@ -60,16 +64,32 @@ class CompileWorker(QThread):
         except (ImportError, ValueError) as e:
             raise RuntimeError(f"Failed to create engine: {e}")
         
+        # Determine asset order from template
+        if not self.template:
+            raise RuntimeError("No template selected for compilation.")
+        
+        try:
+            asset_order = topological_sort(self.template.assets)
+        except ValueError as e:
+            raise RuntimeError(f"Failed to sort assets in template '{self.template.name}': {e}")
+
+        manager = TemplateManager()
+
         # Generate each asset sequentially
         assets = {}
         character_name = None
         
-        for asset_name in ASSET_ORDER:
+        for asset_name in asset_order:
             self.output.emit(f"→ Generating {asset_name}...\n")
             
+            # Get blueprint content
+            blueprint_content = manager.get_blueprint_content(self.template, asset_name)
+            if not blueprint_content:
+                raise RuntimeError(f"Blueprint for asset '{asset_name}' not found in template '{self.template.name}'.")
+
             # Build prompt with prior assets as context
             system_prompt, user_prompt = build_asset_prompt(
-                asset_name, self.seed, self.mode, assets
+                asset_name, self.seed, self.mode, assets, blueprint_content=blueprint_content
             )
             
             # Generate this asset
@@ -140,9 +160,9 @@ class CompileWidget(QWidget):
                     label += " ★"
                 self.template_combo.addItem(label, template.name)
             
-            # Select official template by default
+            # Select "Official Aksho" template by default
             for i, template in enumerate(self.templates):
-                if template.is_official:
+                if template.name == "Official Aksho":
                     self.template_combo.setCurrentIndex(i)
                     break
         
