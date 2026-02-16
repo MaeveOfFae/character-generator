@@ -204,7 +204,7 @@ from bpui.utils.migrate_logging import migrate_draft_metadata
 
     async def apply_filters(self) -> None:
         """Apply current filters and update the list."""
-        from ..metadata import search_metadata
+        from bpui.utils.metadata.metadata import search_metadata
         from pathlib import Path
         
         drafts_list = self.query_one("#drafts-list", ListView)
@@ -276,7 +276,7 @@ from bpui.utils.migrate_logging import migrate_draft_metadata
 
     async def open_draft(self, draft_dir) -> None:
         """Open a draft in review screen."""
-        from ..pack_io import load_draft
+        from bpui.utils.file_io.pack_io import load_draft
         from .review import ReviewScreen
 
         try:
@@ -355,7 +355,7 @@ from bpui.utils.migrate_logging import migrate_draft_metadata
         draft_path, _ = self.filtered_drafts[idx]
         
         try:
-            from ..pack_io import delete_draft
+            from bpui.utils.file_io.pack_io import delete_draft
             delete_draft(draft_path)
             status.update(f"✓ Deleted: {draft_path.name}")
             # Reload drafts list

@@ -6,7 +6,7 @@ from typing import Optional, TYPE_CHECKING
 from .base import LLMEngine
 
 if TYPE_CHECKING:
-    from ..config import Config
+    from bpui.core.config import Config
 
 logger = logging.getLogger(__name__)
 

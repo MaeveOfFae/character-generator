@@ -33,7 +33,7 @@ class OffspringWidget(QWidget):
     
     def load_templates(self):
         """Load available templates into combo box."""
-        from ..templates import TemplateManager
+        from bpui.features.templates.templates import TemplateManager
         
         self.template_combo.clear()
         
@@ -198,7 +198,7 @@ class OffspringWidget(QWidget):
     
     def set_parent(self, parent_num, draft_path, assets):
         """Set parent character after selection."""
-        from ..metadata import DraftMetadata
+        from bpui.utils.metadata.metadata import DraftMetadata
         
         metadata = DraftMetadata.load(draft_path)
         char_name = metadata.character_name if metadata else draft_path.name
@@ -396,7 +396,7 @@ class ParentSelectDialog(QDialog):
     
     def load_drafts(self):
         """Load all drafts."""
-        from ..metadata import search_metadata
+        from bpui.utils.metadata.metadata import search_metadata
         from pathlib import Path
         
         drafts_dir = Path.cwd() / "drafts"
@@ -405,7 +405,7 @@ class ParentSelectDialog(QDialog):
     
     def apply_filter(self, query):
         """Apply search filter."""
-        from ..metadata import search_metadata
+        from bpui.utils.metadata.metadata import search_metadata
         from pathlib import Path
         
         drafts_dir = Path.cwd() / "drafts"
@@ -432,7 +432,7 @@ class ParentSelectDialog(QDialog):
         draft_path, metadata = current.data(Qt.ItemDataRole.UserRole)
         
         try:
-            from ..pack_io import load_draft
+            from bpui.utils.file_io.pack_io import load_draft
             assets = load_draft(draft_path)
             self.selected_path = draft_path
             self.selected_assets = assets
@@ -482,8 +482,8 @@ class OffspringThread(QThread):
             from ..llm.factory import create_engine
             from ..prompting import build_offspring_prompt, build_asset_prompt
             from ..parse_blocks import extract_single_asset, extract_character_name
-            from ..pack_io import create_draft_dir
-            from ..metadata import DraftMetadata
+            from bpui.utils.file_io.pack_io import create_draft_dir
+            from bpui.utils.metadata.metadata import DraftMetadata
             from ..topological_sort import topological_sort
 
             self.log_signal.emit("Initializing offspring generation...")

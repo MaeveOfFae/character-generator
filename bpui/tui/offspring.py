@@ -166,7 +166,7 @@ class OffspringScreen(Screen):
 
     def load_templates(self) -> None:
         """Load templates into the select widget."""
-        from ..templates import TemplateManager
+        from bpui.features.templates.templates import TemplateManager
         template_select = self.query_one("#template", Select)
         
         try:
@@ -210,7 +210,7 @@ class OffspringScreen(Screen):
     
     def set_parent(self, parent_num: int, draft_path, assets: dict) -> None:
         """Set parent character after selection."""
-        from ..metadata import DraftMetadata
+        from bpui.utils.metadata.metadata import DraftMetadata
         
         metadata = DraftMetadata.load(draft_path)
         char_name = metadata.character_name if metadata else draft_path.name
@@ -264,7 +264,7 @@ class OffspringScreen(Screen):
             from ..llm.openai_compat_engine import OpenAICompatEngine
             from ..prompting import build_offspring_prompt, build_asset_prompt
             from ..parse_blocks import extract_single_asset, extract_character_name
-            from ..pack_io import create_draft_dir
+            from bpui.utils.file_io.pack_io import create_draft_dir
             from ..topological_sort import topological_sort
             from pathlib import Path
 
@@ -458,7 +458,7 @@ class OffspringScreen(Screen):
             )
             
             # Update metadata with lineage info
-            from ..metadata import DraftMetadata
+            from bpui.utils.metadata.metadata import DraftMetadata
             metadata = DraftMetadata.load(draft_dir)
             if metadata:
                 metadata.parent_drafts = [parent1_rel, parent2_rel]
@@ -609,7 +609,7 @@ class ParentSelectScreen(Screen):
     
     async def load_drafts(self) -> None:
         """Load all drafts."""
-        from ..metadata import search_metadata
+        from bpui.utils.metadata.metadata import search_metadata
         from pathlib import Path
         
         drafts_dir = Path.cwd() / "drafts"
@@ -619,7 +619,7 @@ class ParentSelectScreen(Screen):
     
     async def apply_filter(self, query: str) -> None:
         """Apply search filter."""
-        from ..metadata import search_metadata
+        from bpui.utils.metadata.metadata import search_metadata
         from pathlib import Path
         
         drafts_dir = Path.cwd() / "drafts"
@@ -648,7 +648,7 @@ class ParentSelectScreen(Screen):
     
     async def select_draft(self, draft_path) -> None:
         """Select a draft as parent."""
-        from ..pack_io import load_draft
+        from bpui.utils.file_io.pack_io import load_draft
         
         try:
             assets = load_draft(draft_path)

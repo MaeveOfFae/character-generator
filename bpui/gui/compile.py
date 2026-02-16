@@ -43,9 +43,9 @@ class CompileWorker(QThread):
         from ..prompting import build_asset_prompt
         from ..llm.factory import create_engine
         from ..parse_blocks import extract_single_asset, extract_character_name
-        from ..pack_io import create_draft_dir
+        from bpui.utils.file_io.pack_io import create_draft_dir
         from ..topological_sort import topological_sort
-        from ..templates import TemplateManager
+        from bpui.features.templates.templates import TemplateManager
         from datetime import datetime
 
         self.output.emit(f"Compiling with seed: {self.seed}\n")
@@ -146,7 +146,7 @@ class CompileWidget(QWidget):
     
     def load_templates(self):
         """Load available templates into combo box."""
-        from ..templates import TemplateManager
+        from bpui.features.templates.templates import TemplateManager
         
         self.template_combo.clear()
         

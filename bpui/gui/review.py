@@ -58,7 +58,7 @@ class ReviewWidget(QWidget):
         header_layout.addWidget(title)
         
         # Load metadata
-        from ..metadata import DraftMetadata
+        from bpui.utils.metadata.metadata import DraftMetadata
         metadata = DraftMetadata.load(self.draft_dir)
         
         if metadata:
@@ -259,7 +259,7 @@ class ReviewWidget(QWidget):
         content = editor.toPlainText()
         
         # Save to file
-        from ..pack_io import save_asset
+        from bpui.utils.file_io.pack_io import save_asset
         try:
             save_asset(self.draft_dir, asset_key, content)
             self.assets[asset_key] = content
@@ -339,7 +339,7 @@ class ReviewWidget(QWidget):
     
     def toggle_favorite(self):
         """Toggle favorite status."""
-        from ..metadata import DraftMetadata
+        from bpui.utils.metadata.metadata import DraftMetadata
         
         metadata = DraftMetadata.load(self.draft_dir)
         if metadata:
@@ -351,7 +351,7 @@ class ReviewWidget(QWidget):
     def select_genre(self):
         """Select genre."""
         from .dialogs import GenreDialog
-        from ..metadata import DraftMetadata
+        from bpui.utils.metadata.metadata import DraftMetadata
         
         metadata = DraftMetadata.load(self.draft_dir)
         current_genre = metadata.genre if metadata else None

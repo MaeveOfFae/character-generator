@@ -16,8 +16,8 @@ from textual.widgets import (
 )
 from textual import on
 
-from ..pack_io import list_drafts
-from ..similarity import SimilarityAnalyzer, format_similarity_report
+from bpui.utils.file_io.pack_io import list_drafts
+from bpui.features.similarity.engine import SimilarityAnalyzer, format_similarity_report
 
 
 class SimilarityScreen(Screen):

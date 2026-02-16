@@ -255,7 +255,7 @@ class SettingsScreen(Screen):
             max_tokens_input = self.query_one("#max_tokens", Input)
 
             # Create temporary config for testing
-            from ..config import Config
+            from bpui.core.config import Config
             temp_config = Config()
             temp_config.set("engine", engine_select.value)
             temp_config.set("model", model_input.value.strip())

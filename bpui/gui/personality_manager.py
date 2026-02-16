@@ -202,7 +202,7 @@ class PersonalityManager:
                      Defaults to ~/.config/bpui/agent_personalities
         """
         if base_dir is None:
-            from ..config import Config
+            from bpui.core.config import Config
             config = Config()
             agent_config = config.get("agent", {})
             if isinstance(agent_config, dict):

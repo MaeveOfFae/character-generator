@@ -182,8 +182,8 @@ class HomeWidget(QWidget):
     
     def refresh(self):
         """Refresh the drafts list."""
-        from ..metadata import DraftMetadata
-        from ..draft_index import DraftIndex
+        from bpui.utils.metadata.metadata import DraftMetadata
+        from bpui.utils.metadata.draft_index import DraftIndex
         
         drafts_dir = Path("drafts")
         if not drafts_dir.exists():
@@ -349,7 +349,7 @@ class HomeWidget(QWidget):
             return
         
         # Load assets
-        from ..pack_io import load_draft
+        from bpui.utils.file_io.pack_io import load_draft
         try:
             assets = load_draft(draft_dir)
             self.main_window.show_review(draft_dir, assets)

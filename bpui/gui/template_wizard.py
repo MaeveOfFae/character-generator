@@ -477,7 +477,7 @@ class TemplateWizard(QDialog):
     def create_template(self):
         """Create the template."""
         try:
-            from ..templates import TemplateManager
+            from bpui.features.templates.templates import TemplateManager
             
             manager = TemplateManager()
             

@@ -54,11 +54,11 @@ class MainWindow(QMainWindow):
         self.main_splitter.setStretchFactor(1, 3)
         
         # Create screens
-        from .seed_generator import SeedGeneratorScreen
-        from .validate import ValidateScreen
+        from bpui.features.seed_generator.seed_generator import SeedGeneratorScreen
+        from bpui.utils.file_io.validate import ValidateScreen
         from .template_manager import TemplateManagerScreen
-        from .offspring import OffspringWidget
-        from .similarity import SimilarityWidget
+        from bpui.features.offspring.offspring import OffspringWidget
+        from bpui.features.similarity.similarity import SimilarityWidget
         
         self.home = HomeWidget(self.config, self)
         self.compile = CompileWidget(self.config, self)

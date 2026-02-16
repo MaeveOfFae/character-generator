@@ -245,7 +245,7 @@ class BatchScreen(Screen):
         """Compile all seeds in sequence."""
         from ..prompting import build_orchestrator_prompt
         from ..parse_blocks import parse_blueprint_output, extract_character_name
-        from ..pack_io import create_draft_dir
+        from bpui.utils.file_io.pack_io import create_draft_dir
         
         log = self.query_one("#log", RichLog)
         status = self.query_one("#status", Static)

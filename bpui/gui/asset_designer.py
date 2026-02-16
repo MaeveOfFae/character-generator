@@ -162,7 +162,7 @@ class AssetDesignerDialog(QDialog):
     def browse_blueprints(self):
         """Open blueprint browser dialog to select a blueprint."""
         from .blueprint_browser import BlueprintBrowserDialog
-        from ..templates import TemplateManager
+        from bpui.features.templates.templates import TemplateManager
         
         manager = TemplateManager()
         dialog = BlueprintBrowserDialog(self, manager.official_dir)
@@ -225,7 +225,7 @@ class AssetDesignerDialog(QDialog):
             # Check if a blueprint was browsed and selected
             if hasattr(self, 'browse_blueprint_path') and self.browse_blueprint_path:
                 # Calculate relative path from blueprints directory
-                from ..templates import TemplateManager
+                from bpui.features.templates.templates import TemplateManager
                 manager = TemplateManager()
                 try:
                     rel_path = self.browse_blueprint_path.relative_to(manager.official_dir)

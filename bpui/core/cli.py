@@ -111,7 +111,7 @@ def main():
     args = parser.parse_args()
     
     # Setup logging before any commands
-    from .logging_config import setup_logging
+    from bpui.utils.logging_config import setup_logging
     setup_logging(
         level=args.log_level,
         log_file=args.log_file,
@@ -121,7 +121,7 @@ def main():
     
     # Setup profiling if requested
     if args.profile:
-        from .profiler import get_profiler, enable_profiling
+        from bpui.utils.profiler import get_profiler, enable_profiling
         enable_profiling()
         logger = logging.getLogger(__name__)
         logger.info("Performance profiling enabled")
@@ -156,14 +156,14 @@ def main():
     
     # Print profiling report if enabled
     if args.profile:
-        from .profiler import get_profiler
+        from bpui.utils.profiler import get_profiler
         profiler = get_profiler()
         profiler.print_report()
 
 
 def run_tui():
     """Run the TUI application."""
-    from .tui.app import BlueprintUI
+    from bpui.tui.app import BlueprintUI
 
     app = BlueprintUI()
     app.run()
@@ -173,11 +173,17 @@ def run_gui():
     """Run the Qt6 GUI application."""
     logger = logging.getLogger(__name__)
     try:
-        from .gui.app import run_gui_app
+        try:
+            import PySide6  # noqa: F401
+        except ModuleNotFoundError:
+            logger.error("PySide6 not installed. Install with: pip install PySide6")
+            logger.error("Or use TUI mode: bpui tui")
+            sys.exit(1)
+
+        from bpui.gui.app import run_gui_app
         run_gui_app()
-    except ImportError:
-        logger.error("PySide6 not installed. Install with: pip install PySide6")
-        logger.error("Or use TUI mode: bpui tui")
+    except ImportError as exc:
+        logger.exception("GUI import failed: %s", exc)
         sys.exit(1)
 
 
@@ -185,11 +191,11 @@ async def run_compile(args):
     """Run compilation from CLI."""
     from .config import Config
     logger = logging.getLogger(__name__)
-    from .llm.factory import create_engine
+    from bpui.llm.factory import create_engine
     from .prompting import build_asset_prompt
     from .parse_blocks import extract_single_asset, extract_character_name
-    from .pack_io import create_draft_dir
-    from .templates import TemplateManager
+    from bpui.utils.file_io.pack_io import create_draft_dir
+    from bpui.features.templates.templates import TemplateManager
     from .topological_sort import topological_sort
 
     config = Config()
@@ -288,7 +294,7 @@ async def run_compile(args):
 async def run_seedgen(args):
     """Run seed generator from CLI."""
     from .config import Config
-    from .llm.factory import create_engine
+    from bpui.llm.factory import create_engine
     from .prompting import build_seedgen_prompt
 
     logger = logging.getLogger(__name__)
@@ -396,12 +402,12 @@ async def run_batch(args):
     """Run batch compilation from CLI."""
     import asyncio
     from .config import Config
-    from .llm.factory import create_engine
+    from bpui.llm.factory import create_engine
     from .prompting import build_orchestrator_prompt
     from .parse_blocks import parse_blueprint_output, extract_character_name, ASSET_FILENAMES
-    from .pack_io import create_draft_dir
+    from bpui.utils.file_io.pack_io import create_draft_dir
     from .batch_state import BatchState
-    from .templates import TemplateManager
+    from bpui.features.templates.templates import TemplateManager
 
     logger = logging.getLogger(__name__)
     config = Config()
@@ -559,7 +565,7 @@ async def run_batch_sequential(seeds, engine, batch_state, args, model, template
     """Run batch compilation sequentially (original behavior)."""
     from .prompting import build_orchestrator_prompt
     from .parse_blocks import parse_blueprint_output, extract_character_name, ASSET_FILENAMES
-    from .pack_io import create_draft_dir
+    from bpui.utils.file_io.pack_io import create_draft_dir
     
     # Compile each seed
     successful = len(batch_state.completed_seeds)
@@ -643,7 +649,7 @@ async def run_batch_parallel(seeds, engine, batch_state, args, model, max_concur
     import random
     from .prompting import build_orchestrator_prompt
     from .parse_blocks import parse_blueprint_output, extract_character_name, ASSET_FILENAMES
-    from .pack_io import create_draft_dir
+    from bpui.utils.file_io.pack_io import create_draft_dir
     
     # Simple rate limiter using time-based delays
     class RateLimiter:
@@ -785,7 +791,7 @@ async def run_batch_parallel(seeds, engine, batch_state, args, model, max_concur
 
 def run_rebuild_index(args):
     """Rebuild the draft index from disk."""
-    from .draft_index import DraftIndex
+    from bpui.utils.metadata.draft_index import DraftIndex
     
     logger = logging.getLogger(__name__)
     
@@ -810,12 +816,12 @@ def run_rebuild_index(args):
 async def run_offspring(args):
     """Run offspring generation from CLI."""
     from .config import Config
-    from .llm.factory import create_engine
+    from bpui.llm.factory import create_engine
     from .prompting import build_offspring_prompt, build_asset_prompt
     from .parse_blocks import extract_single_asset, extract_character_name
-    from .pack_io import create_draft_dir, load_draft
-    from .metadata import DraftMetadata
-    from .templates import TemplateManager
+    from bpui.utils.file_io.pack_io import create_draft_dir, load_draft
+    from bpui.utils.metadata.metadata import DraftMetadata
+    from bpui.features.templates.templates import TemplateManager
     from .topological_sort import topological_sort
 
     logger = logging.getLogger(__name__)
@@ -970,7 +976,7 @@ def _find_draft(identifier: str, drafts_root: Path) -> Path | None:
     Returns:
         Path to draft directory or None
     """
-    from .metadata import DraftMetadata
+    from bpui.utils.metadata.metadata import DraftMetadata
     
     # If it's an absolute path, use it directly
     path = Path(identifier)
@@ -1151,7 +1157,7 @@ async def run_list_models(args):
 
 def run_similarity(args):
     """Run similarity analysis from CLI."""
-    from .similarity import SimilarityAnalyzer, format_similarity_report
+    from bpui.features.similarity.engine import SimilarityAnalyzer, format_similarity_report
     
     drafts_root = args.drafts_dir or Path.cwd() / "drafts"
     
@@ -1252,7 +1258,7 @@ def run_similarity(args):
         llm_engine = None
         
         if use_llm:
-            from .llm.factory import create_engine
+            from bpui.llm.factory import create_engine
             from .config import Config
 
             config = Config()

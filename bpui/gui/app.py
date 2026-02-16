@@ -6,7 +6,7 @@ from PySide6.QtGui import QPalette, QColor
 import sys
 
 from .main_window import MainWindow
-from ..config import Config
+from bpui.core.config import Config
 
 
 def setup_dark_theme(app: QApplication):
