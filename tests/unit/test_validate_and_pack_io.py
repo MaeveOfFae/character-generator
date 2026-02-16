@@ -4,8 +4,8 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 import subprocess
-from bpui.validate import validate_pack
-from bpui.pack_io import (
+from bpui.utils.file_io.validate import validate_pack
+from bpui.utils.file_io.pack_io import (
     create_draft_dir,
     list_drafts,
     load_draft,

@@ -12,7 +12,7 @@ else:
 
 import tomli_w
 
-from .logging_config import setup_logging, get_logger
+from bpui.utils.logging_config import setup_logging, get_logger
 
 
 DEFAULT_CONFIG = {

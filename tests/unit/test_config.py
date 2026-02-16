@@ -2,7 +2,7 @@
 
 import pytest
 from pathlib import Path
-from bpui.config import Config, DEFAULT_CONFIG
+from bpui.core.config import Config, DEFAULT_CONFIG
 
 
 class TestConfigDefaults:

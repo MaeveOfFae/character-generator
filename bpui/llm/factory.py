@@ -150,14 +150,11 @@ def create_engine(
         # Determine which API to use based on available keys
         if provider == "openrouter" or (provider_key is None and openrouter_key):
             # Use OpenRouter (either explicitly or as fallback)
-            api_key = openrouter_key
+            api_key = api_key_override or openrouter_key
             base_url = "https://openrouter.ai/api/v1"
             # For OpenRouter, strip only the 'openrouter/' prefix if present
             # Model format expected by OpenRouter: 'provider/model' (e.g., 'anthropic/claude-3-opus')
-            if model.startswith("openrouter/"):
-                api_model = model[len("openrouter/"):]  # Strip 'openrouter/' prefix
-            else:
-                api_model = model  # Use as-is
+            api_model = model
             logger.info(f"Using OpenAICompatEngine for {provider} model '{model}' via OpenRouter (API: '{api_model}')")
         elif provider == "deepseek" and provider_key:
             # Use DeepSeek direct API

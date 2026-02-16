@@ -6,7 +6,7 @@ from unittest.mock import Mock, AsyncMock, patch
 from textual.widgets import Button, TextArea, Static
 
 from bpui.tui.review import ReviewScreen
-from bpui.config import Config
+from bpui.core.config import Config
 
 
 @pytest.fixture

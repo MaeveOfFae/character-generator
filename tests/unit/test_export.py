@@ -4,7 +4,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 import subprocess
-from bpui.export import export_character
+from bpui.features.export.export import export_character
 
 
 class TestExportCharacter:

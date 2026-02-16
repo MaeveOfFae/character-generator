@@ -5,11 +5,11 @@ import tempfile
 import shutil
 from pathlib import Path
 from unittest.mock import patch, AsyncMock, MagicMock
-from bpui.prompting import build_orchestrator_prompt, build_asset_prompt
-from bpui.parse_blocks import parse_blueprint_output, extract_character_name
-from bpui.pack_io import create_draft_dir, list_drafts, load_draft
-from bpui.validate import validate_pack
-from bpui.export import export_character
+from bpui.core.prompting import build_orchestrator_prompt, build_asset_prompt
+from bpui.core.parse_blocks import parse_blueprint_output, extract_character_name
+from bpui.utils.file_io.pack_io import create_draft_dir, list_drafts, load_draft
+from bpui.utils.file_io.validate import validate_pack
+from bpui.features.export.export import export_character
 
 
 @pytest.fixture
@@ -233,7 +233,7 @@ class TestValidationWorkflow:
         )
         
         # Step 2: Run validation (mock the validator script)
-        with patch("bpui.validate.subprocess.run") as mock_run:
+        with patch("bpui.utils.file_io.validate.subprocess.run") as mock_run:
             mock_result = MagicMock()
             mock_result.returncode = 1
             mock_result.stdout = "Found placeholder: {AGE}\\nFound placeholder: {PLACEHOLDER}\\n"
@@ -267,7 +267,7 @@ class TestValidationWorkflow:
         )
         
         # Mock validation passing
-        with patch("bpui.validate.subprocess.run") as mock_run:
+        with patch("bpui.utils.file_io.validate.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(
                 returncode=0,
                 stdout="✓ All validations passed\n"
@@ -301,7 +301,7 @@ class TestExportWorkflow:
         )
         
         # Step 2: Export
-        with patch("bpui.export.subprocess.run") as mock_run:
+        with patch("bpui.features.export.export.subprocess.run") as mock_run:
             output_path = temp_repo_root / "output" / "export_character(test_model)"
             mock_run.return_value = MagicMock(
                 returncode=0,
@@ -341,7 +341,7 @@ class TestExportWorkflow:
         output_dir = temp_repo_root / "output" / "roundtrip_character(model)"
         output_dir.mkdir(parents=True)
         
-        with patch("bpui.export.subprocess.run") as mock_run:
+        with patch("bpui.features.export.export.subprocess.run") as mock_run:
             # Simulate export by copying files
             for filename in ["system_prompt.txt", "post_history.txt", "character_sheet.txt",
                            "intro_scene.txt", "intro_page.md", "a1111_prompt.txt", "suno_prompt.txt"]:
@@ -445,7 +445,7 @@ class TestErrorRecovery:
     @pytest.mark.asyncio
     async def test_incomplete_llm_output_handling(self):
         """Test handling of incomplete LLM output."""
-        from bpui.parse_blocks import ParseError
+        from bpui.core.parse_blocks import ParseError
         
         incomplete_output = """
 ```
@@ -462,7 +462,7 @@ post history
     
     def test_missing_character_name_recovery(self):
         """Test fallback when character name cannot be extracted."""
-        from bpui.parse_blocks import ParseError
+        from bpui.core.parse_blocks import ParseError
         
         sheet_no_name = "age: 25\noccupation: Detective"
         
@@ -478,7 +478,7 @@ post history
         (pack_dir / "system_prompt.txt").write_text("Only file")
         
         # Validation should handle missing files
-        with patch("bpui.validate.subprocess.run") as mock_run:
+        with patch("bpui.utils.file_io.validate.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(
                 returncode=1,
                 stdout="Error: Missing required files\n"

@@ -16,7 +16,7 @@ def test_imports():
         return False
 
     try:
-        from bpui.config import Config
+        from bpui.core.config import Config
         print("✓ bpui.config")
     except ImportError as e:
         print(f"✗ bpui.config: {e}")
@@ -44,35 +44,35 @@ def test_imports():
         print("  Install with: pip install litellm")
 
     try:
-        from bpui.prompting import build_orchestrator_prompt
+        from bpui.core.prompting import build_orchestrator_prompt
         print("✓ bpui.prompting")
     except ImportError as e:
         print(f"✗ bpui.prompting: {e}")
         return False
 
     try:
-        from bpui.parse_blocks import parse_blueprint_output
+        from bpui.core.parse_blocks import parse_blueprint_output
         print("✓ bpui.parse_blocks")
     except ImportError as e:
         print(f"✗ bpui.parse_blocks: {e}")
         return False
 
     try:
-        from bpui.pack_io import create_draft_dir
+        from bpui.utils.file_io.pack_io import create_draft_dir
         print("✓ bpui.pack_io")
     except ImportError as e:
         print(f"✗ bpui.pack_io: {e}")
         return False
 
     try:
-        from bpui.validate import validate_pack
+        from bpui.utils.file_io.validate import validate_pack
         print("✓ bpui.validate")
     except ImportError as e:
         print(f"✗ bpui.validate: {e}")
         return False
 
     try:
-        from bpui.export import export_character
+        from bpui.features.export.export import export_character
         print("✓ bpui.export")
     except ImportError as e:
         print(f"✗ bpui.export: {e}")
@@ -94,7 +94,7 @@ def test_config():
     print("\nTesting config...")
 
     try:
-        from bpui.config import Config
+        from bpui.core.config import Config
 
         config = Config()
         print(f"✓ Config loaded")
@@ -113,7 +113,7 @@ def test_parser():
     print("\nTesting parser...")
 
     try:
-        from bpui.parse_blocks import extract_codeblocks, parse_blueprint_output
+        from bpui.core.parse_blocks import extract_codeblocks, parse_blueprint_output
 
         # Test codeblock extraction
         test_text = """

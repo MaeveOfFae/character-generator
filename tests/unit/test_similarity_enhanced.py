@@ -2,7 +2,7 @@
 
 import pytest
 from pathlib import Path
-from bpui.similarity import (
+from bpui.features.similarity.similarity import (
     CharacterProfile,
     LLMAnalysis,
     MetaAnalysis,

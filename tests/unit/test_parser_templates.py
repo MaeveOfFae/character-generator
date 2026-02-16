@@ -2,8 +2,8 @@
 
 import pytest
 from pathlib import Path
-from bpui.parse_blocks import parse_blueprint_output, get_asset_filename, ParseError
-from bpui.templates import TemplateManager, Template, AssetDefinition
+from bpui.core.parse_blocks import parse_blueprint_output, get_asset_filename, ParseError
+from bpui.features.templates.templates import TemplateManager, Template, AssetDefinition
 
 
 @pytest.fixture
@@ -261,7 +261,7 @@ class TestPackIOTemplateSupport:
     
     def test_create_draft_dir_with_template(self, minimal_template, tmp_path):
         """Test creating draft directory with template."""
-        from bpui.pack_io import create_draft_dir
+        from bpui.utils.file_io.pack_io import create_draft_dir
         
         assets = {
             "asset1": "Content 1",
@@ -285,14 +285,14 @@ class TestPackIOTemplateSupport:
         assert (draft_dir / "asset3.md").exists()
         
         # Check metadata includes template name
-        from bpui.metadata import DraftMetadata
+        from bpui.utils.metadata.metadata import DraftMetadata
         metadata = DraftMetadata.load(draft_dir)
         assert metadata is not None
         assert metadata.template_name == "Test Template"
     
     def test_load_draft_with_template(self, minimal_template, tmp_path):
         """Test loading draft with template."""
-        from bpui.pack_io import create_draft_dir, load_draft
+        from bpui.utils.file_io.pack_io import load_draft
         
         assets = {
             "asset1": "Content 1",

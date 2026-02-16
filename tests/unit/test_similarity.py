@@ -2,7 +2,7 @@
 
 import pytest
 from pathlib import Path
-from bpui.similarity import CharacterProfile, SimilarityAnalyzer, SimilarityResult
+from bpui.features.similarity.similarity import CharacterProfile, SimilarityAnalyzer, SimilarityResult
 
 
 class TestCharacterProfile:

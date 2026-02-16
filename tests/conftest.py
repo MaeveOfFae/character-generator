@@ -2,7 +2,7 @@
 
 import pytest
 from pathlib import Path
-from bpui.config import Config
+from bpui.core.config import Config
 
 
 @pytest.fixture

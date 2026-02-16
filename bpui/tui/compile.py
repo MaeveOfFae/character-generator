@@ -131,7 +131,7 @@ class CompileScreen(Screen):
 
     def load_templates(self) -> None:
         """Load templates into the select widget."""
-        from ..templates import TemplateManager
+        from bpui.features.templates.templates import TemplateManager
         template_select = self.query_one("#template", Select)
         
         try:

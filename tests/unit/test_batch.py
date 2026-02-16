@@ -6,7 +6,7 @@ from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from textual.widgets import Button, Static, Input, Select, ProgressBar
 
 from bpui.tui.batch import BatchScreen
-from bpui.config import Config
+from bpui.core.config import Config
 
 
 @pytest.fixture

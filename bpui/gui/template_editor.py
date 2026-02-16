@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from ..templates import Template, AssetDefinition, TemplateManager
+from bpui.features.templates.templates import Template, AssetDefinition, TemplateManager
 from .blueprint_editor import BlueprintEditor
 
 
