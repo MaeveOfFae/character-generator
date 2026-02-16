@@ -1,97 +1,118 @@
-# Character Generator - Documentation
+# Character Generator - Documentation Index
 
-This directory contains comprehensive documentation for the character-generator project.
+Welcome to the Character Generator documentation. This index provides navigation to all project documentation organized by category.
 
-## Documentation Files
+## 📚 Documentation Structure
 
-### Feature Documentation
-- **[FEATURE_AUDIT.md](FEATURE_AUDIT.md)** - Complete feature audit report covering all project features, modules, and capabilities
-- **[SIMILARITY_ENHANCEMENTS.md](SIMILARITY_ENHANCEMENTS.md)** - Detailed documentation of the character similarity analyzer, including LLM-powered analysis and redundancy detection
+### 🚀 [Guides](guides/)
+Getting started and how-to guides for using the Character Generator.
 
-### API Documentation
-- **[api/](api/)** - Generated API documentation
-  - Run `make docs` to generate
-  - View at `docs/api/bpui/`
-  - See [api/README.md](api/README.md) for details
+- **[Quick Start Guide](guides/QUICKSTART.md)** - Fast-track guide to get up and running quickly
+- **[Similarity Analyzer Guide](guides/SIMILARITY_ENHANCEMENTS.md)** - Deep dive into character comparison and analysis
+- **[OpenRouter Support](guides/OPENROUTER_SUPPORT.md)** - Using OpenRouter with 100+ AI models
 
-### Project Documentation (Root)
-- **[../README.md](../README.md)** - Main project README with quickstart guide
-- **[../QUICKSTART.md](../QUICKSTART.md)** - Quick reference guide
-- **[../bpui/README.md](../bpui/README.md)** - TUI documentation and keyboard shortcuts
-- **[../IMPLEMENTATION_ROADMAP.md](../IMPLEMENTATION_ROADMAP.md)** - Development roadmap
-- **[../bpui/docs/INSTALL.md](../bpui/docs/INSTALL.md)** - Installation guide
-- **[../bpui/docs/IMPLEMENTATION.md](../bpui/docs/IMPLEMENTATION.md)** - Implementation details
-- **[../bpui/docs/PYTHON_3.13_NOTES.md](../bpui/docs/PYTHON_3.13_NOTES.md)** - Python 3.13 compatibility notes
+### 🏗️ [Architecture](architecture/)
+Technical architecture and system design documentation.
 
-## Key Features
+- **[Draft Index System](features/draft-index.md)** - Architecture of the draft indexing system
 
-### Similarity Analyzer
+### ✨ [Features](features/)
+Feature-specific documentation and detailed explanations.
 
-The similarity analyzer allows you to:
-- Compare two characters to find commonalities and differences
-- Get LLM-powered narrative insights, story opportunities, and relationship arcs
-- Detect character redundancy at four levels (low/medium/high/extreme)
-- Generate actionable rework suggestions to differentiate similar characters
-- Get merge recommendations for extreme duplicates (>95% similar)
-- Compare all character pairs in batch mode
-- Cluster similar characters for group analysis
+- **[Feature Audit](features/FEATURE_AUDIT.md)** - Complete feature audit and analysis
+- **[AI-Powered Seed Enhancement](features/PHASE_3.4_SURPRISE_ME.md)** - Documentation for "Surprise Me" seed generation
 
-**Usage:**
-```bash
-# Basic comparison
-bpui similarity "character1" "character2"
+### 💻 [Development](development/)
+Developer-focused documentation for contributing to the project.
 
-# With LLM analysis
-bpui similarity "character1" "character2" --use-llm
+- **[Implementation Guide](development/IMPLEMENTATION.md)** - Implementation details and architecture decisions
 
-# Compare all pairs
-bpui similarity drafts --all --use-llm
+### 🔧 [Installation](installation/)
+Installation guides and platform-specific notes.
 
-# Cluster characters
-bpui similarity drafts --cluster --threshold 0.75
-```
+- **[Installation Guide](installation/INSTALL.md)** - Detailed installation instructions
+- **[Python 3.13 Notes](installation/PYTHON_3.13_NOTES.md)** - Python 3.13 compatibility notes
 
-See [SIMILARITY_ENHANCEMENTS.md](SIMILARITY_ENHANCEMENTS.md) for complete details.
+### 🔌 [API Reference](api/)
+API documentation for developers.
 
-## Documentation Organization
+- **[API Overview](api/README.md)** - API documentation introduction
+- **[Google API](api/google.md)** - Google LLM API reference
+- **[OpenAI API](api/openai.md)** - OpenAI API reference
+- **[OpenRouter API](api/openrouter.md)** - OpenRouter API reference
+- **[Providers](api/providers.md)** - All supported LLM providers
 
-```
-docs/
-├── README.md                     # This file
-├── FEATURE_AUDIT.md              # Complete feature audit
-├── SIMILARITY_ENHANCEMENTS.md     # Similarity analyzer docs
-├── draft-index.md                 # Draft index docs
-├── PHASE_3.4_SURPRISE_ME.md    # Feature documentation
-└── api/                         # Generated API docs
-    ├── README.md
-    └── bpui/                    # Module documentation
-```
+### 📦 [Archive](archive/)
+Historical documentation, implementation notes, and summaries.
 
-## Generating API Documentation
+Archived documents include:
+- Implementation roadmaps
+- Feature summaries and status reports
+- Historical bug fixes and enhancements
+- Technical review documents
 
-To generate API documentation:
+## 🎯 Quick Links
 
-```bash
-make docs
-```
+- **[Project README](../README.md)** - Main project documentation
+- **[TUI Guide](../bpui/README.md)** - Terminal UI documentation and keyboard shortcuts
+- **[Contributing Guidelines](../CONTRIBUTING.md)** - How to contribute to the project
+- **[Code of Conduct](../CODE_OF_CONDUCT.md)** - Community guidelines
+- **[Security Policy](../SECURITY.md)** - Security reporting and policies
 
-This will generate documentation in `docs/api/bpui/` using the script in `tools/generate_api_docs.py`.
+## 📖 Documentation Conventions
 
-## Contributing to Documentation
+### File Organization
 
-When adding new features:
-1. Update [FEATURE_AUDIT.md](FEATURE_AUDIT.md) with the new feature
-2. Add detailed documentation in this directory
-3. Update [../README.md](../README.md) with a summary
-4. Update [../QUICKSTART.md](../QUICKSTART.md) with usage examples
-5. Update [../bpui/README.md](../bpui/README.md) if it affects TUI
-6. Run `make docs` to regenerate API documentation
+Documentation is organized by purpose:
+- **Guides**: How-to and getting started content
+- **Architecture**: System design and technical architecture
+- **Features**: Detailed feature documentation
+- **Development**: Contributor and developer documentation
+- **Installation**: Setup and installation guides
+- **API**: Technical API reference
+- **Archive**: Historical and legacy documentation
 
-## Getting Help
+### Naming Conventions
 
-- **Quick Start**: See [../README.md](../README.md)
-- **TUI Guide**: See [../bpui/README.md](../bpui/README.md)
-- **Installation**: See [../bpui/docs/INSTALL.md](../bpui/docs/INSTALL.md)
-- **API Reference**: See [api/](api/)
-- **Feature Details**: See specific documentation files above
-- **Contributing**: See [../CONTRIBUTING.md](../CONTRIBUTING.md)
+- **Main docs**: UPPERCASE_WITH_UNDERSCORES (e.g., `README.md`, `QUICKSTART.md`)
+- **Category docs**: kebab-case (e.g., `feature-audit.md`, `similarity-enhancements.md`)
+- **API docs**: lowercase (e.g., `google.md`, `openai.md`)
+
+## 🤝 Contributing to Documentation
+
+We welcome documentation contributions! When adding or updating documentation:
+
+1. Place files in the appropriate category directory
+2. Follow the naming conventions above
+3. Update this index to link to new or moved documents
+4. Ensure cross-references are updated when moving files
+5. Test all links before submitting
+
+## 📝 Documenting New Features
+
+When adding new features to the project:
+
+1. Add feature documentation to `docs/features/`
+2. Update the feature audit if applicable
+3. Add getting started guide to `docs/guides/` if user-facing
+4. Update this index with appropriate links
+5. Consider adding implementation notes to `docs/development/`
+
+## 🔍 Searching Documentation
+
+If you can't find what you're looking for:
+
+1. Check the **Archive** for historical documents
+2. Search in the main [README](../README.md)
+3. Look in the [TUI Guide](../bpui/README.md) for UI-specific documentation
+4. Check the GitHub Issues for discussions and questions
+5. Review the Implementation Roadmap in the Archive for planned features
+
+## 📄 License
+
+This documentation is part of the Character Generator project and follows the same [BSD 3-Clause License](../LICENSE).
+
+---
+
+*Last Updated: 2026-02-16*
+*Documentation Structure Version: 2.0*
