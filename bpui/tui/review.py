@@ -166,7 +166,7 @@ class ReviewScreen(Screen):
         self.template = template
         
         # Load metadata or use provided values
-        from ..metadata import DraftMetadata
+        from bpui.utils.metadata.metadata import DraftMetadata
         metadata = None
         if draft_dir and draft_dir.exists():
             metadata = DraftMetadata.load(draft_dir)
@@ -929,7 +929,7 @@ class ReviewScreen(Screen):
     
     def update_metadata_display(self) -> None:
         """Update the metadata information display."""
-        from ..metadata import DraftMetadata
+        from bpui.utils.metadata.metadata import DraftMetadata
         
         metadata = DraftMetadata.load(self.draft_dir)
         if not metadata:
@@ -956,7 +956,7 @@ class ReviewScreen(Screen):
     
     async def toggle_favorite(self) -> None:
         """Toggle favorite status (F key)."""
-        from ..metadata import DraftMetadata
+        from bpui.utils.metadata.metadata import DraftMetadata
         
         metadata = DraftMetadata.load(self.draft_dir)
         if not metadata:
@@ -980,7 +980,7 @@ class ReviewScreen(Screen):
     
     def show_tags_dialog(self) -> None:
         """Show tags editor dialog."""
-        from ..metadata import DraftMetadata
+        from bpui.utils.metadata.metadata import DraftMetadata
         
         metadata = DraftMetadata.load(self.draft_dir)
         if not metadata:
@@ -994,7 +994,7 @@ class ReviewScreen(Screen):
     
     def show_genre_dialog(self) -> None:
         """Show genre editor dialog."""
-        from ..metadata import DraftMetadata
+        from bpui.utils.metadata.metadata import DraftMetadata
         
         metadata = DraftMetadata.load(self.draft_dir)
         if not metadata:
@@ -1008,7 +1008,7 @@ class ReviewScreen(Screen):
     
     def show_notes_dialog(self) -> None:
         """Show notes editor dialog."""
-        from ..metadata import DraftMetadata
+        from bpui.utils.metadata.metadata import DraftMetadata
         
         metadata = DraftMetadata.load(self.draft_dir)
         if not metadata:
@@ -1091,7 +1091,7 @@ class TagsEditorDialog(Screen):
             self.action_cancel()
     
     def action_save(self) -> None:
-        from ..metadata import DraftMetadata
+        from bpui.utils.metadata.metadata import DraftMetadata
         
         input_widget = self.query_one("#input", Input)
         tags_str = input_widget.value
@@ -1177,7 +1177,7 @@ class GenreEditorDialog(Screen):
             self.action_cancel()
     
     def action_save(self) -> None:
-        from ..metadata import DraftMetadata
+        from bpui.utils.metadata.metadata import DraftMetadata
         
         input_widget = self.query_one("#input", Input)
         genre = input_widget.value.strip()
@@ -1261,7 +1261,7 @@ class NotesEditorDialog(Screen):
             self.action_cancel()
     
     def action_save(self) -> None:
-        from ..metadata import DraftMetadata
+        from bpui.utils.metadata.metadata import DraftMetadata
         
         textarea = self.query_one("#textarea", TextArea)
         notes = textarea.text.strip()

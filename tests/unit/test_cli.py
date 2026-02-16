@@ -20,7 +20,7 @@ class TestMainArgumentParsing:
         """Test that no arguments defaults to TUI."""
         with patch("sys.argv", ["bpui"]):
             with patch("bpui.cli.run_tui") as mock_tui:
-                from bpui.cli import main
+                from bpui.core.cli import main
                 main()
                 mock_tui.assert_called_once()
     
@@ -28,7 +28,7 @@ class TestMainArgumentParsing:
         """Test explicit tui command."""
         with patch("sys.argv", ["bpui", "tui"]):
             with patch("bpui.cli.run_tui") as mock_tui:
-                from bpui.cli import main
+                from bpui.core.cli import main
                 main()
                 mock_tui.assert_called_once()
     
@@ -36,28 +36,28 @@ class TestMainArgumentParsing:
         """Test that compile requires --seed."""
         with patch("sys.argv", ["bpui", "compile"]):
             with pytest.raises(SystemExit):
-                from bpui.cli import main
+                from bpui.core.cli import main
                 main()
     
     def test_seedgen_command_requires_input(self):
         """Test that seed-gen requires --input."""
         with patch("sys.argv", ["bpui", "seed-gen"]):
             with pytest.raises(SystemExit):
-                from bpui.cli import main
+                from bpui.core.cli import main
                 main()
     
     def test_validate_command_requires_directory(self):
         """Test that validate requires directory."""
         with patch("sys.argv", ["bpui", "validate"]):
             with pytest.raises(SystemExit):
-                from bpui.cli import main
+                from bpui.core.cli import main
                 main()
     
     def test_export_command_requires_args(self):
         """Test that export requires character_name and source_dir."""
         with patch("sys.argv", ["bpui", "export"]):
             with pytest.raises(SystemExit):
-                from bpui.cli import main
+                from bpui.core.cli import main
                 main()
 
 
@@ -106,7 +106,7 @@ class TestRunCompile:
         mock_engine.generate = AsyncMock(return_value="Asset content")
         
         # Mock functions at the point they're imported in run_compile
-        with patch("bpui.config.Config", return_value=mock_config):
+        with patch("bpui.core.config.Config", return_value=mock_config):
             with patch("bpui.llm.litellm_engine.LiteLLMEngine", return_value=mock_engine):
                 with patch("bpui.prompting.build_asset_prompt", return_value=("sys", "user")):
                     with patch("bpui.parse_blocks.extract_single_asset", return_value="content"):
@@ -140,7 +140,7 @@ class TestRunCompile:
         mock_engine = MagicMock()
         mock_engine.generate = AsyncMock(return_value="Asset content")
         
-        with patch("bpui.config.Config", return_value=mock_config):
+        with patch("bpui.core.config.Config", return_value=mock_config):
             with patch("bpui.llm.litellm_engine.LiteLLMEngine", return_value=mock_engine):
                 with patch("bpui.prompting.build_asset_prompt", return_value=("sys", "user")) as mock_build:
                     with patch("bpui.parse_blocks.extract_single_asset", return_value="content"):
@@ -178,7 +178,7 @@ class TestRunCompile:
         mock_engine = MagicMock()
         mock_engine.generate = AsyncMock(return_value="Asset content")
         
-        with patch("bpui.config.Config", return_value=mock_config):
+        with patch("bpui.core.config.Config", return_value=mock_config):
             with patch("bpui.llm.litellm_engine.LiteLLMEngine", return_value=mock_engine):
                 with patch("bpui.prompting.build_asset_prompt", return_value=("sys", "user")):
                     with patch("bpui.parse_blocks.extract_single_asset", return_value="content"):
@@ -213,7 +213,7 @@ class TestRunCompile:
         mock_engine = MagicMock()
         mock_engine.generate = AsyncMock(return_value="Asset content")
         
-        with patch("bpui.config.Config", return_value=mock_config):
+        with patch("bpui.core.config.Config", return_value=mock_config):
             with patch("bpui.llm.openai_compat_engine.OpenAICompatEngine", return_value=mock_engine) as mock_openai:
                 with patch("bpui.prompting.build_asset_prompt", return_value=("sys", "user")):
                     with patch("bpui.parse_blocks.extract_single_asset", return_value="content"):
@@ -253,11 +253,11 @@ class TestRunSeedgen:
         mock_engine = MagicMock()
         mock_engine.generate = AsyncMock(return_value="Seed 1\nSeed 2\nSeed 3")
         
-        with patch("bpui.config.Config", return_value=mock_config):
+        with patch("bpui.core.config.Config", return_value=mock_config):
             with patch("bpui.llm.litellm_engine.LiteLLMEngine", return_value=mock_engine):
                 with patch("bpui.prompting.build_seedgen_prompt", return_value=("sys", "user")):
                     with patch("builtins.print"):
-                        from bpui.cli import run_seedgen
+                        from bpui.core.cli import run_seedgen
                         await run_seedgen(args)
     
     @pytest.mark.asyncio
@@ -285,11 +285,11 @@ class TestRunSeedgen:
         mock_engine = MagicMock()
         mock_engine.generate = AsyncMock(return_value="Seed 1\nSeed 2")
         
-        with patch("bpui.config.Config", return_value=mock_config):
+        with patch("bpui.core.config.Config", return_value=mock_config):
             with patch("bpui.llm.litellm_engine.LiteLLMEngine", return_value=mock_engine):
                 with patch("bpui.prompting.build_seedgen_prompt", return_value=("sys", "user")):
                     with patch("builtins.print"):
-                        from bpui.cli import run_seedgen
+                        from bpui.core.cli import run_seedgen
                         await run_seedgen(args)
                         
                         assert output_file.exists()
@@ -308,7 +308,7 @@ class TestRunSeedgen:
         
         with patch("builtins.print"):
             with pytest.raises(SystemExit) as exc:
-                from bpui.cli import run_seedgen
+                from bpui.core.cli import run_seedgen
                 await run_seedgen(args)
             assert exc.value.code == 1
 
@@ -332,10 +332,10 @@ class TestRunValidate:
             "exit_code": 0
         }
         
-        with patch("bpui.validate.validate_pack", return_value=mock_result):
+        with patch("bpui.utils.file_io.validate.validate_pack", return_value=mock_result):
             with patch("builtins.print"):
                 with pytest.raises(SystemExit) as exc:
-                    from bpui.cli import run_validate
+                    from bpui.core.cli import run_validate
                     run_validate(args)
                 assert exc.value.code == 0
     
@@ -347,7 +347,7 @@ class TestRunValidate:
         
         with patch("builtins.print"):
             with pytest.raises(SystemExit) as exc:
-                from bpui.cli import run_validate
+                from bpui.core.cli import run_validate
                 run_validate(args)
             assert exc.value.code == 1
     
@@ -367,10 +367,10 @@ class TestRunValidate:
             "exit_code": 1
         }
         
-        with patch("bpui.validate.validate_pack", return_value=mock_result):
+        with patch("bpui.utils.file_io.validate.validate_pack", return_value=mock_result):
             with patch("builtins.print"):
                 with pytest.raises(SystemExit) as exc:
-                    from bpui.cli import run_validate
+                    from bpui.core.cli import run_validate
                     run_validate(args)
                 assert exc.value.code == 1
 
@@ -398,10 +398,10 @@ class TestRunExport:
             "exit_code": 0
         }
         
-        with patch("bpui.export.export_character", return_value=mock_result):
+        with patch("bpui.features.export.export.export_character", return_value=mock_result):
             with patch("builtins.print"):
                 with pytest.raises(SystemExit) as exc:
-                    from bpui.cli import run_export
+                    from bpui.core.cli import run_export
                     run_export(args)
                 assert exc.value.code == 0
     
@@ -417,7 +417,7 @@ class TestRunExport:
         
         with patch("builtins.print"):
             with pytest.raises(SystemExit) as exc:
-                from bpui.cli import run_export
+                from bpui.core.cli import run_export
                 run_export(args)
             assert exc.value.code == 1
     
@@ -441,9 +441,9 @@ class TestRunExport:
             "exit_code": 1
         }
         
-        with patch("bpui.export.export_character", return_value=mock_result):
+        with patch("bpui.features.export.export.export_character", return_value=mock_result):
             with patch("builtins.print"):
                 with pytest.raises(SystemExit) as exc:
-                    from bpui.cli import run_export
+                    from bpui.core.cli import run_export
                     run_export(args)
                 assert exc.value.code == 1

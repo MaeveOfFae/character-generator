@@ -3,10 +3,10 @@
 
 import asyncio
 from pathlib import Path
-from bpui.config import Config
-from bpui.llm.litellm_engine import LiteLLMEngine
+from bpui.core.config import Config
+
 from bpui.llm.openai_compat_engine import OpenAICompatEngine
-from bpui.prompting import build_asset_prompt
+from bpui.core.prompting import build_asset_prompt
 
 async def test_compile():
     """Test compile without TUI."""
@@ -38,11 +38,8 @@ async def test_compile():
             "max_tokens": config.max_tokens,
         }
         
-        if config.engine == "litellm":
-            engine = LiteLLMEngine(**engine_config)
-        else:
-            engine_config["base_url"] = config.base_url
-            engine = OpenAICompatEngine(**engine_config)
+        engine_config["base_url"] = config.base_url
+        engine = OpenAICompatEngine(**engine_config)
         
         print("✓ Engine created successfully")
     except Exception as e:

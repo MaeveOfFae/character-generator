@@ -6,11 +6,11 @@ from textual.app import App
 from textual.widgets import Button, ListView, Static, Input
 from textual.containers import Container
 
-from bpui.config import Config
+from bpui.core.config import Config
 from bpui.tui.drafts import DraftsScreen, DeleteConfirmScreen
 from bpui.tui.home import HomeScreen
 from bpui.tui.review import ReviewScreen, SaveFileDialog
-from bpui.pack_io import create_draft_dir, delete_draft
+from bpui.utils.file_io.pack_io import create_draft_dir, delete_draft
 
 
 @pytest.fixture

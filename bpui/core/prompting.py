@@ -2,7 +2,7 @@
 
 from pathlib import Path
 from typing import Optional, List, Any
-from .profiler import profile
+from bpui.utils.profiler import profile
 
 
 def load_blueprint(name: str, repo_root: Optional[Path] = None) -> str:

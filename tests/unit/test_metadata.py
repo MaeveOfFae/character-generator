@@ -5,7 +5,7 @@ import pytest
 from pathlib import Path
 from datetime import datetime
 
-from bpui.metadata import DraftMetadata
+from bpui.utils.metadata.metadata import DraftMetadata
 
 
 def test_metadata_creation():

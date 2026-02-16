@@ -2,6 +2,7 @@
 
 import re
 from pathlib import Path
+import tomllib
 from typing import Optional, Dict, Any
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -246,23 +247,22 @@ class BlueprintEditor(QDialog):
         frontmatter_text = match.group(1)
         body = match.group(2)
         
-        # Parse simple YAML-like frontmatter
-        frontmatter = {}
-        for line in frontmatter_text.split("\\n"):
-            if ":" in line:
-                key, value = line.split(":", 1)
-                key = key.strip()
-                value = value.strip()
-                
-                # Handle boolean values
-                if value.lower() in ("true", "false"):
-                    frontmatter[key] = value.lower() == "true"
-                # Handle numeric values
-                elif value.replace(".", "", 1).isdigit():
-                    frontmatter[key] = value
-                else:
-                    frontmatter[key] = value
-        
+        try:
+            # Convert YAML-like to TOML-like by quoting string values
+            toml_text = ""
+            for line in frontmatter_text.split("\n"):
+                if ":" in line:
+                    key, value = line.split(":", 1)
+                    key = key.strip()
+                    value = value.strip()
+                    if value.lower() not in ("true", "false") and not value.replace(".", "", 1).isdigit():
+                        value = f'"{value}"'
+                    toml_text += f"{key} = {value}\n"
+            
+            frontmatter = tomllib.loads(toml_text)
+        except (tomllib.TOMLDecodeError, ValueError):
+            frontmatter = {}
+
         return frontmatter, body
     
     def generate_frontmatter(self) -> str:
@@ -275,10 +275,10 @@ class BlueprintEditor(QDialog):
         invokable = "true" if self.invokable_check.isChecked() else "false"
         
         frontmatter = f"""---
-name: {self.name_edit.text()}
-description: {self.description_edit.text()}
-invokable: {invokable}
-version: {version}
+name = "{self.name_edit.text()}"
+description = "{self.description_edit.text()}"
+invokable = {invokable}
+version = {version}
 ---"""
         return frontmatter
     

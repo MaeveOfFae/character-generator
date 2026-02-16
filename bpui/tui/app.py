@@ -8,7 +8,7 @@ from .settings import SettingsScreen
 from .seed_generator import SeedGeneratorScreen
 from .compile import CompileScreen
 from .review import ReviewScreen
-from ..config import Config
+from bpui.core.config import Config
 
 
 class BlueprintUI(App):

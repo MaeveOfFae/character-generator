@@ -3,8 +3,8 @@
 
 import asyncio
 from pathlib import Path
-from bpui.config import Config
-from bpui.prompting import build_asset_prompt
+from bpui.core.config import Config
+from bpui.core.prompting import build_asset_prompt
 
 async def test_streaming():
     """Test that we can build prompts and simulate streaming."""

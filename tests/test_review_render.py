@@ -2,8 +2,8 @@
 """Quick test to verify Review screen text rendering."""
 
 from pathlib import Path
-from bpui.pack_io import load_draft
-from bpui.config import Config
+from bpui.utils.file_io.pack_io import load_draft
+from bpui.core.config import Config
 
 # Load existing draft
 drafts_dir = Path("drafts")

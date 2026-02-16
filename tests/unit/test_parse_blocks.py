@@ -1,7 +1,7 @@
 """Tests for bpui/parse_blocks.py."""
 
 import pytest
-from bpui.parse_blocks import (
+from bpui.core.parse_blocks import (
     extract_codeblocks,
     parse_blueprint_output,
     extract_single_asset,
