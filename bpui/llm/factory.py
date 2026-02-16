@@ -15,10 +15,10 @@ def detect_provider_from_model(model: str) -> str:
     """Detect provider from model name.
 
     Args:
-        model: Model name (e.g., "gpt-4", "gemini-1.5-pro", "openai/gpt-4")
+        model: Model name (e.g., "gpt-4", "gemini-1.5-pro", "openrouter/anthropic/claude-3-opus")
 
     Returns:
-        Provider name: "google", "openai", "openrouter", "litellm", or "unknown"
+        Provider name: "google", "openai", "openrouter", or "unknown"
 
     Examples:
         "gpt-4" -> "openai"
@@ -27,30 +27,45 @@ def detect_provider_from_model(model: str) -> str:
         "gemini-1.5-pro" -> "google"
         "gemini-pro" -> "google"
         "openrouter/anthropic/claude-3-opus" -> "openrouter" (OpenAI-compatible API)
-        "openai/gpt-4" -> "litellm" (slash indicates LiteLLM format)
-        "anthropic/claude-3" -> "litellm"
+        "anthropic/claude-3-opus-20240229" -> "openrouter" (via autodetection)
+        "deepseek/deepseek-chat" -> "deepseek"
+        "zai/glm-5" -> "zai"
+        "moonshot-v1-8k" -> "moonshot"
         "random-model" -> "unknown"
     """
-    # Check for OpenRouter first (uses OpenAI-compatible API)
-    if model.lower().startswith("openrouter/"):
-        return "openrouter"
-
-    # If model has slash (but not openrouter), it's LiteLLM format provider/model
-    if "/" in model:
-        return "litellm"
-
-    # Auto-detect based on model name prefix
     model_lower = model.lower()
 
-    # OpenAI models
+    # Check for providers that use OpenAI-compatible APIs (like OpenRouter)
+    # These are often specified with a prefix.
+    if model_lower.startswith((
+        "openrouter/",
+        "anthropic/",
+        "deepseek/",
+        "zai/",
+        "moonshot",  # Moonshot models don't have a slash
+    )):
+        # Further check to map to a specific provider if needed,
+        # but for now, we can treat them as compatible and route them
+        # through a generic engine or a specific one if implemented.
+        if model_lower.startswith("openrouter/"):
+            return "openrouter"
+        if model_lower.startswith("anthropic/"):
+            return "anthropic"
+        if model_lower.startswith("deepseek/"):
+            return "deepseek"
+        if model_lower.startswith("zai/"):
+            return "zai"
+        if model_lower.startswith("moonshot"):
+            return "moonshot"
+
+    # Auto-detect based on model name prefix for native APIs
     if model_lower.startswith(("gpt-", "o1-", "o1")):
         return "openai"
 
-    # Google models
     if model_lower.startswith("gemini"):
         return "google"
 
-    # Unknown - will fall back to LiteLLM or raise error
+    # Fallback for unknown models
     return "unknown"
 
 
@@ -66,7 +81,6 @@ def create_engine(
     - Auto-detection of provider from model name
     - Explicit engine selection via config
     - API key resolution
-    - Fallback logic if native SDK not installed
 
     Args:
         config: Configuration object
@@ -80,21 +94,8 @@ def create_engine(
 
     Raises:
         ValueError: If engine cannot be created or required dependencies missing
-        ImportError: If native SDK required but not installed (with fallback suggestion)
-
-    Examples:
-        # Auto mode (default):
-        engine = create_engine(config)  # Uses config.model to auto-detect
-
-        # With overrides:
-        engine = create_engine(config, model_override="gpt-4", temperature=0.8)
-
-        # Explicit mode (honors config.engine):
-        # config.engine_mode = "explicit"
-        # config.engine = "litellm"
-        engine = create_engine(config)  # Forces LiteLLM regardless of model
+        ImportError: If native SDK required but not installed
     """
-    from .litellm_engine import LiteLLMEngine, LITELLM_AVAILABLE
     from .openai_compat_engine import OpenAICompatEngine
 
     # Determine model to use
@@ -112,27 +113,11 @@ def create_engine(
         engine_type = config.engine
         logger.info(f"Using explicit engine mode: {engine_type}")
 
-        if engine_type == "litellm":
-            if not LITELLM_AVAILABLE:
-                raise ImportError(
-                    "LiteLLM not installed. Install with: pip install litellm"
-                )
-            api_key = api_key_override or config.get_api_key_for_model(model)
-            return LiteLLMEngine(
-                model=model,
-                api_key=api_key,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                **kwargs
-            )
-
-        elif engine_type == "openai_compatible":
+        if engine_type == "openai_compatible":
             api_key = api_key_override or config.api_key
             base_url = config.base_url
             if not base_url:
-                raise ValueError(
-                    "OpenAI-compatible engine requires base_url in config"
-                )
+                raise ValueError("OpenAI-compatible engine requires base_url in config")
             return OpenAICompatEngine(
                 model=model,
                 api_key=api_key,
@@ -141,17 +126,10 @@ def create_engine(
                 base_url=base_url,
                 **kwargs
             )
-
         elif engine_type == "google":
-            return _create_google_engine(
-                config, model, api_key_override, temperature, max_tokens, **kwargs
-            )
-
+            return _create_google_engine(config, model, api_key_override, temperature, max_tokens, **kwargs)
         elif engine_type == "openai":
-            return _create_openai_engine(
-                config, model, api_key_override, temperature, max_tokens, **kwargs
-            )
-
+            return _create_openai_engine(config, model, api_key_override, temperature, max_tokens, **kwargs)
         else:
             raise ValueError(f"Unknown engine type: {engine_type}")
 
@@ -160,57 +138,84 @@ def create_engine(
     logger.info(f"Auto-detected provider '{provider}' from model '{model}'")
 
     if provider == "google":
-        return _create_google_engine(
-            config, model, api_key_override, temperature, max_tokens, **kwargs
-        )
-
+        return _create_google_engine(config, model, api_key_override, temperature, max_tokens, **kwargs)
     elif provider == "openai":
-        return _create_openai_engine(
-            config, model, api_key_override, temperature, max_tokens, **kwargs
-        )
-
-    elif provider == "openrouter":
-        # OpenRouter uses OpenAI-compatible API
-        api_key = api_key_override or config.get_api_key("openrouter")
-        if not api_key:
+        return _create_openai_engine(config, model, api_key_override, temperature, max_tokens, **kwargs)
+    elif provider in ("openrouter", "anthropic", "deepseek", "zai", "moonshot"):
+        # These providers can use either their direct API or OpenRouter
+        # Try provider-specific key first for direct API, then fall back to OpenRouter
+        provider_key = api_key_override or config.get_api_key(provider)
+        openrouter_key = config.get_api_key("openrouter")
+        
+        # Determine which API to use based on available keys
+        if provider == "openrouter" or (provider_key is None and openrouter_key):
+            # Use OpenRouter (either explicitly or as fallback)
+            api_key = openrouter_key
+            base_url = "https://openrouter.ai/api/v1"
+            # For OpenRouter, strip only the 'openrouter/' prefix if present
+            # Model format expected by OpenRouter: 'provider/model' (e.g., 'anthropic/claude-3-opus')
+            if model.startswith("openrouter/"):
+                api_model = model[len("openrouter/"):]  # Strip 'openrouter/' prefix
+            else:
+                api_model = model  # Use as-is
+            logger.info(f"Using OpenAICompatEngine for {provider} model '{model}' via OpenRouter (API: '{api_model}')")
+        elif provider == "deepseek" and provider_key:
+            # Use DeepSeek direct API
+            api_key = provider_key
+            base_url = "https://api.deepseek.com"
+            api_model = model.split('/')[-1] if '/' in model else model
+            logger.info(f"Using OpenAICompatEngine for DeepSeek direct API model '{model}' (API: '{api_model}')")
+        elif provider == "anthropic" and provider_key:
+            # Anthropic requires their own SDK, not OpenAI-compatible
+            # For now, route through OpenRouter if we have that key
+            if openrouter_key:
+                api_key = openrouter_key
+                base_url = "https://openrouter.ai/api/v1"
+                # For OpenRouter, need provider/model format
+                if model.startswith("openrouter/"):
+                    api_model = model[len("openrouter/"):]
+                elif model.startswith("anthropic/"):
+                    api_model = model  # Already has provider prefix
+                else:
+                    api_model = f"anthropic/{model}"  # Add prefix if missing
+                logger.info(f"Using OpenAICompatEngine for Anthropic model '{model}' via OpenRouter (API: '{api_model}')")
+            else:
+                raise ValueError(
+                    f"Anthropic models require OpenRouter. "
+                    f"Set OpenRouter key with: bpui config set api_keys.openrouter YOUR_API_KEY"
+                )
+        elif provider in ("zai", "moonshot") and provider_key:
+            # These providers have OpenAI-compatible APIs
+            # Map to their direct API endpoints
+            provider_urls = {
+                "zai": "https://open.bigmodel.cn/api/paas/v4",
+                "moonshot": "https://api.moonshot.cn/v1",
+            }
+            api_key = provider_key
+            base_url = provider_urls.get(provider, "https://openrouter.ai/api/v1")
+            api_model = model.split('/')[-1] if '/' in model else model
+            logger.info(f"Using OpenAICompatEngine for {provider} direct API model '{model}' (API: '{api_model}')")
+        else:
+            # No valid API key found
             raise ValueError(
-                f"No API key configured for OpenRouter. "
-                f"Set it with: bpui config set api_keys.openrouter YOUR_API_KEY"
+                f"No API key configured for {provider}. "
+                f"Set it with: bpui config set api_keys.{provider} YOUR_API_KEY "
+                f"(or use OpenRouter: bpui config set api_keys.openrouter YOUR_API_KEY)"
             )
 
-        # OpenRouter's OpenAI-compatible endpoint
-        base_url = "https://openrouter.ai/api/v1"
-
-        logger.info(f"Using OpenAICompatEngine for OpenRouter model '{model}'")
         return OpenAICompatEngine(
-            model=model,
+            model=api_model,
             api_key=api_key,
             temperature=temperature,
             max_tokens=max_tokens,
             base_url=base_url,
             **kwargs
         )
-
-    elif provider == "litellm" or provider == "unknown":
-        # Fall back to LiteLLM for slash format or unknown models
-        if not LITELLM_AVAILABLE:
-            raise ImportError(
-                f"LiteLLM not installed and no native engine available for model '{model}'. "
-                f"Install with: pip install litellm"
-            )
-
-        api_key = api_key_override or config.get_api_key_for_model(model)
-        logger.info(f"Using LiteLLM engine for model '{model}'")
-        return LiteLLMEngine(
-            model=model,
-            api_key=api_key,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            **kwargs
-        )
-
     else:
-        raise ValueError(f"Could not create engine for provider: {provider}")
+        raise ValueError(
+            f"Could not create engine for model '{model}'. "
+            f"Model name must be in a recognized format, e.g., 'gpt-4', 'gemini-pro', or 'openrouter/provider/model'"
+        )
 
 
 def _create_google_engine(
@@ -221,7 +226,7 @@ def _create_google_engine(
     max_tokens: int,
     **kwargs
 ) -> LLMEngine:
-    """Create GoogleEngine with fallback to LiteLLM if not available.
+    """Create GoogleEngine.
 
     Args:
         config: Configuration object
@@ -232,64 +237,40 @@ def _create_google_engine(
         **kwargs: Additional engine parameters
 
     Returns:
-        GoogleEngine or LiteLLM fallback
+        GoogleEngine
 
     Raises:
-        ImportError: If neither Google SDK nor LiteLLM available
+        ImportError: If Google SDK not installed
     """
-    try:
-        from .google_engine import GoogleEngine, GOOGLE_AVAILABLE
+    from .google_engine import GoogleEngine, GOOGLE_AVAILABLE
 
-        if not GOOGLE_AVAILABLE:
-            raise ImportError("Google Generative AI SDK not available")
-
-        # Get Google API key
-        api_key = api_key_override or config.get_api_key("google")
-        if not api_key:
-            raise ValueError(
-                f"No API key configured for Google. "
-                f"Set it with: bpui config set api_keys.google YOUR_API_KEY"
-            )
-
-        # Get provider-specific config
-        google_config = config.get("google", {})
-        if isinstance(google_config, dict):
-            kwargs.update(google_config)
-
-        logger.info(f"Using native GoogleEngine for model '{model}'")
-        return GoogleEngine(
-            model=model,
-            api_key=api_key,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            **kwargs
+    if not GOOGLE_AVAILABLE:
+        raise ImportError(
+            "Google Generative AI SDK not installed. "
+            "Install with: pip install google-generativeai"
         )
 
-    except (ImportError, ValueError) as e:
-        # Fall back to LiteLLM if available
-        logger.warning(f"Could not create GoogleEngine: {e}")
-        logger.info("Attempting fallback to LiteLLM...")
-
-        from .litellm_engine import LiteLLMEngine, LITELLM_AVAILABLE
-
-        if not LITELLM_AVAILABLE:
-            raise ImportError(
-                f"Google SDK not installed and LiteLLM fallback not available. "
-                f"Install with: pip install google-generativeai"
-            ) from e
-
-        # Convert model to LiteLLM format if needed
-        litellm_model = f"google/{model}" if "/" not in model else model
-        api_key = api_key_override or config.get_api_key("google")
-
-        logger.info(f"Using LiteLLM fallback for Google model '{litellm_model}'")
-        return LiteLLMEngine(
-            model=litellm_model,
-            api_key=api_key,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            **kwargs
+    # Get Google API key
+    api_key = api_key_override or config.get_api_key("google")
+    if not api_key:
+        raise ValueError(
+            f"No API key configured for Google. "
+            f"Set it with: bpui config set api_keys.google YOUR_API_KEY"
         )
+
+    # Get provider-specific config
+    google_config = config.get("google", {})
+    if isinstance(google_config, dict):
+        kwargs.update(google_config)
+
+    logger.info(f"Using native GoogleEngine for model '{model}'")
+    return GoogleEngine(
+        model=model,
+        api_key=api_key,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        **kwargs
+    )
 
 
 def _create_openai_engine(
@@ -300,7 +281,7 @@ def _create_openai_engine(
     max_tokens: int,
     **kwargs
 ) -> LLMEngine:
-    """Create OpenAIEngine with fallback to LiteLLM if not available.
+    """Create OpenAIEngine.
 
     Args:
         config: Configuration object
@@ -311,64 +292,40 @@ def _create_openai_engine(
         **kwargs: Additional engine parameters
 
     Returns:
-        OpenAIEngine or LiteLLM fallback
+        OpenAIEngine
 
     Raises:
-        ImportError: If neither OpenAI SDK nor LiteLLM available
+        ImportError: If OpenAI SDK not installed
     """
-    try:
-        from .openai_engine import OpenAIEngine, OPENAI_AVAILABLE
+    from .openai_engine import OpenAIEngine, OPENAI_AVAILABLE
 
-        if not OPENAI_AVAILABLE:
-            raise ImportError("OpenAI SDK not available")
-
-        # Get OpenAI API key
-        api_key = api_key_override or config.get_api_key("openai")
-        if not api_key:
-            raise ValueError(
-                f"No API key configured for OpenAI. "
-                f"Set it with: bpui config set api_keys.openai YOUR_API_KEY"
-            )
-
-        # Get provider-specific config
-        openai_config = config.get("openai", {})
-        if isinstance(openai_config, dict):
-            kwargs.update(openai_config)
-
-        logger.info(f"Using native OpenAIEngine for model '{model}'")
-        return OpenAIEngine(
-            model=model,
-            api_key=api_key,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            **kwargs
+    if not OPENAI_AVAILABLE:
+        raise ImportError(
+            "OpenAI SDK not installed. "
+            "Install with: pip install openai"
         )
 
-    except (ImportError, ValueError) as e:
-        # Fall back to LiteLLM if available
-        logger.warning(f"Could not create OpenAIEngine: {e}")
-        logger.info("Attempting fallback to LiteLLM...")
-
-        from .litellm_engine import LiteLLMEngine, LITELLM_AVAILABLE
-
-        if not LITELLM_AVAILABLE:
-            raise ImportError(
-                f"OpenAI SDK not installed and LiteLLM fallback not available. "
-                f"Install with: pip install openai"
-            ) from e
-
-        # Convert model to LiteLLM format if needed
-        litellm_model = f"openai/{model}" if "/" not in model else model
-        api_key = api_key_override or config.get_api_key("openai")
-
-        logger.info(f"Using LiteLLM fallback for OpenAI model '{litellm_model}'")
-        return LiteLLMEngine(
-            model=litellm_model,
-            api_key=api_key,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            **kwargs
+    # Get OpenAI API key
+    api_key = api_key_override or config.get_api_key("openai")
+    if not api_key:
+        raise ValueError(
+            f"No API key configured for OpenAI. "
+            f"Set it with: bpui config set api_keys.openai YOUR_API_KEY"
         )
+
+    # Get provider-specific config
+    openai_config = config.get("openai", {})
+    if isinstance(openai_config, dict):
+        kwargs.update(openai_config)
+
+    logger.info(f"Using native OpenAIEngine for model '{model}'")
+    return OpenAIEngine(
+        model=model,
+        api_key=api_key,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        **kwargs
+    )
 
 
 def get_engine_type(config: "Config", model_override: Optional[str] = None) -> str:
@@ -381,16 +338,14 @@ def get_engine_type(config: "Config", model_override: Optional[str] = None) -> s
         model_override: Optional model name to check
 
     Returns:
-        Engine type name: "GoogleEngine", "OpenAIEngine", "LiteLLMEngine", "OpenAICompatEngine"
+        Engine type name: "GoogleEngine", "OpenAIEngine", "OpenAICompatEngine"
     """
     model = model_override or config.model
     engine_mode = config.get("engine_mode", "auto")
 
     if engine_mode == "explicit":
         engine_type = config.engine
-        if engine_type == "litellm":
-            return "LiteLLMEngine"
-        elif engine_type == "openai_compatible":
+        if engine_type == "openai_compatible":
             return "OpenAICompatEngine"
         elif engine_type == "google":
             return "GoogleEngine"
@@ -403,24 +358,10 @@ def get_engine_type(config: "Config", model_override: Optional[str] = None) -> s
     provider = detect_provider_from_model(model)
 
     if provider == "google":
-        try:
-            from .google_engine import GOOGLE_AVAILABLE
-            return "GoogleEngine" if GOOGLE_AVAILABLE else "LiteLLMEngine (fallback)"
-        except ImportError:
-            return "LiteLLMEngine (fallback)"
-
+        return "GoogleEngine"
     elif provider == "openai":
-        try:
-            from .openai_engine import OPENAI_AVAILABLE
-            return "OpenAIEngine" if OPENAI_AVAILABLE else "LiteLLMEngine (fallback)"
-        except ImportError:
-            return "LiteLLMEngine (fallback)"
-
-    elif provider == "openrouter":
+        return "OpenAIEngine"
+    elif provider in ("openrouter", "anthropic", "deepseek", "zai", "moonshot"):
         return "OpenAICompatEngine"
-
-    elif provider == "litellm":
-        return "LiteLLMEngine"
-
     else:
-        return "LiteLLMEngine (fallback)"
+        return "UnknownEngine"

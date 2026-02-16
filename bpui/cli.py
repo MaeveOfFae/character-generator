@@ -99,6 +99,14 @@ def main():
     similarity_parser.add_argument("--cluster", action="store_true", help="Cluster similar characters")
     similarity_parser.add_argument("--threshold", type=float, default=0.6, help="Similarity threshold for clustering (0.0-1.0)")
     similarity_parser.add_argument("--use-llm", action="store_true", help="Enable LLM-powered deep analysis")
+    
+    # List models command
+    list_models_parser = subparsers.add_parser("list-models", help="List available AI models")
+    list_models_parser.add_argument("--provider", help="Provider (openrouter, openai, google, etc.)")
+    list_models_parser.add_argument("--base-url", help="Custom base URL for OpenAI-compatible APIs")
+    list_models_parser.add_argument("--api-key", help="API key for authentication")
+    list_models_parser.add_argument("--format", choices=["text", "json", "csv"], default="text", help="Output format")
+    list_models_parser.add_argument("--filter", help="Filter models by name/pattern (e.g., 'gpt-4' or 'claude')")
 
     args = parser.parse_args()
     
@@ -143,6 +151,8 @@ def main():
         asyncio.run(run_offspring(args))
     elif args.command == "similarity":
         run_similarity(args)
+    elif args.command == "list-models":
+        asyncio.run(run_list_models(args))
     
     # Print profiling report if enabled
     if args.profile:
@@ -992,6 +1002,151 @@ def _find_draft(identifier: str, drafts_root: Path) -> Path | None:
                 return draft_path
     
     return None
+
+
+async def run_list_models(args):
+    """Run model listing from CLI."""
+    from .config import Config
+    from .llm.openai_compat_engine import OpenAICompatEngine
+    
+    logger = logging.getLogger(__name__)
+    
+    # Initialize variables
+    base_url = None
+    api_key = None
+    provider = None
+    
+    logger.debug(f"list-models called with args: provider={args.provider}, base_url={args.base_url}, api_key={'set' if args.api_key else 'not set'}")
+    
+    # Step 1: Determine provider
+    if args.provider:
+        provider = args.provider.lower()
+        logger.debug(f"Provider specified via --provider: {provider}")
+    elif args.base_url:
+        # Infer provider from base URL
+        if "openrouter.ai" in args.base_url:
+            provider = "openrouter"
+        elif "api.openai.com" in args.base_url:
+            provider = "openai"
+        elif "generativelanguage.googleapis.com" in args.base_url:
+            provider = "google"
+        else:
+            provider = "custom"
+        logger.debug(f"Provider inferred from base URL: {provider}")
+    
+    # Step 2: Determine base URL
+    if args.base_url:
+        base_url = args.base_url.rstrip("/")
+        logger.debug(f"Base URL from --base-url: {base_url}")
+    elif provider:
+        # Use default base URL for provider
+        if provider == "openrouter":
+            base_url = "https://openrouter.ai/api/v1"
+        elif provider == "openai":
+            base_url = "https://api.openai.com/v1"
+        elif provider == "google":
+            base_url = "https://generativelanguage.googleapis.com/v1beta"
+        else:
+            print(f"✗ Unknown provider: {provider}")
+            sys.exit(1)
+        logger.debug(f"Base URL from provider default: {base_url}")
+    else:
+        # Try to infer from config model
+        config = Config()
+        logger.debug(f"Config model: {config.model}")
+        
+        if config.model.startswith("openrouter/"):
+            provider = "openrouter"
+            base_url = "https://openrouter.ai/api/v1"
+            logger.debug(f"Inferred OpenRouter from config model: {config.model}")
+        elif config.model.startswith("openai/"):
+            provider = "openai"
+            base_url = "https://api.openai.com/v1"
+            logger.debug(f"Inferred OpenAI from config model: {config.model}")
+        elif config.model.startswith("google/"):
+            provider = "google"
+            base_url = "https://generativelanguage.googleapis.com/v1beta"
+            logger.debug(f"Inferred Google from config model: {config.model}")
+        else:
+            print("✗ Cannot determine base URL. Use --provider or --base-url")
+            print(f"   Current model: {config.model}")
+            print(f"   Examples:")
+            print(f"     ./bpui-cli list-models --provider openrouter")
+            print(f"     ./bpui-cli list-models --base-url https://openrouter.ai/api/v1")
+            sys.exit(1)
+    
+    # Step 3: Determine API key
+    if args.api_key:
+        api_key = args.api_key
+        logger.debug(f"API key from --api-key: {'set'}")
+    elif provider:
+        # Get provider-specific key from config
+        config = Config()
+        api_key = config.get_api_key(provider)
+        logger.debug(f"API key from config[{provider}]: {'set' if api_key else 'not set'}")
+    
+    # Step 4: Validate we have what we need
+    if not base_url:
+        print("✗ No base URL specified. Use --provider or --base-url")
+        sys.exit(1)
+    
+    # Display what we're using
+    print(f"🔍 Listing models from: {base_url}")
+    if provider:
+        print(f"   Provider: {provider}")
+        if provider == "openrouter":
+            print(f"   Note: Model IDs shown without 'openrouter/' prefix")
+            print(f"         Add 'openrouter/' prefix when using these models")
+    if api_key:
+        print(f"   API key: {api_key[:10]}...{api_key[-4:]}")
+    else:
+        print(f"   API key: not provided (may be required for some providers)")
+    print()
+    
+    try:
+        # List models
+        models = await OpenAICompatEngine.list_models(
+            base_url=base_url,
+            api_key=api_key,
+            timeout=30.0
+        )
+        
+        if not models:
+            print("✗ No models found or API does not support model listing")
+            sys.exit(1)
+        
+        # Filter models if filter specified
+        if args.filter:
+            filter_pattern = args.filter.lower()
+            models = [m for m in models if filter_pattern in m.lower()]
+        
+        # Sort models
+        models = sorted(models)
+        
+        # Output based on format
+        if args.format == "json":
+            import json
+            print(json.dumps({
+                "provider": args.provider or "custom",
+                "base_url": base_url,
+                "total_models": len(models),
+                "models": models
+            }, indent=2))
+        elif args.format == "csv":
+            print("model_id")
+            for model in models:
+                print(model)
+        else:  # text format
+            print(f"Found {len(models)} model(s):\n")
+            for i, model in enumerate(models, 1):
+                print(f"  {i:3d}. {model}")
+        
+        print(f"\n✓ Listed {len(models)} model(s)")
+        
+    except Exception as e:
+        print(f"✗ Failed to list models: {e}")
+        logger.error(f"Model listing failed: {e}", exc_info=True)
+        sys.exit(1)
 
 
 def run_similarity(args):

@@ -201,6 +201,62 @@ model = "openrouter/anthropic/claude-3-opus"
 max_tokens = 100000  # Within Claude 3's 200K limit
 ```
 
+## Listing Available Models
+
+You can list all available models from OpenRouter using the CLI:
+
+```bash
+# List all OpenRouter models
+./bpui-cli list-models --provider openrouter
+
+# List models with your API key
+./bpui-cli list-models --provider openrouter --api-key YOUR_API_KEY
+
+# Filter models by name pattern
+./bpui-cli list-models --provider openrouter --filter "claude"
+
+# Output in JSON format
+./bpui-cli list-models --provider openrouter --format json
+
+# Output in CSV format
+./bpui-cli list-models --provider openrouter --format csv
+
+# Use custom base URL
+./bpui-cli list-models --base-url https://openrouter.ai/api/v1
+```
+
+### Model Listing Options
+
+- `--provider`: Specify provider (openrouter, openai, google, litellm, etc.)
+- `--base-url`: Custom base URL for OpenAI-compatible APIs
+- `--api-key`: API key for authentication (optional for some providers)
+- `--format`: Output format - text (default), json, or csv
+- `--filter`: Filter models by name/pattern (e.g., 'gpt-4' or 'claude')
+
+### Important Note on Model Names
+
+When listing OpenRouter models, the API returns model IDs **without** the `openrouter/` prefix. For example:
+- Listed as: `anthropic/claude-3-haiku`
+- Use in config: `openrouter/anthropic/claude-3-haiku`
+
+The `openrouter/` prefix is automatically added by character-generator when you configure your model in `.bpui.toml` or use it with `--model`.
+
+### Examples
+
+```bash
+# List all Claude models on OpenRouter
+./bpui-cli list-models --provider openrouter --filter claude
+
+# List all GPT-4 models
+./bpui-cli list-models --provider openrouter --filter gpt-4
+
+# Get JSON output for scripting
+./bpui-cli list-models --provider openrouter --format json > models.json
+
+# After finding a model you want, use it with the openrouter/ prefix:
+./bpui-cli compile seed.txt --model openrouter/anthropic/claude-3-haiku
+```
+
 ## Troubleshooting
 
 ### Issue: "No API key configured for model"

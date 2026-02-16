@@ -361,17 +361,45 @@ class GoogleEngine(LLMEngine):
             }
 
     @staticmethod
-    def list_models() -> List[str]:
+    async def list_models(api_key: str, timeout: float = 30.0) -> list[str]:
         """List available Google Gemini models.
 
+        Args:
+            api_key: Google API key for authentication
+            timeout: Request timeout in seconds
+
         Returns:
-            List of model names
+            List of model IDs available from Google
+
+        Raises:
+            Exception: If API request fails or SDK not available
         """
-        return [
-            "gemini-1.5-pro",
-            "gemini-1.5-pro-latest",
-            "gemini-1.5-flash",
-            "gemini-1.5-flash-latest",
-            "gemini-1.0-pro",
-            "gemini-pro",
-        ]
+        if not GOOGLE_AVAILABLE or genai is None:
+            raise ImportError("Google Generative AI SDK not installed. Install with: pip install google-generativeai")
+
+        import asyncio
+
+        try:
+            # Configure API key
+            genai.configure(api_key=api_key)
+
+            # Fetch models in a thread to avoid blocking
+            def _fetch_models():
+                return list(genai.list_models())
+
+            models_list = await asyncio.to_thread(_fetch_models)
+
+            # Extract model names and filter for chat models
+            models = []
+            for model in models_list:
+                # Filter for chat models (contain "generateContent" capability)
+                model_name = model.name.replace("models/", "")
+                # Only include models that support generation
+                if "generateContent" in model.supported_generation_methods:
+                    models.append(model_name)
+
+            # Sort models alphabetically
+            return sorted(models)
+
+        except Exception as e:
+            raise Exception(f"Failed to list Google models: {e}") from e

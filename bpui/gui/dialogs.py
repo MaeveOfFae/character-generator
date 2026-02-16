@@ -361,7 +361,8 @@ class SettingsDialog(QDialog):
             ("anthropic", "Anthropic"),
             ("deepseek", "DeepSeek"),
             ("openrouter", "OpenRouter"),
-            ("litellm", "Other (LiteLLM)")
+            ("zai", "Zhipu AI (GLM)"),
+            ("moonshot", "Moonshot AI"),
         ]
 
         # Detect current provider from model
@@ -369,7 +370,12 @@ class SettingsDialog(QDialog):
         current_model = self.config.model
         detected_provider = detect_provider_from_model(current_model)
         if detected_provider == "unknown":
-            detected_provider = "litellm"
+            # Check if config.engine is explicitly set to openai_compatible (which is OpenRouter)
+            config_engine = self.config.get("engine", "")
+            if config_engine == "openai_compatible":
+                detected_provider = "openrouter"
+            else:
+                detected_provider = "unknown"
 
         for provider_id, provider_name in providers:
             radio = QRadioButton(provider_name)
@@ -398,9 +404,6 @@ class SettingsDialog(QDialog):
         self.model_input.setEditable(True)
         self.model_input.setPlaceholderText("e.g., gpt-4 or openai/gpt-4")
 
-        # Connect model change to update engine type
-        self.model_input.currentTextChanged.connect(self.update_engine_type_display)
-
         # Populate with available models for current provider
         self.populate_models_for_provider(detected_provider)
 
@@ -413,11 +416,14 @@ class SettingsDialog(QDialog):
 
         form.addRow("Model:", self.model_input)
 
-        # Engine type indicator
+        # Engine type indicator (create BEFORE connecting signal)
         self.engine_type_label = QLabel()
         self.engine_type_label.setStyleSheet("color: #888; font-style: italic;")
         self.update_engine_type_display()
         form.addRow("Engine Type:", self.engine_type_label)
+
+        # Connect model change to update engine type (AFTER label is created)
+        self.model_input.currentTextChanged.connect(self.update_engine_type_display)
 
         # API Key (masked)
         self.api_key_input = QLineEdit()
@@ -425,14 +431,7 @@ class SettingsDialog(QDialog):
         self.api_key_input.setPlaceholderText("Enter API key...")
 
         # Load existing key for detected provider
-        if detected_provider == "litellm":
-            # For litellm, try to extract provider from model
-            if "/" in current_model:
-                provider_key = current_model.split("/")[0]
-            else:
-                provider_key = "openai"
-        else:
-            provider_key = detected_provider
+        provider_key = detected_provider
 
         existing_key = self.config.get_api_key(provider_key)
         if existing_key:
@@ -729,99 +728,192 @@ class SettingsDialog(QDialog):
             cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
             cursor.mergeCharFormat(fmt)
     
-    def get_available_models(self):
-        """Get list of available models from litellm."""
-        try:
-            from ..llm.litellm_engine import LITELLM_AVAILABLE
-            if LITELLM_AVAILABLE:
-                import litellm
-                # Get all model names from litellm's model_cost dictionary
-                models = list(litellm.model_cost.keys())
-                # Filter out non-model entries and common patterns
-                filtered_models = []
-                for model in models:
-                    # Skip entries that are clearly not model names
-                    if not model or model.startswith("sample_"):
-                        continue
-                    # Skip image generation parameters
-                    if "/" in model and model.split("/")[0].replace("-", "").replace("x", "").isdigit():
-                        continue
-                    filtered_models.append(model)
-                
-                # Sort models alphabetically, but put common models first
-                common_prefixes = ["openai/", "anthropic/", "deepseek/", "google/", "cohere/", "mistral/"]
-                common_models = []
-                other_models = []
-                
-                for model in sorted(filtered_models):
-                    if any(model.startswith(prefix) for prefix in common_prefixes):
-                        common_models.append(model)
-                    else:
-                        other_models.append(model)
-                
-                return common_models + other_models
-        except Exception:
-            pass  # If litellm not available or error, return empty list
-        
-        return []
 
     def populate_models_for_provider(self, provider: str):
         """Populate model dropdown with provider-specific models.
 
         Args:
-            provider: Provider ID (google, openai, anthropic, deepseek, litellm)
+            provider: Provider ID (google, openai, anthropic, deepseek, openrouter)
         """
         self.model_input.clear()
 
-        if provider == "google":
-            # Native Google models
-            try:
+        # Show loading indicator
+        self.model_input.addItem("Loading models...")
+
+        # Fetch models in background thread
+        from PySide6.QtCore import QThread, Signal
+
+        class ModelFetcherThread(QThread):
+            """Thread to fetch models from provider API."""
+            models_fetched = Signal(list, str)
+
+            def __init__(self, provider, config):
+                super().__init__()
+                self.provider = provider
+                self.config = config
+
+            def run(self):
+                """Fetch models from provider API."""
+                import asyncio
                 from ..llm.google_engine import GoogleEngine
-                models = GoogleEngine.list_models()
-            except ImportError:
-                models = ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.0-pro"]
-            self.model_input.addItems(models)
-
-        elif provider == "openai":
-            # Native OpenAI models
-            try:
                 from ..llm.openai_engine import OpenAIEngine
-                models = OpenAIEngine.list_models()
-            except ImportError:
-                models = ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo", "o1-preview", "o1-mini"]
-            self.model_input.addItems(models)
+                from ..llm.openai_compat_engine import OpenAICompatEngine
 
-        elif provider == "anthropic":
-            # Anthropic models (via LiteLLM format)
-            models = [
-                "anthropic/claude-3-5-sonnet-20241022",
-                "anthropic/claude-3-5-haiku-20241022",
-                "anthropic/claude-3-opus-20240229",
-                "anthropic/claude-3-sonnet-20240229",
-            ]
-            self.model_input.addItems(models)
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
 
-        elif provider == "deepseek":
-            # DeepSeek models (via LiteLLM format)
-            models = [
-                "deepseek/deepseek-chat",
-                "deepseek/deepseek-coder",
-            ]
-            self.model_input.addItems(models)
+                try:
+                    if self.provider == "google":
+                        api_key = self.config.get_api_key("google")
+                        if api_key:
+                            models = loop.run_until_complete(GoogleEngine.list_models(api_key))
+                        else:
+                            models = ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.0-pro"]
 
-        else:  # litellm or other
-            # All available models from LiteLLM
-            all_models = self.get_available_models()
-            if all_models:
-                self.model_input.addItems(all_models)
-            else:
-                # Fallback common models in LiteLLM format
-                self.model_input.addItems([
-                    "openai/gpt-4",
-                    "openai/gpt-3.5-turbo",
-                    "anthropic/claude-3-5-sonnet-20241022",
-                    "google/gemini-pro",
-                ])
+                    elif self.provider == "openai":
+                        api_key = self.config.get_api_key("openai")
+                        if api_key:
+                            models = loop.run_until_complete(OpenAIEngine.list_models(api_key))
+                        else:
+                            models = ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo", "o1-preview", "o1-mini"]
+
+                    elif self.provider == "openrouter":
+                        api_key = self.config.get_api_key("openrouter")
+                        base_url = "https://openrouter.ai/api/v1"
+                        # Always try to fetch from API, even without API key (like OpenAI/Google do)
+                        raw_models = loop.run_until_complete(OpenAICompatEngine.list_models(base_url, api_key))
+                        # Add "openrouter/" prefix to all models for proper detection
+                        models = [f"openrouter/{model}" for model in raw_models]
+
+                    elif self.provider == "anthropic":
+                        # Anthropic models
+                        models = [
+                            "anthropic/claude-3-5-sonnet-20241022",
+                            "anthropic/claude-3-5-haiku-20241022",
+                            "anthropic/claude-3-opus-20240229",
+                            "anthropic/claude-3-sonnet-20240229",
+                        ]
+
+                    elif self.provider == "deepseek":
+                        # DeepSeek models
+                        models = [
+                            "deepseek/deepseek-chat",
+                            "deepseek/deepseek-coder",
+                        ]
+
+                    elif self.provider == "zai":
+                        # Zhipu AI GLM models - updated to current z.ai model names
+                        models = [
+                            "zai/glm-5",
+                            "zai/glm-4.7",
+                            "zai/glm-4.6",
+                            "zai/glm-4.5",
+                            "zai/glm-4.5-air",
+                            "zai/glm-4.5-flash",
+                            "zai/glm-4.5v",
+                            "zai/glm-4.5-x",
+                        ]
+
+                    elif self.provider == "moonshot":
+                        # Moonshot AI (Kimi) models - current models from moonshot platform
+                        models = [
+                            "moonshot-v1-8k",
+                            "moonshot-v1-32k",
+                            "moonshot-v1-128k",
+                            "moonshot-v1-8k-20240515",
+                            "moonshot-v1-32k-20240515",
+                            "moonshot-v1-128k-20240515",
+                        ]
+
+                    else:  # unknown
+                        models = []  # No fallback for unknown providers
+
+                    self.models_fetched.emit(models, "")
+
+                except ImportError as e:
+                    # SDK not installed, use fallback models
+                    fallback_models = self._get_fallback_models(self.provider)
+                    self.models_fetched.emit(fallback_models, f"SDK not installed: {e}")
+
+                except Exception as e:
+                    # API call failed, use fallback models
+                    fallback_models = self._get_fallback_models(self.provider)
+                    error_msg = f"Failed to fetch models: {e}"
+                    self.models_fetched.emit(fallback_models, error_msg)
+
+                finally:
+                    loop.close()
+
+            def _get_fallback_models(self, provider):
+                """Get fallback models when API call fails."""
+                if provider == "google":
+                    return ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.0-pro"]
+                elif provider == "openai":
+                    return ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo", "o1-preview", "o1-mini"]
+                elif provider == "openrouter":
+                    return [
+                        "openrouter/anthropic/claude-3-5-sonnet-20241022",
+                        "openrouter/openai/gpt-4o",
+                        "openrouter/google/gemini-pro-1.5",
+                        "openrouter/meta-llama/llama-3-70b-instruct",
+                    ]
+                elif provider == "anthropic":
+                    return ["anthropic/claude-3-5-sonnet-20241022", "anthropic/claude-3-opus"]
+                elif provider == "deepseek":
+                    return ["deepseek/deepseek-chat", "deepseek/deepseek-coder"]
+                elif provider == "zai":
+                    # Zhipu AI GLM models - updated to current z.ai model names
+                    return [
+                        "zai/glm-5",
+                        "zai/glm-4.7",
+                        "zai/glm-4.6",
+                        "zai/glm-4.5",
+                        "zai/glm-4.5-air",
+                        "zai/glm-4.5-flash",
+                    ]
+                elif provider == "moonshot":
+                    # Moonshot AI (Kimi) models - current models from moonshot platform
+                    return [
+                        "moonshot-v1-8k",
+                        "moonshot-v1-32k",
+                        "moonshot-v1-128k",
+                        "moonshot-v1-8k-20240515",
+                        "moonshot-v1-32k-20240515",
+                        "moonshot-v1-128k-20240515",
+                    ]
+                else:
+                    return ["openai/gpt-4", "openai/gpt-3.5-turbo"]
+
+        # Start model fetcher thread
+        self.model_fetcher = ModelFetcherThread(provider, self.config)
+        self.model_fetcher.models_fetched.connect(self._on_models_fetched)
+        self.model_fetcher.start()
+
+    def _on_models_fetched(self, models: list[str], error_msg: str):
+        """Handle models fetched from provider API.
+
+        Args:
+            models: List of model names
+            error_msg: Error message if fetch failed (empty if success)
+        """
+        # Clear loading indicator
+        self.model_input.clear()
+
+        # Add fetched models
+        for model in models:
+            self.model_input.addItem(model)
+
+        # Select first model if available
+        if self.model_input.count() > 0:
+            self.model_input.setCurrentIndex(0)
+
+        # Show error message if any
+        if error_msg:
+            self.engine_type_label.setText(f"⚠️ {error_msg}")
+            self.engine_type_label.setStyleSheet("color: #f80;")
+        else:
+            self.engine_type_label.setText(f"✓ Loaded {len(models)} models")
+            self.engine_type_label.setStyleSheet("color: #4a4;")
 
     def on_provider_changed(self, provider: str):
         """Handle provider selection change.
@@ -844,15 +936,9 @@ class SettingsDialog(QDialog):
             self.model_input.setCurrentIndex(0)
 
         # Update API key field with provider-specific key
-        if provider == "litellm":
-            # For litellm/other, try to get key from first selected model
-            model = self.model_input.currentText()
-            if "/" in model:
-                provider_key = model.split("/")[0]
-            else:
-                provider_key = "openai"  # fallback
-        else:
-            provider_key = provider
+        provider_key = provider
+        if provider in ("anthropic", "deepseek", "zai", "moonshot"):
+            provider_key = "openrouter"
 
         existing_key = self.config.get_api_key(provider_key)
         if existing_key:
@@ -986,31 +1072,27 @@ class SettingsDialog(QDialog):
         # Update API key for the appropriate provider
         api_key = self.api_key_input.text().strip()
         if api_key:
-            # Detect provider from model name
-            detected_provider = detect_provider_from_model(model)
+            # Get selected provider from the radio buttons
+            provider_key = None
+            for provider_id, button in self.provider_buttons.items():
+                if button.isChecked():
+                    provider_key = provider_id
+                    break
+            
+            # Fallback to detected provider if no button is checked
+            if not provider_key:
+                provider_key = detect_provider_from_model(model)
 
-            # Map detected provider to config key
-            if detected_provider == "google":
-                provider_key = "google"
-            elif detected_provider == "openai":
-                provider_key = "openai"
-            elif detected_provider == "litellm":
-                # For LiteLLM format "provider/model", extract provider
-                if "/" in model:
-                    provider_key = model.split("/")[0]
-                else:
-                    provider_key = "openai"  # fallback
-            else:
-                # Unknown, try to extract from model or use openai as fallback
-                if "/" in model:
-                    provider_key = model.split("/")[0]
-                else:
-                    provider_key = "openai"
-
-            self.config.set_api_key(provider_key, api_key)
+            # Map to config key (some providers might be grouped, e.g., under 'openrouter')
+            if provider_key in ("google", "openai", "openrouter", "anthropic", "deepseek", "zai", "moonshot"):
+                self.config.set_api_key(provider_key, api_key)
         
         # Update batch settings
         try:
+            # Ensure batch config exists
+            if "batch" not in self.config._data or not isinstance(self.config._data["batch"], dict):
+                self.config._data["batch"] = {}
+            
             self.config._data["batch"]["max_concurrent"] = int(self.max_concurrent_input.text())
             self.config._data["batch"]["rate_limit_delay"] = float(self.rate_limit_input.text())
         except ValueError:

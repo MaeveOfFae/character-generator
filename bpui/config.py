@@ -68,16 +68,39 @@ class Config:
                 with open(self.config_path, "rb") as f:
                     self._data = tomllib.load(f)
                 self._logger.debug(f"Loaded config from {self.config_path}")
+                
+                # Migrate deprecated engine values
+                needs_save = False
+                if self._data.get("engine") == "litellm":
+                    self._logger.info("Migrating engine from 'litellm' to 'openai_compatible'")
+                    self._data["engine"] = "openai_compatible"
+                    needs_save = True
+                
+                # Ensure batch config exists (for compatibility with older config files)
+                if "batch" not in self._data or not isinstance(self._data.get("batch"), dict):
+                    self._logger.info("Adding missing batch configuration")
+                    self._data["batch"] = DEFAULT_CONFIG["batch"].copy()
+                    needs_save = True
+                
+                # Save if any migrations were performed
+                if needs_save:
+                    self.save()
+                
                 # Validate loaded config
                 self._validate_config()
             except tomllib.TOMLDecodeError as e:
                 self._logger.error(f"Invalid TOML in {self.config_path}: {e}")
-                self._logger.info("Falling back to default configuration")
-                self._data = DEFAULT_CONFIG.copy()
+                raise RuntimeError(
+                    f"Config file is corrupted: {e}\n"
+                    f"Location: {self.config_path}\n"
+                    f"Please fix or delete the file to reset to defaults."
+                ) from e
             except Exception as e:
                 self._logger.error(f"Error loading config from {self.config_path}: {e}")
-                self._logger.info("Falling back to default configuration")
-                self._data = DEFAULT_CONFIG.copy()
+                raise RuntimeError(
+                    f"Error loading config: {e}\n"
+                    f"Location: {self.config_path}"
+                ) from e
         else:
             self._data = DEFAULT_CONFIG.copy()
             self._logger.debug("Using default configuration")

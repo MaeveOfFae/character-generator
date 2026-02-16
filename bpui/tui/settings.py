@@ -88,7 +88,7 @@ class SettingsScreen(Screen):
 
             yield Label("Engine:", classes="field-label")
             yield Select(
-                [("LiteLLM", "litellm"), ("OpenAI Compatible", "openai_compatible")],
+                [("OpenAI Compatible", "openai_compatible")],
                 value=self.config.engine,
                 id="engine",
             )
@@ -132,6 +132,8 @@ class SettingsScreen(Screen):
                 ("google", "Google"),
                 ("cohere", "Cohere"),
                 ("mistral", "Mistral"),
+                ("zai", "Zhipu AI (GLM)"),
+                ("moonshot", "Moonshot AI"),
             ]:
                 yield Label(f"{label}:", classes="field-label")
                 yield Input(
@@ -177,23 +179,61 @@ class SettingsScreen(Screen):
             temp_input = self.query_one("#temperature", Input)
             max_tokens_input = self.query_one("#max_tokens", Input)
 
+            # Get and validate model value
+            model_value = model_input.value.strip()
+            if not model_value:
+                raise ValueError("Model cannot be empty")
+
+            # Save basic settings
             self.config.set("engine", engine_select.value)
-            self.config.set("model", model_input.value)
+            self.config.set("model", model_value)
             self.config.set("api_key_env", api_key_env_input.value)
             self.config.set("base_url", base_url_input.value)
-            self.config.set("temperature", float(temp_input.value))
-            self.config.set("max_tokens", int(max_tokens_input.value))
+            
+            # Validate and save temperature
+            try:
+                temp_value = float(temp_input.value)
+                self.config.set("temperature", temp_value)
+            except ValueError:
+                raise ValueError("Temperature must be a valid number")
+            
+            # Validate and save max_tokens
+            try:
+                max_tokens_value = int(max_tokens_input.value)
+                if max_tokens_value <= 0:
+                    raise ValueError("Max tokens must be positive")
+                self.config.set("max_tokens", max_tokens_value)
+            except ValueError as e:
+                if "positive" in str(e):
+                    raise
+                raise ValueError("Max tokens must be a valid integer")
+
+            # Get current API keys
+            api_keys = self.config.get("api_keys", {}).copy() if isinstance(self.config.get("api_keys"), dict) else {}
 
             # Save provider-specific API keys
-            for provider in ["openai", "anthropic", "deepseek", "google", "cohere", "mistral"]:
+            for provider in ["openai", "anthropic", "deepseek", "google", "cohere", "mistral", "zai", "moonshot"]:
                 api_key_input = self.query_one(f"#api_key_{provider}", Input)
                 if api_key_input.value:
-                    self.config.set_api_key(provider, api_key_input.value)
+                    api_keys[provider] = api_key_input.value
+                elif provider in api_keys:
+                    # Remove key if input is empty but key exists
+                    del api_keys[provider]
+            
+            # Save updated API keys
+            self.config.set("api_keys", api_keys)
 
+            # Save to file
             self.config.save()
 
+            # Verify save by reloading from disk
+            self.config.load()
+            saved_model = self.config.get("model", "")
+            if saved_model != model_value:
+                raise ValueError(f"Model save verification failed: expected '{model_value}', got '{saved_model}'")
+
             status = self.query_one("#status", Static)
-            status.update("✓ Settings saved!")
+            status.update(f"✓ Settings saved! Model: {model_value}")
             status.remove_class("error")
         except Exception as e:
             status = self.query_one("#status", Static)
@@ -207,24 +247,39 @@ class SettingsScreen(Screen):
         status.remove_class("error")
 
         try:
-            from ..llm.litellm_engine import LiteLLMEngine
-            from ..llm.openai_compat_engine import OpenAICompatEngine
+            # First update config with current values
+            engine_select = self.query_one("#engine", Select)
+            model_input = self.query_one("#model", Input)
+            base_url_input = self.query_one("#base_url", Input)
+            temp_input = self.query_one("#temperature", Input)
+            max_tokens_input = self.query_one("#max_tokens", Input)
 
-            if self.config.engine == "litellm":
-                engine = LiteLLMEngine(
-                    model=self.config.model,
-                    api_key=self.config.api_key,
-                    temperature=self.config.temperature,
-                    max_tokens=self.config.max_tokens,
-                )
-            else:
-                engine = OpenAICompatEngine(
-                    model=self.config.model,
-                    api_key=self.config.api_key,
-                    base_url=self.config.base_url,
-                    temperature=self.config.temperature,
-                    max_tokens=self.config.max_tokens,
-                )
+            # Create temporary config for testing
+            from ..config import Config
+            temp_config = Config()
+            temp_config.set("engine", engine_select.value)
+            temp_config.set("model", model_input.value.strip())
+            temp_config.set("base_url", base_url_input.value)
+            temp_config.set("temperature", float(temp_input.value))
+            temp_config.set("max_tokens", int(max_tokens_input.value))
+
+            # Copy API keys
+            api_keys = {}
+            for provider in ["openai", "anthropic", "deepseek", "google", "cohere", "mistral", "zai", "moonshot"]:
+                api_key_input = self.query_one(f"#api_key_{provider}", Input)
+                if api_key_input.value:
+                    api_keys[provider] = api_key_input.value
+            temp_config.set("api_keys", api_keys)
+
+            # Test with OpenAI Compatible engine
+            from ..llm.openai_compat_engine import OpenAICompatEngine
+            engine = OpenAICompatEngine(
+                model=temp_config.model,
+                api_key=temp_config.api_key,
+                base_url=temp_config.base_url,
+                temperature=temp_config.temperature,
+                max_tokens=temp_config.max_tokens,
+            )
 
             result = await engine.test_connection()
 
