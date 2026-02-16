@@ -138,7 +138,7 @@ Cyberpunk mercenary
 Fantasy sorceress" > genres.txt
 
 # Generate seeds
-bpui seed-gen --input genres.txt --out "seed output/noir.txt"
+bpui seed-gen --input genres.txt --out "seed-output/noir.txt"
 ```
 
 ### Validate (CLI)

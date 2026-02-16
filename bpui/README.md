@@ -181,7 +181,7 @@ bpui batch --input seeds.txt --continue-on-error --out-dir output_batch/
 **Generate seeds:**
 
 ```bash
-bpui seed-gen --input genres.txt --out "seed output/noir.txt"
+bpui seed-gen --input genres.txt --out "seed-output/noir.txt"
 ```
 
 **Validate a pack:**

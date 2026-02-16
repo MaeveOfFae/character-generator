@@ -43,7 +43,7 @@ bpui compile --seed "Noir detective with psychic abilities" --mode NSFW
 bpui batch --input seeds.txt --mode NSFW --continue-on-error
 
 # Generate seeds
-bpui seed-gen --input genres.txt --out "seed output/noir.txt"
+bpui seed-gen --input genres.txt --out "seed-output/noir.txt"
 
 # Validate a character pack
 bpui validate drafts/20240203_150000_character_name
