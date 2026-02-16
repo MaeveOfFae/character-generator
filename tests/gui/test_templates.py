@@ -237,11 +237,11 @@ class TestTemplateIntegration:
     
     def test_example_minimal_template_exists(self):
         """Test example_minimal template exists."""
-        template_path = Path("templates/example_minimal/template.toml")
+        template_path = Path("blueprints/templates/example_minimal/template.toml")
         assert template_path.exists()
         
         # Check assets exist
-        assets_dir = Path("templates/example_minimal/assets")
+        assets_dir = Path("blueprints/templates/example_minimal/assets")
         assert assets_dir.exists()
         assert (assets_dir / "system_prompt.md").exists()
         assert (assets_dir / "character_sheet.md").exists()
@@ -249,10 +249,10 @@ class TestTemplateIntegration:
     
     def test_example_image_only_template_exists(self):
         """Test example_image_only template exists."""
-        template_path = Path("templates/example_image_only/template.toml")
+        template_path = Path("blueprints/templates/example_image_only/template.toml")
         assert template_path.exists()
         
-        assets_dir = Path("templates/example_image_only/assets")
+        assets_dir = Path("blueprints/templates/example_image_only/assets")
         assert assets_dir.exists()
         assert (assets_dir / "system_prompt.md").exists()
         assert (assets_dir / "character_sheet.md").exists()
@@ -260,10 +260,10 @@ class TestTemplateIntegration:
     
     def test_example_music_only_template_exists(self):
         """Test example_music_only template exists."""
-        template_path = Path("templates/example_music_only/template.toml")
+        template_path = Path("blueprints/templates/example_music_only/template.toml")
         assert template_path.exists()
         
-        assets_dir = Path("templates/example_music_only/assets")
+        assets_dir = Path("blueprints/templates/example_music_only/assets")
         assert assets_dir.exists()
         assert (assets_dir / "system_prompt.md").exists()
         assert (assets_dir / "character_sheet.md").exists()
