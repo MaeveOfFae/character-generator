@@ -105,7 +105,8 @@ class TestOpenRouterEngineCreation:
         
         assert isinstance(engine, OpenAICompatEngine), \
             "OpenRouter models should create OpenAICompatEngine"
-        assert engine.model == "openrouter/anthropic/claude-3-opus"
+        # OpenRouter API expects the model without the 'openrouter/' prefix
+        assert engine.model == "anthropic/claude-3-opus"
         assert engine.base_url == "https://openrouter.ai/api/v1"
 
     def test_openrouter_with_api_key_override(self, mock_config):
@@ -124,7 +125,8 @@ class TestOpenRouterEngineCreation:
             model_override="openrouter/openai/gpt-4"
         )
         
-        assert engine.model == "openrouter/openai/gpt-4"
+        # OpenRouter API expects the model without the 'openrouter/' prefix
+        assert engine.model == "openai/gpt-4"
 
     def test_openrouter_with_temperature_override(self, mock_config):
         """Test OpenRouter with temperature override."""
