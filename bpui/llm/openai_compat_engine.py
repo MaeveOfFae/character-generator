@@ -18,6 +18,27 @@ class OpenAICompatEngine(LLMEngine):
         self.base_url = base_url.rstrip("/")
         if not self.base_url:
             raise ValueError("base_url is required for OpenAI-compatible engine")
+        
+        # Check if this is OpenRouter
+        self.is_openrouter = "openrouter.ai" in self.base_url.lower()
+    
+    def _build_headers(self) -> Dict[str, str]:
+        """Build HTTP headers for requests.
+        
+        Returns:
+            Dictionary of HTTP headers, including OpenRouter-specific headers if needed
+        """
+        headers = {"Content-Type": "application/json"}
+        
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        
+        # OpenRouter requires these headers
+        if self.is_openrouter:
+            headers["HTTP-Referer"] = "https://github.com/maeveoffae/character-generator"
+            headers["X-Title"] = "Blueprint Character Generator"
+        
+        return headers
 
     async def generate(
         self,
@@ -30,9 +51,7 @@ class OpenAICompatEngine(LLMEngine):
             {"role": "user", "content": user_prompt},
         ]
 
-        headers = {"Content-Type": "application/json"}
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
+        headers = self._build_headers()
 
         payload = {
             "model": self.model,
@@ -43,14 +62,26 @@ class OpenAICompatEngine(LLMEngine):
         }
 
         async with httpx.AsyncClient(timeout=300.0) as client:
-            response = await client.post(
-                f"{self.base_url}/chat/completions",
-                headers=headers,
-                json=payload,
-            )
-            response.raise_for_status()
-            data = response.json()
-            return data["choices"][0]["message"]["content"]
+            try:
+                response = await client.post(
+                    f"{self.base_url}/chat/completions",
+                    headers=headers,
+                    json=payload,
+                )
+                response.raise_for_status()
+                data = response.json()
+                return data["choices"][0]["message"]["content"]
+            except httpx.HTTPStatusError as e:
+                # Try to extract error details from response
+                error_detail = ""
+                try:
+                    error_body = e.response.json()
+                    error_detail = f" - {error_body.get('error', {}).get('message', error_body)}"
+                except:
+                    error_detail = f" - {e.response.text[:200]}"
+                raise Exception(
+                    f"Chat API request failed with status {e.response.status_code}{error_detail}"
+                ) from e
 
     def generate_stream(
         self,
@@ -71,9 +102,7 @@ class OpenAICompatEngine(LLMEngine):
             {"role": "user", "content": user_prompt},
         ]
 
-        headers = {"Content-Type": "application/json"}
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
+        headers = self._build_headers()
 
         payload = {
             "model": self.model,
@@ -110,9 +139,7 @@ class OpenAICompatEngine(LLMEngine):
         messages: list[dict],
     ) -> str:
         """Generate completion from full messages list (multi-turn chat)."""
-        headers = {"Content-Type": "application/json"}
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
+        headers = self._build_headers()
 
         payload = {
             "model": self.model,
@@ -123,14 +150,26 @@ class OpenAICompatEngine(LLMEngine):
         }
 
         async with httpx.AsyncClient(timeout=300.0) as client:
-            response = await client.post(
-                f"{self.base_url}/chat/completions",
-                headers=headers,
-                json=payload,
-            )
-            response.raise_for_status()
-            data = response.json()
-            return data["choices"][0]["message"]["content"]
+            try:
+                response = await client.post(
+                    f"{self.base_url}/chat/completions",
+                    headers=headers,
+                    json=payload,
+                )
+                response.raise_for_status()
+                data = response.json()
+                return data["choices"][0]["message"]["content"]
+            except httpx.HTTPStatusError as e:
+                # Try to extract error details from response
+                error_detail = ""
+                try:
+                    error_body = e.response.json()
+                    error_detail = f" - {error_body.get('error', {}).get('message', error_body)}"
+                except:
+                    error_detail = f" - {e.response.text[:200]}"
+                raise Exception(
+                    f"Chat API request failed with status {e.response.status_code}{error_detail}"
+                ) from e
 
     def generate_chat_stream(
         self,
@@ -144,9 +183,7 @@ class OpenAICompatEngine(LLMEngine):
         messages: list[dict],
     ) -> AsyncIterator[str]:
         """Internal streaming implementation for chat."""
-        headers = {"Content-Type": "application/json"}
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
+        headers = self._build_headers()
 
         payload = {
             "model": self.model,
@@ -184,9 +221,7 @@ class OpenAICompatEngine(LLMEngine):
             start = time.time()
             messages = [{"role": "user", "content": "test"}]
 
-            headers = {"Content-Type": "application/json"}
-            if self.api_key:
-                headers["Authorization"] = f"Bearer {self.api_key}"
+            headers = self._build_headers()
 
             payload = {
                 "model": self.model,
@@ -210,6 +245,24 @@ class OpenAICompatEngine(LLMEngine):
                 "model": self.model,
                 "base_url": self.base_url,
             }
+        except httpx.HTTPStatusError as e:
+            # Try to extract error details from response
+            error_detail = f"HTTP {e.response.status_code}"
+            try:
+                error_body = e.response.json()
+                if isinstance(error_body.get('error'), dict):
+                    error_detail += f": {error_body['error'].get('message', '')}"
+                elif error_body.get('error'):
+                    error_detail += f": {error_body['error']}"
+            except:
+                error_detail += f": {e.response.text[:200]}"
+            
+            return {
+                "success": False,
+                "error": error_detail,
+                "model": self.model,
+                "base_url": self.base_url,
+            }
         except Exception as e:
             return {
                 "success": False,
@@ -217,3 +270,57 @@ class OpenAICompatEngine(LLMEngine):
                 "model": self.model,
                 "base_url": self.base_url,
             }
+
+    @staticmethod
+    async def list_models(base_url: str, api_key: str | None = None, timeout: float = 30.0) -> list[str]:
+        """List available models from OpenAI-compatible API.
+
+        Args:
+            base_url: Base URL of the OpenAI-compatible API
+            api_key: Optional API key for authentication
+            timeout: Request timeout in seconds
+
+        Returns:
+            List of model IDs available from the API
+
+        Raises:
+            Exception: If API request fails
+        """
+        import asyncio
+
+        base_url = base_url.rstrip("/")
+
+        headers = {"Content-Type": "application/json"}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        
+        # OpenRouter requires these headers
+        if "openrouter.ai" in base_url.lower():
+            headers["HTTP-Referer"] = "https://github.com/maeveoffae/character-generator"
+            headers["X-Title"] = "Blueprint Character Generator"
+
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.get(
+                    f"{base_url}/models",
+                    headers=headers,
+                )
+                response.raise_for_status()
+                data = response.json()
+
+            # Parse response - OpenAI format has "data" array with "id" field
+            if "data" in data:
+                models = [model["id"] for model in data["data"]]
+                # Sort models alphabetically
+                return sorted(models)
+            else:
+                # Fallback: try to extract models from response
+                return []
+
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                # /models endpoint not available, return empty list
+                return []
+            raise Exception(f"Failed to list models: {e}") from e
+        except Exception as e:
+            raise Exception(f"Failed to list models: {e}") from e

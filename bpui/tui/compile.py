@@ -110,7 +110,7 @@ class CompileScreen(Screen):
 
             yield Label("Model Override (optional):", classes="field-label")
             yield Input(
-                value="",
+                value=self.config.get("model_override", ""),
                 placeholder="Leave empty to use config default",
                 id="model-override",
             )
@@ -215,7 +215,6 @@ class CompileScreen(Screen):
             output_log.write("[dim]Importing modules...[/dim]")
             output_log.refresh()
             
-            from ..llm.litellm_engine import LiteLLMEngine
             from ..llm.openai_compat_engine import OpenAICompatEngine
             from ..prompting import build_asset_prompt
             from ..parse_blocks import extract_single_asset, extract_character_name
@@ -240,7 +239,20 @@ class CompileScreen(Screen):
 
             mode_value = mode_select.value
             mode = None if mode_value == "auto" or mode_value is None else str(mode_value)
-            model = model_override.value.strip() or self.config.model
+            # Ensure mode is a string for compatibility
+            mode = str(mode) if mode else None
+            
+            # Get model override, fall back to config model
+            model_override_value = model_override.value.strip()
+            model = model_override_value or self.config.model
+            
+            # Save model override to config for persistence
+            if model_override_value:
+                self.config.set("model_override", model_override_value)
+                try:
+                    self.config.save()
+                except Exception as e:
+                    output_log.write(f"[dim]Warning: Could not save model override to config: {e}[/dim]")
             
             template_name = template_select.value
             if not template_name:
@@ -301,11 +313,8 @@ class CompileScreen(Screen):
             output_log.write("[dim]Creating LLM engine...[/dim]")
             output_log.refresh()
 
-            if self.config.engine == "litellm":
-                engine = LiteLLMEngine(**engine_config)
-            else:
-                engine_config["base_url"] = self.config.base_url
-                engine = OpenAICompatEngine(**engine_config)
+            engine_config["base_url"] = self.config.base_url
+            engine = OpenAICompatEngine(**engine_config)
             
             output_log.write("[dim]Engine created successfully[/dim]")
             output_log.refresh()
@@ -399,7 +408,7 @@ class CompileScreen(Screen):
                 assets, 
                 character_name,
                 seed=seed,
-                mode=mode,
+                mode=mode or "",
                 model=model
             )
             output_log.write(f"[bold green]✓ Draft saved:[/] {draft_dir}")
@@ -415,7 +424,7 @@ class CompileScreen(Screen):
                 draft_dir, 
                 assets,
                 seed=seed,
-                mode=mode,
+                mode=mode or "",
                 model=model,
                 template=template
             ))

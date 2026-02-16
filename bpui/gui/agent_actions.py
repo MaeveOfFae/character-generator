@@ -940,28 +940,49 @@ class AgentActionHandler(QObject):
         elif isinstance(current_screen, SimilarityWidget):
             screen_info["screen_name"] = "similarity"
             
-            # Get search/comparison mode
-            if hasattr(current_screen, 'comparison_mode'):
-                screen_info["elements"]["comparison_mode"] = current_screen.comparison_mode  # type: ignore[attr-defined]
+            # Get selected characters from combo boxes
+            if hasattr(current_screen, 'char1_combo'):
+                screen_info["elements"]["character1"] = current_screen.char1_combo.currentText() or "[Not selected]"
+            if hasattr(current_screen, 'char2_combo'):
+                screen_info["elements"]["character2"] = current_screen.char2_combo.currentText() or "[Not selected]"
             
-            # Get selected characters
-            if hasattr(current_screen, 'selected_char1'):
-                screen_info["elements"]["character1"] = current_screen.selected_char1 or "[Not selected]"  # type: ignore[attr-defined]
-            if hasattr(current_screen, 'selected_char2'):
-                screen_info["elements"]["character2"] = current_screen.selected_char2 or "[Not selected]"  # type: ignore[attr-defined]
+            # Get comparison mode based on checkboxes
+            is_batch = False
+            is_cluster = False
+            if hasattr(current_screen, 'compare_all_checkbox'):
+                is_batch = current_screen.compare_all_checkbox.isChecked()
+            if hasattr(current_screen, 'cluster_checkbox'):
+                is_cluster = current_screen.cluster_checkbox.isChecked()
             
-            # Check if analysis is running
-            if hasattr(current_screen, 'analysis_running'):
-                screen_info["elements"]["is_analyzing"] = current_screen.analysis_running  # type: ignore[attr-defined]
+            if is_cluster:
+                screen_info["elements"]["comparison_mode"] = "cluster"
+            elif is_batch:
+                screen_info["elements"]["comparison_mode"] = "batch_all_pairs"
             else:
-                screen_info["elements"]["is_analyzing"] = False
+                screen_info["elements"]["comparison_mode"] = "single_pair"
+            
+            # Check if analysis is running (based on button state)
+            is_analyzing = False
+            if hasattr(current_screen, 'compare_btn'):
+                is_analyzing = not current_screen.compare_btn.isEnabled()
+            screen_info["elements"]["is_analyzing"] = is_analyzing
             
             # Get results if available
             if hasattr(current_screen, 'results_text'):
-                results = current_screen.results_text.toPlainText()  # type: ignore[attr-defined]
-                if results:
+                results = current_screen.results_text.toPlainText()
+                if results and "Error" not in results and "Select" not in results:
                     screen_info["elements"]["has_results"] = True
                     screen_info["elements"]["results_preview"] = results[:500]
+                else:
+                    screen_info["elements"]["has_results"] = False
+            
+            # Get LLM analysis setting
+            if hasattr(current_screen, 'use_llm_checkbox'):
+                screen_info["elements"]["use_llm_analysis"] = current_screen.use_llm_checkbox.isChecked()
+            
+            # Get cluster threshold if in cluster mode
+            if is_cluster and hasattr(current_screen, 'threshold_spinbox'):
+                screen_info["elements"]["cluster_threshold"] = f"{current_screen.threshold_spinbox.value()}%"
         
         else:
             # Generic screen

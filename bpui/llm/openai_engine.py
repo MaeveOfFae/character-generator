@@ -124,7 +124,8 @@ class OpenAIEngine(LLMEngine):
             raise RuntimeError("OpenAI SDK not available")
 
         async def _generate():
-            messages = [
+            # Type: ignore for messages - OpenAI SDK expects specific types but dict works at runtime
+            messages: list[dict[str, str]] = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ]
@@ -132,7 +133,7 @@ class OpenAIEngine(LLMEngine):
             # Build request parameters
             request_params: Dict[str, Any] = {
                 "model": self.model,
-                "messages": messages,
+                "messages": messages,  # type: ignore[arg-type]
                 "temperature": self.temperature,
                 "max_tokens": self.max_tokens,
             }
@@ -172,7 +173,8 @@ class OpenAIEngine(LLMEngine):
         if not OPENAI_AVAILABLE or self.client is None:
             raise RuntimeError("OpenAI SDK not available")
 
-        messages = [
+        # Type: ignore for messages - OpenAI SDK expects specific types but dict works at runtime
+        messages: list[dict[str, str]] = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
@@ -180,7 +182,7 @@ class OpenAIEngine(LLMEngine):
         # Build request parameters
         request_params: Dict[str, Any] = {
             "model": self.model,
-            "messages": messages,
+            "messages": messages,  # type: ignore[arg-type]
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
             "stream": True,
@@ -221,7 +223,7 @@ class OpenAIEngine(LLMEngine):
             # Build request parameters
             request_params: Dict[str, Any] = {
                 "model": self.model,
-                "messages": messages,
+                "messages": messages,  # type: ignore[arg-type]
                 "temperature": self.temperature,
                 "max_tokens": self.max_tokens,
             }
@@ -262,7 +264,7 @@ class OpenAIEngine(LLMEngine):
         # Build request parameters
         request_params: Dict[str, Any] = {
             "model": self.model,
-            "messages": messages,
+            "messages": messages,  # type: ignore[arg-type]
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
             "stream": True,
@@ -302,11 +304,12 @@ class OpenAIEngine(LLMEngine):
 
         try:
             start = time.time()
-            messages = [{"role": "user", "content": "test"}]
+            # Type: ignore for messages - OpenAI SDK expects specific types but dict works at runtime
+            messages: list[dict[str, str]] = [{"role": "user", "content": "test"}]
 
             await self.client.chat.completions.create(
                 model=self.model,
-                messages=messages,
+                messages=messages,  # type: ignore[arg-type]
                 max_tokens=5,
             )
 
@@ -324,20 +327,34 @@ class OpenAIEngine(LLMEngine):
             }
 
     @staticmethod
-    def list_models() -> List[str]:
-        """List available OpenAI models.
+    async def list_models(api_key: str, timeout: float = 30.0) -> list[str]:
+        """List available models from OpenAI API.
+
+        Args:
+            api_key: OpenAI API key for authentication
+            timeout: Request timeout in seconds
 
         Returns:
-            List of model names
+            List of model IDs available from OpenAI
+
+        Raises:
+            Exception: If API request fails or SDK not available
         """
-        return [
-            "gpt-4",
-            "gpt-4-turbo",
-            "gpt-4-turbo-preview",
-            "gpt-4-1106-preview",
-            "gpt-4-0125-preview",
-            "gpt-3.5-turbo",
-            "gpt-3.5-turbo-16k",
-            "o1-preview",
-            "o1-mini",
-        ]
+        if not OPENAI_AVAILABLE or AsyncOpenAI is None:
+            raise ImportError("OpenAI SDK not installed. Install with: pip install openai>=1.0.0")
+
+        import asyncio
+
+        try:
+            client = AsyncOpenAI(api_key=api_key)
+
+            # Iterate over the async paginator to collect all models
+            models = []
+            async for model in client.models.list(timeout=timeout):
+                models.append(model.id)
+
+            # Sort models alphabetically
+            return sorted(models)
+
+        except Exception as e:
+            raise Exception(f"Failed to list OpenAI models: {e}") from e
