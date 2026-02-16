@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime
 import time
 
-from bpui.batch_state import BatchState
+from bpui.utils.metadata.batch_state import BatchState
 
 
 def test_batch_state_creation():

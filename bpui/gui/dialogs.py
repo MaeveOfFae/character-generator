@@ -68,7 +68,7 @@ class TagsDialog(QDialog):
     
     def load_tags(self):
         """Load existing tags."""
-        from ..metadata import DraftMetadata
+        from bpui.utils.metadata.metadata import DraftMetadata
         metadata = DraftMetadata.load(self.draft_dir)
         if metadata and metadata.tags:
             for tag in metadata.tags:
@@ -89,7 +89,7 @@ class TagsDialog(QDialog):
     
     def save_tags(self):
         """Save tags to metadata."""
-        from ..metadata import DraftMetadata
+        from bpui.utils.metadata.metadata import DraftMetadata
         
         tags = []
         for i in range(self.tags_list.count()):
@@ -149,14 +149,14 @@ class NotesDialog(QDialog):
     
     def load_notes(self):
         """Load existing notes."""
-        from ..metadata import DraftMetadata
+        from bpui.utils.metadata.metadata import DraftMetadata
         metadata = DraftMetadata.load(self.draft_dir)
         if metadata and metadata.notes:
             self.notes_edit.setPlainText(metadata.notes)
     
     def save_notes(self):
         """Save notes to metadata."""
-        from ..metadata import DraftMetadata
+        from bpui.utils.metadata.metadata import DraftMetadata
         
         notes = self.notes_edit.toPlainText().strip()
         
@@ -311,6 +311,8 @@ class SettingsDialog(QDialog):
         self.config = config
         self.theme_colors = self.load_theme_colors()
         self.main_window = parent
+        self.model_fetcher = None
+        self._model_fetch_seq = 0
         
         self.setWindowTitle("Settings")
         self.setMinimumWidth(600)
@@ -737,17 +739,23 @@ class SettingsDialog(QDialog):
         # Show loading indicator
         self.model_input.addItem("Loading models...")
 
+        # Stop any prior fetcher before starting a new one
+        self._stop_model_fetcher()
+        self._model_fetch_seq += 1
+        fetch_seq = self._model_fetch_seq
+
         # Fetch models in background thread
         from PySide6.QtCore import QThread, Signal
 
         class ModelFetcherThread(QThread):
             """Thread to fetch models from provider API."""
-            models_fetched = Signal(list, str)
+            models_fetched = Signal(list, str, int)
 
-            def __init__(self, provider, config):
+            def __init__(self, provider, config, seq: int):
                 super().__init__()
                 self.provider = provider
                 self.config = config
+                self.seq = seq
 
             def run(self):
                 """Fetch models from provider API."""
@@ -825,18 +833,18 @@ class SettingsDialog(QDialog):
                     else:  # unknown
                         models = []  # No fallback for unknown providers
 
-                    self.models_fetched.emit(models, "")
+                    self.models_fetched.emit(models, "", self.seq)
 
                 except ImportError as e:
                     # SDK not installed, use fallback models
                     fallback_models = self._get_fallback_models(self.provider)
-                    self.models_fetched.emit(fallback_models, f"SDK not installed: {e}")
+                    self.models_fetched.emit(fallback_models, f"SDK not installed: {e}", self.seq)
 
                 except Exception as e:
                     # API call failed, use fallback models
                     fallback_models = self._get_fallback_models(self.provider)
                     error_msg = f"Failed to fetch models: {e}"
-                    self.models_fetched.emit(fallback_models, error_msg)
+                    self.models_fetched.emit(fallback_models, error_msg, self.seq)
 
                 finally:
                     loop.close()
@@ -882,17 +890,21 @@ class SettingsDialog(QDialog):
                     return ["openai/gpt-4", "openai/gpt-3.5-turbo"]
 
         # Start model fetcher thread
-        self.model_fetcher = ModelFetcherThread(provider, self.config)
+        self.model_fetcher = ModelFetcherThread(provider, self.config, fetch_seq)
         self.model_fetcher.models_fetched.connect(self._on_models_fetched)
         self.model_fetcher.start()
 
-    def _on_models_fetched(self, models: list[str], error_msg: str):
+    def _on_models_fetched(self, models: list[str], error_msg: str, seq: int):
         """Handle models fetched from provider API.
 
         Args:
             models: List of model names
             error_msg: Error message if fetch failed (empty if success)
         """
+        # Ignore stale results from previous fetchers
+        if seq != self._model_fetch_seq:
+            return
+
         # Clear loading indicator
         self.model_input.clear()
 
@@ -919,6 +931,18 @@ class SettingsDialog(QDialog):
         else:
             self.engine_type_label.setText(f"✓ Loaded {len(models)} models")
             self.engine_type_label.setStyleSheet("color: #4a4;")
+
+    def _stop_model_fetcher(self):
+        """Stop any running model fetcher thread to avoid QThread crashes."""
+        if self.model_fetcher and self.model_fetcher.isRunning():
+            self.model_fetcher.terminate()
+            self.model_fetcher.wait(2000)
+        self.model_fetcher = None
+
+    def closeEvent(self, event):
+        """Ensure background threads are stopped when closing."""
+        self._stop_model_fetcher()
+        super().closeEvent(event)
 
     def on_provider_changed(self, provider: str):
         """Handle provider selection change.
@@ -1012,7 +1036,7 @@ class SettingsDialog(QDialog):
     
     def rebuild_index(self):
         """Rebuild the draft index."""
-        from ..draft_index import DraftIndex
+        from bpui.utils.metadata.draft_index import DraftIndex
         
         self.rebuild_status.setText("⏳ Rebuilding index...")
         self.rebuild_status.setStyleSheet("color: #888;")
@@ -1037,7 +1061,7 @@ class SettingsDialog(QDialog):
     
     def update_metadata_schema(self):
         """Update metadata schema for existing drafts."""
-        from ..metadata import update_metadata_schema
+        from bpui.utils.metadata.metadata import update_metadata_schema
         from pathlib import Path
         
         self.migrate_status.setText("⏳ Updating metadata schema...")
@@ -1574,7 +1598,7 @@ class GenreDialog(QDialog):
             self.selected_genre = None
         
         # Save to metadata
-        from ..metadata import DraftMetadata
+        from bpui.utils.metadata.metadata import DraftMetadata
         metadata = DraftMetadata.load(self.draft_dir)
         if metadata:
             metadata.genre = self.selected_genre
@@ -1587,7 +1611,7 @@ class GenreDialog(QDialog):
         self.selected_genre = None
         
         # Save to metadata
-        from ..metadata import DraftMetadata
+        from bpui.utils.metadata.metadata import DraftMetadata
         metadata = DraftMetadata.load(self.draft_dir)
         if metadata:
             metadata.genre = None

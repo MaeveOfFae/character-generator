@@ -5,9 +5,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, TYPE_CHECKING
 
-from .parse_blocks import ASSET_FILENAMES, get_asset_filename
-from .metadata import DraftMetadata
-from .draft_index import DraftIndex
+from bpui.core.parse_blocks import ASSET_FILENAMES, get_asset_filename
+from bpui.utils.metadata.metadata import DraftMetadata
+from bpui.utils.metadata.draft_index import DraftIndex
 
 if TYPE_CHECKING:
     from .templates import Template

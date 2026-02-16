@@ -47,4 +47,4 @@ if [ "$1" = "--update-deps" ]; then
     shift  # Remove --update-deps from args
 fi
 
-exec python -m bpui.cli "$@"
+exec python -m bpui.core.cli "$@"

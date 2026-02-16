@@ -17,6 +17,16 @@ class MockLLMEngine(LLMEngine):
             yield "mock"
             yield " stream"
         return _stream()
+
+    async def generate_chat(self, messages: list[dict]) -> str:
+        return "mock chat response"
+
+    def generate_chat_stream(self, messages: list[dict]):
+        async def _stream():
+            yield "mock"
+            yield " chat"
+            yield " stream"
+        return _stream()
     
     async def test_connection(self):
         return {"success": True}
@@ -89,48 +99,6 @@ class TestLLMEngineBase:
         
         assert result == {"success": True}
 
-
-class TestLiteLLMEngine:
-    """Tests for LiteLLMEngine."""
-    
-    def test_import_error_handling(self):
-        """Test that ImportError is raised when litellm not available."""
-        with patch("bpui.llm.litellm_engine.LITELLM_AVAILABLE", False):
-            from bpui.llm.litellm_engine import LiteLLMEngine
-            
-            with pytest.raises(ImportError, match="LiteLLM not installed"):
-                LiteLLMEngine(model="test")
-    
-    @pytest.mark.asyncio
-    async def test_generate_not_available(self):
-        """Test generate when litellm not available."""
-        with patch("bpui.llm.litellm_engine.LITELLM_AVAILABLE", True):
-            with patch("bpui.llm.litellm_engine.litellm", None):
-                from bpui.llm.litellm_engine import LiteLLMEngine
-                engine = LiteLLMEngine.__new__(LiteLLMEngine)
-                engine.model = "test"
-                engine.temperature = 0.7
-                engine.max_tokens = 4096
-                engine.api_key = None
-                engine.extra_params = {}
-                
-                with pytest.raises(RuntimeError, match="LiteLLM not available"):
-                    await engine.generate("system", "user")
-    
-    @pytest.mark.asyncio
-    async def test_test_connection_not_installed(self):
-        """Test test_connection when litellm not installed."""
-        with patch("bpui.llm.litellm_engine.LITELLM_AVAILABLE", True):
-            with patch("bpui.llm.litellm_engine.litellm", None):
-                from bpui.llm.litellm_engine import LiteLLMEngine
-                engine = LiteLLMEngine.__new__(LiteLLMEngine)
-                engine.model = "test-model"
-                
-                result = await engine.test_connection()
-                
-                assert result["success"] is False
-                assert "not installed" in result["error"]
-                assert result["model"] == "test-model"
 
 
 class TestOpenAICompatEngine:

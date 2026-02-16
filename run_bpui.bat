@@ -81,6 +81,6 @@ if "%1"=="--update-deps" (
 )
 
 REM Run bpui with remaining arguments
-python -m bpui.cli %*
+python -m bpui.core.cli %*
 
 endlocal

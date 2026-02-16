@@ -2,7 +2,7 @@
 
 import pytest
 from pathlib import Path
-from bpui.prompting import (
+from bpui.core.prompting import (
     load_blueprint,
     load_rules,
     get_rules_for_asset,

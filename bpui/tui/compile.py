@@ -131,7 +131,7 @@ class CompileScreen(Screen):
 
     def load_templates(self) -> None:
         """Load templates into the select widget."""
-        from ..templates import TemplateManager
+        from bpui.features.templates.templates import TemplateManager
         template_select = self.query_one("#template", Select)
         
         try:
@@ -218,7 +218,7 @@ class CompileScreen(Screen):
             from ..llm.openai_compat_engine import OpenAICompatEngine
             from ..prompting import build_asset_prompt
             from ..parse_blocks import extract_single_asset, extract_character_name
-            from ..pack_io import create_draft_dir
+            from bpui.utils.file_io.pack_io import create_draft_dir
             from ..topological_sort import topological_sort
 
             output_log.write("[dim]Modules imported ✓[/dim]")

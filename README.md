@@ -43,7 +43,7 @@ bpui compile --seed "Noir detective with psychic abilities" --mode NSFW
 bpui batch --input seeds.txt --mode NSFW --continue-on-error
 
 # Generate seeds
-bpui seed-gen --input genres.txt --out "seed output/noir.txt"
+bpui seed-gen --input genres.txt --out "seed-output/noir.txt"
 
 # Validate a character pack
 bpui validate drafts/20240203_150000_character_name
@@ -139,14 +139,16 @@ Multiple export presets for different platforms:
 
 ## Documentation
 
-- **Project README**: [README.md](README.md) - This file
-- **Quick Start**: [QUICKSTART.md](QUICKSTART.md) - Quick reference guide
+- **Documentation Index**: [docs/README.md](docs/README.md) - Complete navigation hub for all documentation
+- **Quick Start**: [docs/guides/QUICKSTART.md](docs/guides/QUICKSTART.md) - Fast-track getting started guide
 - **TUI Guide**: [bpui/README.md](bpui/README.md) - TUI documentation and keyboard shortcuts
-- **Feature Audit**: [docs/FEATURE_AUDIT.md](docs/FEATURE_AUDIT.md) - Complete feature audit
-- **Similarity Analyzer**: [docs/SIMILARITY_ENHANCEMENTS.md](docs/SIMILARITY_ENHANCEMENTS.md) - Detailed documentation
-- **OpenRouter Support**: [docs/OPENROUTER_SUPPORT.md](docs/OPENROUTER_SUPPORT.md) - Using OpenRouter with 100+ models
-- **API Docs**: Generate with `make docs` and view at `docs/api/bpui/`
-- **Documentation Index**: [docs/README.md](docs/README.md) - Navigation hub for all documentation
+- **Feature Documentation**: [docs/features/](docs/features/) - Detailed feature guides and audits
+- **Similarity Analyzer**: [docs/guides/SIMILARITY_ENHANCEMENTS.md](docs/guides/SIMILARITY_ENHANCEMENTS.md) - Deep dive into character comparison
+- **OpenRouter Support**: [docs/guides/OPENROUTER_SUPPORT.md](docs/guides/OPENROUTER_SUPPORT.md) - Using OpenRouter with 100+ models
+- **API Docs**: [docs/api/](docs/api/) - API reference documentation
+- **Installation**: [docs/installation/](docs/installation/) - Installation guides and platform notes
+- **Development**: [docs/development/](docs/development/) - Developer and contributor documentation
+- **Archive**: [docs/archive/](docs/archive/) - Historical documentation and implementation notes
 
 ## Repository Structure
 

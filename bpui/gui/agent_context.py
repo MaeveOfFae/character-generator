@@ -186,7 +186,7 @@ class ReviewScreenContextProvider(ContextProvider):
         
         # Add metadata
         try:
-            from ..metadata import DraftMetadata
+            from bpui.utils.metadata.metadata import DraftMetadata
             metadata = DraftMetadata.load(self.review_widget.draft_dir)
             if metadata:
                 context["seed"] = metadata.seed[:100] + "..." if len(metadata.seed) > 100 else metadata.seed

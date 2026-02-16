@@ -6,7 +6,7 @@ from typing import Optional, TYPE_CHECKING
 from .base import LLMEngine
 
 if TYPE_CHECKING:
-    from ..config import Config
+    from bpui.core.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +150,7 @@ def create_engine(
         # Determine which API to use based on available keys
         if provider == "openrouter" or (provider_key is None and openrouter_key):
             # Use OpenRouter (either explicitly or as fallback)
-            api_key = openrouter_key
+            api_key = api_key_override or openrouter_key
             base_url = "https://openrouter.ai/api/v1"
             # For OpenRouter, strip only the 'openrouter/' prefix if present
             # Model format expected by OpenRouter: 'provider/model' (e.g., 'anthropic/claude-3-opus')

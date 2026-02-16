@@ -185,7 +185,7 @@ class TemplateManagerScreen(QWidget):
     
     def load_templates(self):
         """Load available templates."""
-        from ..templates import TemplateManager
+        from bpui.features.templates.templates import TemplateManager
         
         self.templates_list.clear()
         self.details_text.clear()
@@ -270,7 +270,7 @@ class TemplateManagerScreen(QWidget):
         if not self.selected_template:
             return
         
-        from ..templates import TemplateManager
+        from bpui.features.templates.templates import TemplateManager
         
         try:
             manager = TemplateManager()
@@ -320,7 +320,7 @@ class TemplateManagerScreen(QWidget):
             return
         
         try:
-            from ..templates import TemplateManager
+            from bpui.features.templates.templates import TemplateManager
             
             manager = TemplateManager()
             output_path = Path(export_dir) / self.selected_template.name.lower().replace(" ", "_")
@@ -348,7 +348,7 @@ class TemplateManagerScreen(QWidget):
             return
         
         try:
-            from ..templates import TemplateManager
+            from bpui.features.templates.templates import TemplateManager
             
             manager = TemplateManager()
             template = manager.import_template(Path(template_dir))
@@ -386,7 +386,7 @@ class TemplateManagerScreen(QWidget):
             return
         
         try:
-            from ..templates import TemplateManager
+            from bpui.features.templates.templates import TemplateManager
             
             manager = TemplateManager()
             if manager.delete_template(self.selected_template):
@@ -436,7 +436,7 @@ class TemplateManagerScreen(QWidget):
             return
         
         try:
-            from ..templates import TemplateManager
+            from bpui.features.templates.templates import TemplateManager
             import shutil
             
             manager = TemplateManager()

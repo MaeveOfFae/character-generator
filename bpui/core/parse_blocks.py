@@ -3,7 +3,7 @@
 import re
 from pathlib import Path
 from typing import Optional, Dict, List, TYPE_CHECKING
-from .profiler import profile
+from bpui.utils.profiler import profile
 
 if TYPE_CHECKING:
     from .templates import Template
@@ -131,7 +131,7 @@ def parse_blueprint_output(text: str, template: Optional['Template'] = None) -> 
         
         # Determine expected asset order from template or use default
         if not template:
-            from .templates import TemplateManager
+            from bpui.features.templates.templates import TemplateManager
             manager = TemplateManager()
             template = manager.get_template("Official RPBotGenerator")
         

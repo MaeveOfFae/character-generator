@@ -5,7 +5,7 @@ import asyncio
 import json
 from pathlib import Path
 from datetime import datetime
-from bpui.batch_state import BatchState
+from bpui.utils.metadata.batch_state import BatchState
 
 
 @pytest.fixture

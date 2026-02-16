@@ -34,9 +34,9 @@ class BatchWorker(QThread):
     async def _run_async(self):
         """Async batch compilation with parallel execution using sequential generation."""
         import asyncio
-        from ..config import Config
+        from bpui.core.config import Config
         from ..llm.factory import create_engine
-        from ..pack_io import create_draft_dir
+        from bpui.utils.file_io.pack_io import create_draft_dir
         from ..topological_sort import topological_sort
 
         total = len(self.seeds)
@@ -149,7 +149,7 @@ class BatchScreen(QWidget):
 
     def load_templates(self):
         """Load available templates into combo box."""
-        from ..templates import TemplateManager
+        from bpui.features.templates.templates import TemplateManager
         
         self.template_combo.clear()
         

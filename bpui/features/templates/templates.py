@@ -132,35 +132,35 @@ class TemplateManager:
                 required=True,
                 depends_on=[],
                 description="System-level behavioral instructions",
-                blueprint_file="templates/example_minimal/system_prompt.md"
+                blueprint_file="blueprints/templates/example_minimal/system_prompt.md"
             ),
             AssetDefinition(
                 name="post_history",
                 required=True,
                 depends_on=["system_prompt"],
                 description="Conversation context and relationship state",
-                blueprint_file="templates/example_minimal/post_history.md"
+                blueprint_file="blueprints/templates/example_minimal/post_history.md"
             ),
             AssetDefinition(
                 name="character_sheet",
                 required=True,
                 depends_on=["system_prompt", "post_history"],
                 description="Structured character data",
-                blueprint_file="templates/example_minimal/character_sheet.md"
+                blueprint_file="blueprints/templates/example_minimal/character_sheet.md"
             ),
             AssetDefinition(
                 name="intro_scene",
                 required=True,
                 depends_on=["system_prompt", "post_history", "character_sheet"],
                 description="First interaction scenario",
-                blueprint_file="templates/example_minimal/intro_scene.md"
+                blueprint_file="blueprints/templates/example_minimal/intro_scene.md"
             ),
             AssetDefinition(
                 name="intro_page",
                 required=True,
                 depends_on=["character_sheet"],
                 description="Visual character introduction page",
-                blueprint_file="templates/example_minimal/intro_page.md"
+                blueprint_file="blueprints/templates/example_minimal/intro_page.md"
             ),
             AssetDefinition(
                 name="a1111",
@@ -174,7 +174,7 @@ class TemplateManager:
                 required=True,
                 depends_on=["character_sheet"],
                 description="Suno music generation prompt",
-                blueprint_file="templates/example_music_only/suno.md"
+                blueprint_file="blueprints/templates/example_music_only/suno.md"
             ),
         ]
         

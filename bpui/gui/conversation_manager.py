@@ -84,7 +84,7 @@ class ConversationManager:
                      Defaults to ~/.config/bpui/conversations
         """
         if base_dir is None:
-            from ..config import Config
+            from bpui.core.config import Config
             config = Config()
             conv_dir = config.get("agent", {}).get("conversations_dir")
             if conv_dir:

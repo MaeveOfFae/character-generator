@@ -772,12 +772,12 @@ class AgentActionHandler(QObject):
         from .review import ReviewWidget
         from .compile import CompileWidget
         from .home import HomeWidget
-        from .seed_generator import SeedGeneratorScreen
+        from bpui.features.seed_generator.seed_generator import SeedGeneratorScreen
         from .batch import BatchScreen
-        from .validate import ValidateScreen
+        from bpui.utils.file_io.validate import ValidateScreen
         from .template_manager import TemplateManagerScreen
-        from .offspring import OffspringWidget
-        from .similarity import SimilarityWidget
+        from bpui.features.offspring.offspring import OffspringWidget
+        from bpui.features.similarity.similarity import SimilarityWidget
         
         if isinstance(current_screen, ReviewWidget):
             screen_info["screen_name"] = "review"
@@ -1014,7 +1014,7 @@ class AgentActionHandler(QObject):
             
             # Try to load metadata
             try:
-                from ..metadata import DraftMetadata
+                from bpui.utils.metadata.metadata import DraftMetadata
                 metadata = DraftMetadata.load(draft_path)
                 if metadata:
                     draft_info["seed"] = metadata.seed[:100] + "..." if len(metadata.seed) > 100 else metadata.seed
@@ -1068,7 +1068,7 @@ class AgentActionHandler(QObject):
             
             # Check metadata
             try:
-                from ..metadata import DraftMetadata
+                from bpui.utils.metadata.metadata import DraftMetadata
                 metadata = DraftMetadata.load(draft_path)
                 if metadata:
                     # Check seed
@@ -1181,7 +1181,7 @@ class AgentActionHandler(QObject):
         """Use a seed from the generator."""
         current_screen = self.main_window.stack.currentWidget()
         
-        from .seed_generator import SeedGeneratorScreen
+        from bpui.features.seed_generator.seed_generator import SeedGeneratorScreen
         if not isinstance(current_screen, SeedGeneratorScreen):
             return {"success": False, "message": "Not on seed generator screen"}
         
@@ -1213,7 +1213,7 @@ class AgentActionHandler(QObject):
         """Get list of generated seeds."""
         current_screen = self.main_window.stack.currentWidget()
         
-        from .seed_generator import SeedGeneratorScreen
+        from bpui.features.seed_generator.seed_generator import SeedGeneratorScreen
         if not isinstance(current_screen, SeedGeneratorScreen):
             return {"success": False, "message": "Not on seed generator screen"}
         
@@ -1320,7 +1320,7 @@ class AgentActionHandler(QObject):
             return {"success": False, "message": "No draft currently open"}
         
         try:
-            from ..metadata import DraftMetadata
+            from bpui.utils.metadata.metadata import DraftMetadata
             metadata = DraftMetadata.load(review_widget.draft_dir)
             
             if not metadata:

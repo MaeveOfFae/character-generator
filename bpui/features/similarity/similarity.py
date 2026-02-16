@@ -19,9 +19,9 @@ from PySide6.QtWidgets import (
     QCheckBox,
 )
 
-from bpui.pack_io import list_drafts
-from bpui.similarity import SimilarityAnalyzer, format_similarity_report
-from bpui.config import Config
+from bpui.utils.file_io.pack_io import list_drafts
+from bpui.features.similarity.engine import SimilarityAnalyzer, format_similarity_report
+from bpui.core.config import Config
 
 
 class SimilarityWidget(QWidget):
