@@ -404,15 +404,12 @@ class SettingsDialog(QDialog):
         self.model_input.setEditable(True)
         self.model_input.setPlaceholderText("e.g., gpt-4 or openai/gpt-4")
 
+        # Store current model to restore after async fetch
+        current_model = self.config.model
+        self.desired_model = current_model
+
         # Populate with available models for current provider
         self.populate_models_for_provider(detected_provider)
-
-        # Set current model
-        index = self.model_input.findText(current_model)
-        if index >= 0:
-            self.model_input.setCurrentIndex(index)
-        else:
-            self.model_input.setCurrentText(current_model)
 
         form.addRow("Model:", self.model_input)
 
@@ -903,8 +900,16 @@ class SettingsDialog(QDialog):
         for model in models:
             self.model_input.addItem(model)
 
-        # Select first model if available
-        if self.model_input.count() > 0:
+        # Try to restore the desired model (from config or previous selection)
+        if hasattr(self, 'desired_model') and self.desired_model:
+            index = self.model_input.findText(self.desired_model)
+            if index >= 0:
+                self.model_input.setCurrentIndex(index)
+            else:
+                # Model not in list, but user might have typed it - set as text
+                self.model_input.setCurrentText(self.desired_model)
+        elif self.model_input.count() > 0:
+            # No desired model, select first as fallback
             self.model_input.setCurrentIndex(0)
 
         # Show error message if any
@@ -921,19 +926,11 @@ class SettingsDialog(QDialog):
         Args:
             provider: Provider ID that was selected
         """
-        # Save currently entered text (in case user typed custom model)
-        current_text = self.model_input.currentText()
+        # Save currently entered text as the desired model for next fetch
+        self.desired_model = self.model_input.currentText()
 
         # Repopulate models for new provider
         self.populate_models_for_provider(provider)
-
-        # Try to preserve selection if it makes sense
-        # Otherwise, select first model in list
-        index = self.model_input.findText(current_text)
-        if index >= 0:
-            self.model_input.setCurrentIndex(index)
-        elif self.model_input.count() > 0:
-            self.model_input.setCurrentIndex(0)
 
         # Update API key field with provider-specific key
         provider_key = provider
