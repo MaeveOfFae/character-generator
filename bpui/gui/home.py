@@ -361,11 +361,28 @@ class HomeWidget(QWidget):
         draft_dir = item.data(Qt.ItemDataRole.UserRole)
         if not draft_dir:
             return
-        
-        # Load assets
+
+        # Load metadata to get template info
+        from bpui.utils.metadata.metadata import DraftMetadata
+        from bpui.features.templates.templates import TemplateManager
         from bpui.utils.file_io.pack_io import load_draft
+
         try:
-            assets = load_draft(draft_dir)
+            # Load metadata
+            metadata = DraftMetadata.load(draft_dir)
+
+            # Try to load the template if specified
+            template = None
+            if metadata and metadata.template_name:
+                try:
+                    manager = TemplateManager()
+                    templates = manager.list_templates()
+                    template = next((t for t in templates if t.name == metadata.template_name), None)
+                except Exception as e:
+                    print(f"Warning: Could not load template '{metadata.template_name}': {e}")
+
+            # Load assets with template if available
+            assets = load_draft(draft_dir, template)
             self.main_window.show_review(draft_dir, assets)
         except Exception as e:
             from PySide6.QtWidgets import QMessageBox

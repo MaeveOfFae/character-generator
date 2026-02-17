@@ -1131,10 +1131,11 @@ class SettingsDialog(QDialog):
                     elif self.provider == "openrouter":
                         api_key = self.config.get_api_key("openrouter")
                         base_url = "https://openrouter.ai/api/v1"
-                        # Always try to fetch from API, even without API key (like OpenAI/Google do)
+                        # Fetch models from OpenRouter API
                         raw_models = loop.run_until_complete(OpenAICompatEngine.list_models(base_url, api_key))
-                        # Add "openrouter/" prefix to all models for proper detection
-                        models = [f"openrouter/{model}" for model in raw_models]
+                        # Don't add prefix - models are stored without it for cleaner display
+                        # The factory will detect openrouter via config.engine or explicit provider setting
+                        models = raw_models
 
                     elif self.provider == "anthropic":
                         # Anthropic models
@@ -1203,10 +1204,10 @@ class SettingsDialog(QDialog):
                     return ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo", "o1-preview", "o1-mini"]
                 elif provider == "openrouter":
                     return [
-                        "openrouter/anthropic/claude-3-5-sonnet-20241022",
-                        "openrouter/openai/gpt-4o",
-                        "openrouter/google/gemini-pro-1.5",
-                        "openrouter/meta-llama/llama-3-70b-instruct",
+                        "anthropic/claude-3-5-sonnet-20241022",
+                        "openai/gpt-4o",
+                        "google/gemini-pro-1.5",
+                        "meta-llama/llama-3-70b-instruct",
                     ]
                 elif provider == "anthropic":
                     return ["anthropic/claude-3-5-sonnet-20241022", "anthropic/claude-3-opus"]
@@ -1436,23 +1437,29 @@ class SettingsDialog(QDialog):
         model = self.model_input.currentText().strip()
         self.config.set("model", model)
 
+        # Get selected provider from the radio buttons
+        selected_provider = None
+        for provider_id, button in self.provider_buttons.items():
+            if button.isChecked():
+                selected_provider = provider_id
+                break
+
+        # Fallback to detected provider if no button is checked
+        if not selected_provider:
+            selected_provider = detect_provider_from_model(model)
+
+        # Set engine and base_url for OpenRouter
+        if selected_provider == "openrouter":
+            self.config.set("engine", "openai_compatible")
+            self.config.set("base_url", "https://openrouter.ai/api/v1")
+            self.config.set("engine_mode", "explicit")  # Use explicit mode to avoid provider auto-detection
+
         # Update API key for the appropriate provider
         api_key = self.api_key_input.text().strip()
         if api_key:
-            # Get selected provider from the radio buttons
-            provider_key = None
-            for provider_id, button in self.provider_buttons.items():
-                if button.isChecked():
-                    provider_key = provider_id
-                    break
-            
-            # Fallback to detected provider if no button is checked
-            if not provider_key:
-                provider_key = detect_provider_from_model(model)
-
             # Map to config key (some providers might be grouped, e.g., under 'openrouter')
-            if provider_key in ("google", "openai", "openrouter", "anthropic", "deepseek", "zai", "moonshot"):
-                self.config.set_api_key(provider_key, api_key)
+            if selected_provider in ("google", "openai", "openrouter", "anthropic", "deepseek", "zai", "moonshot"):
+                self.config.set_api_key(selected_provider, api_key)
         
         # Update batch settings
         try:

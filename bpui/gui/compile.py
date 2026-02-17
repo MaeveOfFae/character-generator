@@ -120,11 +120,12 @@ class CompileWorker(QThread):
         # Save draft with metadata
         self.output.emit("\nSaving draft...\n")
         draft_dir = create_draft_dir(
-            assets, 
+            assets,
             character_name,
             seed=self.seed,
             mode=self.mode,
-            model=self.config.model
+            model=self.config.model,
+            template=self.template
         )
         
         self.output.emit(f"\n✓ Saved to: {draft_dir}\n")
