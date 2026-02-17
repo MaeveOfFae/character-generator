@@ -781,11 +781,11 @@ class SettingsDialog(QDialog):
         
         self.theme_preset_combo.clear()
         
-        # Add built-in presets
-        for name in ["dark", "light", "nyx"]:
-            theme = BUILTIN_THEMES[name]
-            display = f"{theme.display_name} ⭐"
-            self.theme_preset_combo.addItem(display, name)
+        # Add built-in presets (exclude 'custom' sentinel)
+        for name, theme in BUILTIN_THEMES.items():
+            if name != "custom":
+                display = f"{theme.display_name} ⭐"
+                self.theme_preset_combo.addItem(display, name)
         
         # Add custom presets from config
         custom_presets = self.config.get("custom_theme_presets", {})
@@ -931,11 +931,12 @@ class SettingsDialog(QDialog):
     def delete_theme_preset(self):
         """Delete the currently selected custom preset."""
         from PySide6.QtWidgets import QMessageBox
-        
+        from bpui.core.theme import BUILTIN_THEMES
+
         preset_key = self.theme_preset_combo.currentData()
-        
+
         # Can't delete built-ins
-        if preset_key in ["dark", "light", "nyx", "custom"]:
+        if preset_key in BUILTIN_THEMES or preset_key == "custom":
             QMessageBox.warning(
                 self,
                 "Cannot Delete",
@@ -1462,28 +1463,36 @@ class SettingsDialog(QDialog):
         except ValueError:
             pass  # Keep existing values if invalid
 
-        # Save theme colors
-        theme_colors = {"tokenizer": {}, "app": {}}
-
-        # Save tokenizer colors
-        for key, btn in self.tokenizer_color_buttons.items():
-            color = self.get_color_from_button(btn)
-            if color:
-                theme_colors["tokenizer"][key] = color
-
-        # Save app colors
-        for key, btn in self.app_color_buttons.items():
-            color = self.get_color_from_button(btn)
-            if color:
-                theme_colors["app"][key] = color
-
-        self.config.set("theme", theme_colors)
-
         # Save selected theme preset name
         if hasattr(self, 'theme_preset_combo'):
             preset_key = self.theme_preset_combo.currentData()
             if preset_key:
                 self.config.set("theme_name", preset_key)
+
+                # Only save custom color overrides if "custom" theme is selected
+                # For built-in themes, clear any custom overrides
+                from bpui.core.theme import BUILTIN_THEMES
+                if preset_key == "custom":
+                    # Save theme colors for custom theme
+                    theme_colors = {"tokenizer": {}, "app": {}}
+
+                    # Save tokenizer colors
+                    for key, btn in self.tokenizer_color_buttons.items():
+                        color = self.get_color_from_button(btn)
+                        if color:
+                            theme_colors["tokenizer"][key] = color
+
+                    # Save app colors
+                    for key, btn in self.app_color_buttons.items():
+                        color = self.get_color_from_button(btn)
+                        if color:
+                            theme_colors["app"][key] = color
+
+                    self.config.set("theme", theme_colors)
+                elif preset_key in BUILTIN_THEMES:
+                    # Clear custom overrides for built-in presets
+                    if "theme" in self.config._data:
+                        del self.config._data["theme"]
 
         # Save config to disk
         self.config.save()
@@ -1504,29 +1513,38 @@ class SettingsDialog(QDialog):
 
     def preview_theme(self):
         """Preview theme changes without saving to disk."""
-        # Temporarily update config with current UI values
-        theme_colors = {"tokenizer": {}, "app": {}}
+        from bpui.core.theme import BUILTIN_THEMES
 
-        # Get tokenizer colors
-        for key, btn in self.tokenizer_color_buttons.items():
-            color = self.get_color_from_button(btn)
-            if color:
-                theme_colors["tokenizer"][key] = color
-
-        # Get app colors
-        for key, btn in self.app_color_buttons.items():
-            color = self.get_color_from_button(btn)
-            if color:
-                theme_colors["app"][key] = color
-
-        # Temporarily set in config (not saved to disk)
-        self.config.set("theme", theme_colors)
-
-        # Set selected theme preset name temporarily
+        # Get selected theme preset
         if hasattr(self, 'theme_preset_combo'):
             preset_key = self.theme_preset_combo.currentData()
             if preset_key:
                 self.config.set("theme_name", preset_key)
+
+                # For built-in presets, clear custom overrides temporarily
+                # For custom theme, apply current UI colors
+                if preset_key == "custom":
+                    # Temporarily update config with current UI values
+                    theme_colors = {"tokenizer": {}, "app": {}}
+
+                    # Get tokenizer colors
+                    for key, btn in self.tokenizer_color_buttons.items():
+                        color = self.get_color_from_button(btn)
+                        if color:
+                            theme_colors["tokenizer"][key] = color
+
+                    # Get app colors
+                    for key, btn in self.app_color_buttons.items():
+                        color = self.get_color_from_button(btn)
+                        if color:
+                            theme_colors["app"][key] = color
+
+                    # Temporarily set in config (not saved to disk)
+                    self.config.set("theme", theme_colors)
+                elif preset_key in BUILTIN_THEMES:
+                    # Temporarily clear custom overrides for built-in presets
+                    if "theme" in self.config._data:
+                        del self.config._data["theme"]
 
         # Apply theme without saving
         if hasattr(self.main_window, 'refresh_theme'):

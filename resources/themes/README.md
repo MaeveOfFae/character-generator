@@ -9,6 +9,11 @@ This directory contains Textual CSS (`.tcss`) theme files for the Blueprint UI t
 | **Dark** | `dark.tcss` | Default dark theme with purple accents |
 | **Light** | `light.tcss` | Clean light theme for bright environments |
 | **Nyx** | `nyx.tcss` | Deep purple and magenta — the blueprint architect's choice |
+| **Midnight** | `midnight.tcss` | Deep blue ocean theme with cyan accents |
+| **Ember** | `ember.tcss` | Warm theme with orange and amber tones |
+| **Monochrome** | `mono.tcss` | Clean grayscale theme for minimal distraction |
+| **Forest** | `forest.tcss` | Natural green theme inspired by woodland twilight |
+| **Solarized Dark** | `solarized_dark.tcss` | Popular Solarized color scheme with reduced eye strain |
 
 ## Creating Custom Themes
 

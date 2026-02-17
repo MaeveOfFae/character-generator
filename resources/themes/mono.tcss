@@ -1,0 +1,969 @@
+/*
+ * Blueprint UI — Monochrome Theme
+ * Clean grayscale theme for minimal distraction.
+ *
+ * This file consolidates all TUI screen styles into a single theme file.
+ * Color variables ($primary, $surface, etc.) are provided by Textual's
+ * built-in design system and overridden via App.design in bpui/tui/app.py.
+ */
+
+/* =========================================================================
+ * Global / App
+ * ========================================================================= */
+
+Screen {
+    background: $surface;
+}
+
+/* =========================================================================
+ * HomeScreen
+ * ========================================================================= */
+
+HomeScreen {
+    align: center middle;
+}
+
+HomeScreen #home-container {
+    width: 60;
+    height: auto;
+    border: solid $primary;
+    padding: 2;
+}
+
+HomeScreen .title {
+    content-align: center middle;
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 1;
+}
+
+HomeScreen .subtitle {
+    content-align: center middle;
+    color: $text-muted;
+    margin-bottom: 2;
+}
+
+HomeScreen Button {
+    width: 100%;
+    margin-bottom: 1;
+}
+
+/* =========================================================================
+ * SettingsScreen
+ * ========================================================================= */
+
+SettingsScreen {
+    align: center middle;
+}
+
+SettingsScreen #settings-container {
+    width: 80;
+    height: 100%;
+    border: solid $primary;
+    padding: 2;
+}
+
+SettingsScreen .title {
+    content-align: center middle;
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 2;
+    margin-top: 1;
+}
+
+SettingsScreen .subtitle {
+    content-align: center middle;
+    color: $text-muted;
+    margin-bottom: 1;
+}
+
+SettingsScreen .field-label {
+    margin-top: 1;
+    margin-bottom: 0;
+    color: $text;
+}
+
+SettingsScreen Input,
+SettingsScreen Select {
+    width: 100%;
+    margin-bottom: 1;
+}
+
+SettingsScreen .button-row {
+    layout: horizontal;
+    width: 100%;
+    height: auto;
+    margin-top: 2;
+}
+
+SettingsScreen .button-row Button {
+    width: 1fr;
+    margin-right: 1;
+}
+
+SettingsScreen .status {
+    margin-top: 1;
+    text-align: center;
+    color: $success;
+}
+
+SettingsScreen .error {
+    color: $error;
+}
+
+/* =========================================================================
+ * CompileScreen
+ * ========================================================================= */
+
+CompileScreen {
+    layout: vertical;
+}
+
+CompileScreen #compile-container {
+    height: 100%;
+    width: 100%;
+    padding: 1;
+}
+
+CompileScreen .title {
+    content-align: center middle;
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 1;
+}
+
+CompileScreen .field-label {
+    margin-top: 1;
+    margin-bottom: 0;
+}
+
+CompileScreen Input,
+CompileScreen Select {
+    width: 100%;
+    margin-bottom: 1;
+}
+
+CompileScreen .button-row {
+    layout: horizontal;
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+CompileScreen .button-row Button {
+    width: 1fr;
+    margin-right: 1;
+}
+
+CompileScreen #output-log {
+    height: 1fr;
+    border: solid $primary;
+    margin-bottom: 1;
+}
+
+CompileScreen .status {
+    text-align: center;
+    color: $text-muted;
+}
+
+CompileScreen .error {
+    color: $error;
+}
+
+/* =========================================================================
+ * ReviewScreen
+ * ========================================================================= */
+
+ReviewScreen {
+    layout: vertical;
+}
+
+ReviewScreen #review-container {
+    height: 100%;
+    width: 100%;
+    padding: 1;
+}
+
+ReviewScreen .title {
+    content-align: center middle;
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 1;
+}
+
+ReviewScreen #metadata-section {
+    layout: horizontal;
+    height: auto;
+    padding: 1;
+    border: solid $accent;
+    margin-bottom: 1;
+}
+
+ReviewScreen #metadata-info {
+    width: 2fr;
+}
+
+ReviewScreen #metadata-buttons {
+    width: 1fr;
+    layout: horizontal;
+}
+
+ReviewScreen #metadata-buttons Button {
+    margin-left: 1;
+}
+
+ReviewScreen .favorite-star {
+    color: $warning;
+}
+
+ReviewScreen #main-split {
+    width: 100%;
+    height: 1fr;
+    layout: horizontal;
+}
+
+ReviewScreen #left-panel {
+    width: 100%;
+    layout: vertical;
+}
+
+ReviewScreen #tabs {
+    height: 1fr;
+    margin-bottom: 1;
+}
+
+ReviewScreen TextArea {
+    height: 1fr;
+    width: 100%;
+}
+
+ReviewScreen .button-row {
+    layout: horizontal;
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+ReviewScreen .button-row Button {
+    width: 1fr;
+    margin-right: 1;
+}
+
+ReviewScreen #validation-log {
+    height: 10;
+    border: solid $primary;
+    margin-bottom: 1;
+}
+
+ReviewScreen .status {
+    text-align: center;
+    color: $text-muted;
+}
+
+ReviewScreen .error {
+    color: $error;
+}
+
+ReviewScreen .success {
+    color: $success;
+}
+
+ReviewScreen .dirty {
+    color: $warning;
+}
+
+ReviewScreen #chat-panel {
+    width: 30%;
+    border-left: solid $primary;
+    padding: 1;
+}
+
+ReviewScreen #chat-panel.hidden {
+    display: none;
+}
+
+ReviewScreen #chat-log {
+    height: 1fr;
+    border: solid $accent;
+    margin-bottom: 1;
+}
+
+ReviewScreen #chat-input {
+    width: 100%;
+    margin-bottom: 1;
+}
+
+/* =========================================================================
+ * Review Dialogs
+ * ========================================================================= */
+
+/* --- TagsEditorDialog --- */
+
+TagsEditorDialog {
+    layout: horizontal;
+    align: center middle;
+}
+
+TagsEditorDialog #dialog {
+    width: 70;
+    height: 20;
+    border: solid $primary;
+    background: $panel;
+    padding: 1;
+}
+
+TagsEditorDialog #title {
+    text-align: center;
+    margin-bottom: 1;
+}
+
+TagsEditorDialog #input {
+    width: 100%;
+    margin-bottom: 1;
+}
+
+TagsEditorDialog #help {
+    text-align: center;
+    color: $text-muted;
+    margin-bottom: 1;
+}
+
+TagsEditorDialog #buttons {
+    layout: horizontal;
+    height: 3;
+}
+
+TagsEditorDialog #buttons Button {
+    width: 1fr;
+}
+
+/* --- GenreEditorDialog --- */
+
+GenreEditorDialog {
+    layout: horizontal;
+    align: center middle;
+}
+
+GenreEditorDialog #dialog {
+    width: 60;
+    height: 15;
+    border: solid $primary;
+    background: $panel;
+    padding: 1;
+}
+
+GenreEditorDialog #title {
+    text-align: center;
+    margin-bottom: 1;
+}
+
+GenreEditorDialog #input {
+    width: 100%;
+    margin-bottom: 1;
+}
+
+GenreEditorDialog #buttons {
+    layout: horizontal;
+    height: 3;
+}
+
+GenreEditorDialog #buttons Button {
+    width: 1fr;
+}
+
+/* --- NotesEditorDialog --- */
+
+NotesEditorDialog {
+    layout: horizontal;
+    align: center middle;
+}
+
+NotesEditorDialog #dialog {
+    width: 80;
+    height: 25;
+    border: solid $primary;
+    background: $panel;
+    padding: 1;
+}
+
+NotesEditorDialog #title {
+    text-align: center;
+    margin-bottom: 1;
+}
+
+NotesEditorDialog #textarea {
+    width: 100%;
+    height: 1fr;
+    margin-bottom: 1;
+}
+
+NotesEditorDialog #buttons {
+    layout: horizontal;
+    height: 3;
+}
+
+NotesEditorDialog #buttons Button {
+    width: 1fr;
+}
+
+/* --- SaveFileDialog --- */
+
+SaveFileDialog {
+    layout: horizontal;
+    align: center middle;
+}
+
+SaveFileDialog #dialog {
+    width: 80;
+    height: 25;
+    border: solid $primary;
+    background: $panel;
+    padding: 1;
+}
+
+SaveFileDialog #title {
+    content-align: center middle;
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 1;
+}
+
+SaveFileDialog #options {
+    height: 12;
+    border: solid $accent;
+    padding: 1;
+    margin-bottom: 1;
+}
+
+SaveFileDialog #path-row {
+    layout: horizontal;
+    height: 3;
+    margin-bottom: 1;
+}
+
+SaveFileDialog #path-label {
+    width: 15;
+    content-align: left middle;
+}
+
+SaveFileDialog #path-input {
+    width: 1fr;
+}
+
+SaveFileDialog #buttons {
+    layout: horizontal;
+    height: 3;
+}
+
+SaveFileDialog #buttons Button {
+    width: 1fr;
+}
+
+SaveFileDialog .radio-option {
+    height: 2;
+}
+
+/* --- ExportPresetDialog --- */
+
+ExportPresetDialog {
+    layout: horizontal;
+    align: center middle;
+}
+
+ExportPresetDialog #dialog {
+    width: 70;
+    height: 30;
+    border: solid $primary;
+    background: $panel;
+    padding: 1;
+}
+
+ExportPresetDialog #title {
+    text-align: center;
+    margin-bottom: 1;
+}
+
+ExportPresetDialog #help {
+    text-align: center;
+    color: $text-muted;
+    margin-bottom: 1;
+}
+
+ExportPresetDialog #preset-list {
+    height: 1fr;
+    border: solid $accent;
+    margin-bottom: 1;
+}
+
+ExportPresetDialog #buttons {
+    layout: horizontal;
+    height: 3;
+}
+
+ExportPresetDialog #buttons Button {
+    width: 1fr;
+}
+
+/* =========================================================================
+ * DraftsScreen
+ * ========================================================================= */
+
+DraftsScreen {
+    layout: vertical;
+}
+
+DraftsScreen #drafts-container {
+    height: 100%;
+    width: 100%;
+    padding: 1;
+}
+
+DraftsScreen .title {
+    content-align: center middle;
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 1;
+}
+
+DraftsScreen #search-container {
+    layout: horizontal;
+    height: auto;
+    margin-bottom: 1;
+}
+
+DraftsScreen #search-input {
+    width: 3fr;
+    margin-right: 1;
+}
+
+DraftsScreen #genre-select {
+    width: 1fr;
+    margin-right: 1;
+}
+
+DraftsScreen #sort-select {
+    width: 1fr;
+}
+
+DraftsScreen #filter-info {
+    height: auto;
+    text-align: center;
+    color: $text-muted;
+    margin-bottom: 1;
+}
+
+DraftsScreen #drafts-list {
+    height: 1fr;
+    border: solid $primary;
+    margin-bottom: 1;
+}
+
+DraftsScreen .button-row {
+    layout: horizontal;
+    width: 100%;
+    height: auto;
+}
+
+DraftsScreen .button-row Button {
+    width: 1fr;
+    margin-right: 1;
+}
+
+/* --- DeleteConfirmScreen --- */
+
+DeleteConfirmScreen {
+    layout: horizontal;
+    align: center middle;
+}
+
+DeleteConfirmScreen #dialog {
+    width: 60;
+    height: 12;
+    border: solid $warning;
+    background: $panel;
+    padding: 1;
+}
+
+DeleteConfirmScreen #message {
+    content-align: center middle;
+    margin-bottom: 2;
+}
+
+DeleteConfirmScreen #buttons {
+    layout: horizontal;
+    height: 3;
+}
+
+DeleteConfirmScreen #buttons Button {
+    width: 1fr;
+}
+
+/* =========================================================================
+ * BatchScreen
+ * ========================================================================= */
+
+BatchScreen {
+    layout: vertical;
+}
+
+BatchScreen #batch-container {
+    height: 100%;
+    width: 100%;
+    padding: 1;
+}
+
+BatchScreen .title {
+    content-align: center middle;
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 1;
+}
+
+BatchScreen .form-row {
+    layout: horizontal;
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+BatchScreen .form-row Static {
+    width: 20;
+    content-align: right middle;
+    margin-right: 2;
+}
+
+BatchScreen .form-row Input {
+    width: 1fr;
+}
+
+BatchScreen .form-row Select {
+    width: 1fr;
+}
+
+BatchScreen .button-row {
+    layout: horizontal;
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+BatchScreen .button-row Button {
+    width: 1fr;
+    margin-right: 1;
+}
+
+BatchScreen #progress-container {
+    height: auto;
+    margin-bottom: 1;
+    border: solid $primary;
+    padding: 1;
+}
+
+BatchScreen #progress-bar {
+    width: 100%;
+    margin-bottom: 1;
+}
+
+BatchScreen #status {
+    text-align: center;
+    width: 100%;
+    margin-bottom: 1;
+}
+
+BatchScreen #log {
+    height: 1fr;
+    border: solid $primary;
+}
+
+BatchScreen .error {
+    color: $error;
+}
+
+BatchScreen .success {
+    color: $success;
+}
+
+/* =========================================================================
+ * OffspringScreen
+ * ========================================================================= */
+
+OffspringScreen {
+    layout: vertical;
+}
+
+OffspringScreen #offspring-container {
+    height: 100%;
+    width: 100%;
+    padding: 1;
+}
+
+OffspringScreen .title {
+    content-align: center middle;
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 1;
+}
+
+OffspringScreen #parent-section {
+    layout: horizontal;
+    height: auto;
+    margin-bottom: 1;
+    border: solid $accent;
+    padding: 1;
+}
+
+OffspringScreen #parent1-section {
+    width: 1fr;
+    padding-right: 1;
+    border-right: solid $primary;
+}
+
+OffspringScreen #parent2-section {
+    width: 1fr;
+    padding-left: 1;
+}
+
+OffspringScreen .parent-title {
+    text-style: bold;
+    color: $accent;
+    margin-bottom: 0;
+}
+
+OffspringScreen .parent-info {
+    height: 6;
+    border: solid $primary;
+    padding: 0;
+    margin-bottom: 0;
+}
+
+OffspringScreen Select,
+OffspringScreen Input {
+    width: 100%;
+    margin-bottom: 0;
+}
+
+OffspringScreen .button-row {
+    layout: horizontal;
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+OffspringScreen .button-row Button {
+    width: 1fr;
+    margin-right: 1;
+}
+
+OffspringScreen #output-log {
+    height: 1fr;
+    border: solid $primary;
+    margin-bottom: 1;
+}
+
+OffspringScreen .status {
+    text-align: center;
+    color: $text-muted;
+}
+
+OffspringScreen .error {
+    color: $error;
+}
+
+OffspringScreen .selected-parent {
+    color: $success;
+}
+
+/* --- ParentSelectScreen --- */
+
+ParentSelectScreen {
+    layout: horizontal;
+    align: center middle;
+}
+
+ParentSelectScreen #dialog {
+    width: 80;
+    height: 25;
+    border: solid $primary;
+    background: $panel;
+    padding: 1;
+}
+
+ParentSelectScreen #title {
+    text-align: center;
+    margin-bottom: 1;
+}
+
+ParentSelectScreen #search-container {
+    layout: horizontal;
+    height: auto;
+    margin-bottom: 1;
+}
+
+ParentSelectScreen #search-input {
+    width: 100%;
+}
+
+ParentSelectScreen #drafts-list {
+    height: 1fr;
+    border: solid $accent;
+    margin-bottom: 1;
+}
+
+ParentSelectScreen #buttons {
+    layout: horizontal;
+    height: 3;
+}
+
+ParentSelectScreen #buttons Button {
+    width: 1fr;
+}
+
+/* =========================================================================
+ * SeedGeneratorScreen
+ * ========================================================================= */
+
+SeedGeneratorScreen {
+    layout: vertical;
+}
+
+SeedGeneratorScreen #seed-gen-container {
+    height: 100%;
+    width: 100%;
+    padding: 1;
+}
+
+SeedGeneratorScreen .title {
+    content-align: center middle;
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 1;
+}
+
+SeedGeneratorScreen #genre-input {
+    height: 10;
+    border: solid $primary;
+    margin-bottom: 1;
+}
+
+SeedGeneratorScreen .button-row {
+    layout: horizontal;
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+SeedGeneratorScreen .button-row Button {
+    width: 1fr;
+    margin-right: 1;
+}
+
+SeedGeneratorScreen #seeds-list {
+    height: 1fr;
+    border: solid $primary;
+    margin-bottom: 1;
+}
+
+SeedGeneratorScreen .status {
+    text-align: center;
+    color: $text-muted;
+}
+
+SeedGeneratorScreen .error {
+    color: $error;
+}
+
+/* =========================================================================
+ * SimilarityScreen
+ * ========================================================================= */
+
+SimilarityScreen {
+    align: center middle;
+}
+
+SimilarityScreen #similarity-container {
+    width: 80;
+    height: auto;
+    border: solid $primary;
+    padding: 2;
+}
+
+SimilarityScreen .title {
+    content-align: center middle;
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 1;
+}
+
+SimilarityScreen Button {
+    width: 100%;
+    margin-bottom: 1;
+}
+
+SimilarityScreen #results-container {
+    margin-top: 1;
+    border-top: solid $panel;
+    padding-top: 1;
+}
+
+SimilarityScreen #results-text {
+    height: 30;
+    overflow-y: auto;
+}
+
+/* =========================================================================
+ * ValidateScreen
+ * ========================================================================= */
+
+ValidateScreen {
+    layout: vertical;
+}
+
+ValidateScreen #validate-container {
+    height: 100%;
+    width: 100%;
+    padding: 1;
+}
+
+ValidateScreen .title {
+    content-align: center middle;
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 1;
+}
+
+ValidateScreen .field-label {
+    margin-top: 1;
+    margin-bottom: 0;
+}
+
+ValidateScreen Input {
+    width: 100%;
+    margin-bottom: 1;
+}
+
+ValidateScreen .button-row {
+    layout: horizontal;
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+ValidateScreen .button-row Button {
+    width: 1fr;
+    margin-right: 1;
+}
+
+ValidateScreen #validation-log {
+    height: 1fr;
+    border: solid $primary;
+    margin-bottom: 1;
+}
+
+ValidateScreen .status {
+    text-align: center;
+    color: $text-muted;
+}
+
+ValidateScreen .error {
+    color: $error;
+}

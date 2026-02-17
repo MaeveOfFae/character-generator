@@ -96,222 +96,77 @@ class ThemeManager:
     def get_app_stylesheet(self) -> str:
         """Generate application stylesheet from theme colors."""
         app_colors = self.theme_colors.get("app", DEFAULT_THEME["app"])
-        
-        background = app_colors.get("background", DEFAULT_THEME["app"]["background"])
-        text = app_colors.get("text", DEFAULT_THEME["app"]["text"])
-        accent = app_colors.get("accent", DEFAULT_THEME["app"]["accent"])
-        button = app_colors.get("button", DEFAULT_THEME["app"]["button"])
-        button_text = app_colors.get("button_text", DEFAULT_THEME["app"]["button_text"])
-        border = app_colors.get("border", DEFAULT_THEME["app"]["border"])
-        highlight = app_colors.get("highlight", DEFAULT_THEME["app"]["highlight"])
-        window = app_colors.get("window", DEFAULT_THEME["app"]["window"])
-        
+
+        bg = app_colors.get("background", DEFAULT_THEME["app"]["background"])
+        txt = app_colors.get("text", DEFAULT_THEME["app"]["text"])
+        acc = app_colors.get("accent", DEFAULT_THEME["app"]["accent"])
+        btn = app_colors.get("button", DEFAULT_THEME["app"]["button"])
+        btn_txt = app_colors.get("button_text", DEFAULT_THEME["app"]["button_text"])
+        bdr = app_colors.get("border", DEFAULT_THEME["app"]["border"])
+        hi = app_colors.get("highlight", DEFAULT_THEME["app"]["highlight"])
+        win = app_colors.get("window", DEFAULT_THEME["app"]["window"])
+
         return f"""
-            QMainWindow {{
-                background-color: {background};
-                color: {text};
-            }}
-            
-            QWidget {{
-                background-color: {background};
-                color: {text};
-            }}
-            
-            QLabel {{
-                color: {text};
-            }}
-            
-            QPushButton {{
-                background-color: {button};
-                color: {button_text};
-                border: 2px solid {border};
-                border-radius: 4px;
-                padding: 6px 12px;
-                font-weight: bold;
-            }}
-            
-            QPushButton:hover {{
-                background-color: {accent};
-            }}
-            
-            QPushButton:pressed {{
-                background-color: {highlight};
-            }}
-            
-            QPushButton:disabled {{
-                background-color: {border};
-                color: {border};
-            }}
-            
-            QLineEdit {{
-                background-color: {window};
-                color: {text};
-                border: 1px solid {border};
-                border-radius: 4px;
-                padding: 4px 8px;
-            }}
-            
-            QLineEdit:focus {{
-                border: 1px solid {accent};
-            }}
-            
-            QTextEdit, QPlainTextEdit {{
-                background-color: {window};
-                color: {text};
-                border: 1px solid {border};
-                border-radius: 4px;
-                padding: 4px;
-            }}
-            
-            QTextEdit:focus, QPlainTextEdit:focus {{
-                border: 1px solid {accent};
-            }}
-            
-            QComboBox {{
-                background-color: {window};
-                color: {text};
-                border: 1px solid {border};
-                border-radius: 4px;
-                padding: 4px 8px;
-            }}
-            
-            QComboBox:hover {{
-                border: 1px solid {accent};
-            }}
-            
-            QComboBox::drop-down {{
-                border: none;
-            }}
-            
-            QComboBox::down-arrow {{
-                image: none;
-                border-left: 5px solid transparent;
-                border-right: 5px solid transparent;
-                border-top: 5px solid {text};
-            }}
-            
-            QListWidget {{
-                background-color: {window};
-                color: {text};
-                border: 1px solid {border};
-                border-radius: 4px;
-            }}
-            
-            QListWidget::item {{
-                padding: 4px;
-            }}
-            
-            QListWidget::item:selected {{
-                background-color: {accent};
-                color: {button_text};
-            }}
-            
-            QListWidget::item:hover {{
-                background-color: {highlight};
-            }}
-            
-            QTabWidget::pane {{
-                border: 1px solid {border};
-                background-color: {window};
-            }}
-            
-            QTabBar::tab {{
-                background-color: {button};
-                color: {button_text};
-                border: 1px solid {border};
-                border-bottom: none;
-                border-top-left-radius: 4px;
-                border-top-right-radius: 4px;
-                padding: 6px 12px;
-                margin-right: 2px;
-            }}
-            
-            QTabBar::tab:selected {{
-                background-color: {accent};
-            }}
-            
-            QTabBar::tab:hover {{
-                background-color: {highlight};
-            }}
-            
-            QTabBar::tab:!selected {{
-                margin-top: 2px;
-            }}
-            
-            QScrollBar:vertical {{
-                background-color: {window};
-                width: 12px;
-                border: none;
-            }}
-            
-            QScrollBar::handle:vertical {{
-                background-color: {border};
-                border-radius: 6px;
-                min-height: 20px;
-            }}
-            
-            QScrollBar::handle:vertical:hover {{
-                background-color: {accent};
-            }}
-            
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
-                border: none;
-                background: none;
-            }}
-            
-            QScrollBar:horizontal {{
-                background-color: {window};
-                height: 12px;
-                border: none;
-            }}
-            
-            QScrollBar::handle:horizontal {{
-                background-color: {border};
-                border-radius: 6px;
-                min-width: 20px;
-            }}
-            
-            QScrollBar::handle:horizontal:hover {{
-                background-color: {accent};
-            }}
-            
-            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
-                border: none;
-                background: none;
-            }}
-            
-            QFrame[frameShape="4"] {{
-                border: 2px solid {border};
-                border-radius: 4px;
-                background-color: {window};
-            }}
-            
-            QProgressBar {{
-                background-color: {window};
-                border: 1px solid {border};
-                border-radius: 4px;
-                text-align: center;
-            }}
-            
-            QProgressBar::chunk {{
-                background-color: {accent};
-                border-radius: 2px;
-            }}
-            
-            QGroupBox {{
-                border: 1px solid {border};
-                border-radius: 4px;
-                margin-top: 10px;
-                padding-top: 10px;
-                font-weight: bold;
-            }}
-            
-            QGroupBox::title {{
-                subcontrol-origin: margin;
-                subcontrol-position: top left;
-                padding: 0 4px;
-            }}
-        """
+QMainWindow, QWidget {{ background-color: {bg}; color: {txt}; }}
+QLabel {{ color: {txt}; }}
+
+QPushButton {{
+    background-color: {btn}; color: {btn_txt}; border: 2px solid {bdr};
+    border-radius: 4px; padding: 6px 12px; font-weight: bold;
+}}
+QPushButton:hover {{ background-color: {acc}; }}
+QPushButton:pressed {{ background-color: {hi}; }}
+QPushButton:disabled {{ background-color: {bdr}; color: {bdr}; }}
+
+QLineEdit, QTextEdit, QPlainTextEdit, QComboBox, QListWidget {{
+    background-color: {win}; color: {txt}; border: 1px solid {bdr};
+    border-radius: 4px; padding: 4px;
+}}
+QLineEdit, QComboBox {{ padding: 4px 8px; }}
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:hover {{ border-color: {acc}; }}
+
+QComboBox::drop-down {{ border: none; }}
+QComboBox::down-arrow {{
+    image: none; border-left: 5px solid transparent;
+    border-right: 5px solid transparent; border-top: 5px solid {txt};
+}}
+
+QListWidget::item {{ padding: 4px; }}
+QListWidget::item:selected {{ background-color: {acc}; color: {btn_txt}; }}
+QListWidget::item:hover {{ background-color: {hi}; }}
+
+QTabWidget::pane {{ border: 1px solid {bdr}; background-color: {win}; }}
+QTabBar::tab {{
+    background-color: {btn}; color: {btn_txt}; border: 1px solid {bdr};
+    border-bottom: none; border-top-left-radius: 4px; border-top-right-radius: 4px;
+    padding: 6px 12px; margin-right: 2px;
+}}
+QTabBar::tab:selected {{ background-color: {acc}; }}
+QTabBar::tab:hover {{ background-color: {hi}; }}
+QTabBar::tab:!selected {{ margin-top: 2px; }}
+
+QScrollBar:vertical {{ background-color: {win}; width: 12px; border: none; }}
+QScrollBar:horizontal {{ background-color: {win}; height: 12px; border: none; }}
+QScrollBar::handle:vertical, QScrollBar::handle:horizontal {{
+    background-color: {bdr}; border-radius: 6px; min-height: 20px; min-width: 20px;
+}}
+QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover {{ background-color: {acc}; }}
+QScrollBar::add-line, QScrollBar::sub-line {{ border: none; background: none; }}
+
+QFrame[frameShape="4"] {{ border: 2px solid {bdr}; border-radius: 4px; background-color: {win}; }}
+
+QProgressBar {{
+    background-color: {win}; border: 1px solid {bdr};
+    border-radius: 4px; text-align: center;
+}}
+QProgressBar::chunk {{ background-color: {acc}; border-radius: 2px; }}
+
+QGroupBox {{
+    border: 1px solid {bdr}; border-radius: 4px;
+    margin-top: 10px; padding-top: 10px; font-weight: bold;
+}}
+QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top left; padding: 0 4px; }}
+"""
     
     def apply_theme(self, widget):
         """Apply theme to a widget and all its children."""
