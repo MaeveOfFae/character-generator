@@ -11,6 +11,17 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _normalize_openai_compat_model(model: str, base_url: str) -> str:
+    """Normalize model names for OpenAI-compatible APIs.
+
+    OpenRouter expects provider/model IDs (e.g., "deepseek/deepseek-v3.2")
+    and does not accept the legacy "openrouter/" prefix.
+    """
+    if "openrouter.ai" in (base_url or "").lower() and model.startswith("openrouter/"):
+        return model[len("openrouter/"):]
+    return model
+
+
 def detect_provider_from_model(model: str) -> str:
     """Detect provider from model name.
 
@@ -120,12 +131,22 @@ def create_engine(
         logger.info(f"Using explicit engine mode: {engine_type}")
 
         if engine_type == "openai_compatible":
-            api_key = api_key_override or config.api_key
+            # Determine API key based on base_url
+            if api_key_override:
+                api_key = api_key_override
+            elif "openrouter.ai" in (config.base_url or ""):
+                # Use OpenRouter-specific API key for OpenRouter
+                api_key = config.get_api_key("openrouter")
+            else:
+                # Fallback to generic api_key for other OpenAI-compatible APIs
+                api_key = config.api_key
+
             base_url = config.base_url
             if not base_url:
                 raise ValueError("OpenAI-compatible engine requires base_url in config")
+            api_model = _normalize_openai_compat_model(model, base_url)
             return OpenAICompatEngine(
-                model=model,
+                model=api_model,
                 api_key=api_key,
                 temperature=temperature,
                 max_tokens=max_tokens,
