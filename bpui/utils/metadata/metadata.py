@@ -47,30 +47,30 @@ class DraftMetadata:
     
     def save(self, draft_dir: Path) -> None:
         """Save metadata to draft directory.
-        
+
         Args:
             draft_dir: Path to draft directory
         """
         metadata_path = draft_dir / ".metadata.json"
-        with open(metadata_path, "w") as f:
+        with open(metadata_path, "w", encoding='utf-8') as f:
             json.dump(self.to_dict(), f, indent=2)
     
     @classmethod
     def load(cls, draft_dir: Path) -> Optional["DraftMetadata"]:
         """Load metadata from draft directory.
-        
+
         Args:
             draft_dir: Path to draft directory
-            
+
         Returns:
             DraftMetadata instance or None if not found
         """
         metadata_path = draft_dir / ".metadata.json"
         if not metadata_path.exists():
             return None
-        
+
         try:
-            with open(metadata_path) as f:
+            with open(metadata_path, encoding='utf-8') as f:
                 data = json.load(f)
             return cls.from_dict(data)
         except (json.JSONDecodeError, TypeError, KeyError):
@@ -217,7 +217,7 @@ def update_metadata_schema(drafts_dir: Path) -> tuple[int, int]:
         
         # Load existing metadata
         try:
-            with open(metadata_path) as f:
+            with open(metadata_path, encoding='utf-8') as f:
                 data = json.load(f)
         except (json.JSONDecodeError, IOError):
             continue

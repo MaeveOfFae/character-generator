@@ -13,7 +13,7 @@ def migrate_file(file_path: Path) -> int:
     Returns:
         Number of print statements migrated
     """
-    content = file_path.read_text()
+    content = file_path.read_text(encoding='utf-8')
     original = content
     
     # Add logger import if not present
@@ -84,7 +84,7 @@ def migrate_file(file_path: Path) -> int:
         migrations += 1
     
     if content != original:
-        file_path.write_text(content)
+        file_path.write_text(content, encoding='utf-8')
     
     return migrations
 
