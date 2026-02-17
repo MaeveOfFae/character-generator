@@ -2,6 +2,36 @@
 
 Character Generator supports [OpenRouter](https://openrouter.ai/) through the OpenAI-compatible API engine. OpenRouter provides access to multiple AI models from various providers through a single API that follows the OpenAI chat/completions format.
 
+## Agent Capabilities
+
+OpenRouter now supports advanced agent capabilities including:
+
+- **Tool Calling (Function Calling)**: Models can call predefined functions/tools to perform actions
+- **Extended Thinking Mode**: Claude models can use Anthropic's extended thinking mode for deeper reasoning
+- **Multi-turn Conversations**: Full conversation history support with tool results
+
+### Tool Calling
+
+The character-generator project supports tool calling through OpenRouter. This is used in the Agent Chatbox to enable the AI to:
+
+- Navigate between screens
+- Edit character assets
+- Compile characters
+- Save drafts
+- And more
+
+Tool calling is automatically enabled when using the Agent personality in the chatbox.
+
+### Extended Thinking Mode
+
+When using Claude models (Anthropic) through OpenRouter, the system automatically supports extended thinking mode. This mode:
+
+- Provides deeper reasoning capabilities
+- Shows the model's "thinking process" separately from its final response
+- Helps with complex multi-step tasks
+
+Extended thinking is automatically detected and preserved in conversations.
+
 ## Quick Start
 
 ### 1. Set your OpenRouter API key
@@ -139,6 +169,19 @@ bpui compile template.toml --model openrouter/openai/gpt-4 --api-key sk-or-v1-..
 bpui config test-connection --model openrouter/anthropic/claude-3-opus
 ```
 
+### Test agent capabilities
+
+The project includes a test script to verify OpenRouter agent capabilities:
+
+```bash
+python test_openrouter_agent.py
+```
+
+This will test:
+- Basic chat functionality
+- Tool calling (function calling)
+- Extended thinking mode detection (for Claude models)
+
 ## Benefits of Using OpenRouter
 
 ### 1. **Unified API**
@@ -258,6 +301,27 @@ The `openrouter/` prefix is automatically added by character-generator when you 
 ```
 
 ## Troubleshooting
+
+### Agent Capabilities Issues
+
+#### Issue: "thinking is enabled but reasoning_content is missing"
+
+**Solution**: This error occurred in older versions when using Claude models with extended thinking mode. The latest version (after the agent capabilities migration) properly handles reasoning_content fields. Make sure you're using the updated code.
+
+If you still see this error:
+1. Update to the latest version of character-generator
+2. Verify your OpenRouter API key is set correctly
+3. Use a supported model (Claude models work best with extended thinking)
+
+#### Issue: Tool calls not working
+
+**Solution**:
+1. Make sure you're using the Agent personality in the chatbox (Tools are only enabled for the Agent)
+2. Verify your model supports tool calling (most modern models on OpenRouter do)
+3. Check the logs for specific error messages
+4. Run the test script: `python test_openrouter_agent.py`
+
+### General Issues
 
 ### Issue: "No API key configured for model"
 

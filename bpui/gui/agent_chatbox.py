@@ -98,51 +98,40 @@ class AgentWorker(QThread):
             try:
                 # Generate with optional tools
                 if self.use_tools and self.action_handler:
-                    # Use non-streaming for tool calls
+                    # Use engine's tool calling support
                     try:
-                        from openai import AsyncOpenAI  # type: ignore
-                    except ImportError as import_error:
-                        raise Exception(
-                            "OpenAI SDK is required for tool-calling chat. Install with: pip install openai"
-                        ) from import_error
-                    
-                    try:
-                        client_kwargs: Dict[str, Any] = {
-                            "api_key": self.config.get_api_key_for_model(self.config.model),
-                        }
-                        if hasattr(engine, "base_url") and getattr(engine, "base_url", ""):
-                            client_kwargs["base_url"] = getattr(engine, "base_url")
-
-                        client = AsyncOpenAI(**client_kwargs)
-
-                        response = await client.chat.completions.create(
-                            model=engine.model,
+                        # Call engine with tools parameter
+                        response = await engine.generate_chat(
                             messages=full_messages,
-                            temperature=self.personality.temperature,
-                            max_tokens=self.personality.max_tokens,
                             tools=AGENT_TOOLS,
-                            tool_choice="auto",
-                            stream=False,
-                            timeout=60.0,  # 60 second timeout for LLM calls
-                            **getattr(engine, "extra_params", {})
+                            tool_choice="auto"
                         )
                     except Exception as llm_error:
                         # LLM API error - report to user and try to recover
                         error_msg = f"LLM API error: {str(llm_error)}"
                         self.chunk_received.emit(f"\n[Error: {error_msg}]\n")
-                        
+
                         consecutive_errors += 1
                         if consecutive_errors >= max_consecutive_errors:
                             raise Exception(f"Too many consecutive LLM errors: {error_msg}")
-                        
+
                         # Add error to conversation for recovery
                         full_messages.append({
                             "role": "system",
                             "content": f"Previous request failed with error: {error_msg}. Please try again with a simpler approach."
                         })
                         continue
-                    
-                    message = response.choices[0].message  # type: ignore[attr-defined]
+
+                    # Handle response - could be string or dict with tool_calls/reasoning
+                    if isinstance(response, dict):
+                        # Response contains tool calls or extended thinking
+                        message = type('Message', (), response)()  # Convert dict to object
+                        message.content = response.get("content")
+                        message.reasoning_content = response.get("reasoning_content")
+                        message.tool_calls = response.get("tool_calls")
+                    else:
+                        # Simple text response
+                        message = type('Message', (), {"content": response, "tool_calls": None, "reasoning_content": None})()
                     
                     # Reset error counter on success
                     consecutive_errors = 0
@@ -152,15 +141,23 @@ class AgentWorker(QThread):
                         # Execute tool calls
                         tool_results = []
                         all_tools_succeeded = True
-                        
+
                         for tool_call in message.tool_calls:
                             tool_name = "unknown"  # default
                             try:
-                                tool_name = tool_call.function.name
-                                
+                                # Handle both OpenAI SDK format and our dict format
+                                if isinstance(tool_call, dict):
+                                    tool_name = tool_call.get("function", {}).get("name", "unknown")
+                                    tool_args_str = tool_call.get("function", {}).get("arguments", "{}")
+                                    tool_call_id = tool_call.get("id", "")
+                                else:
+                                    tool_name = tool_call.function.name
+                                    tool_args_str = tool_call.function.arguments
+                                    tool_call_id = tool_call.id
+
                                 # Parse arguments with error handling
                                 try:
-                                    tool_args = json.loads(tool_call.function.arguments)
+                                    tool_args = json.loads(tool_args_str)
                                 except json.JSONDecodeError as e:
                                     # JSON parsing failed
                                     result = {
@@ -223,18 +220,18 @@ class AgentWorker(QThread):
                                     result.get("success", False),
                                     result.get("message", "")
                                 )
-                                
+
                                 # Format result with helpful information for LLM
                                 result_content = json.dumps(result)
-                                
+
                                 # Add tool result to messages
                                 tool_results.append({
                                     "role": "tool",
-                                    "tool_call_id": tool_call.id,
+                                    "tool_call_id": tool_call_id,
                                     "name": tool_name,
                                     "content": result_content
                                 })
-                                
+
                             except Exception as tool_error:
                                 # Unexpected error in tool call handling
                                 error_result = {
@@ -244,29 +241,38 @@ class AgentWorker(QThread):
                                 }
                                 tool_results.append({
                                     "role": "tool",
-                                    "tool_call_id": tool_call.id,
+                                    "tool_call_id": tool_call_id,
                                     "name": tool_name,
                                     "content": json.dumps(error_result)
                                 })
                                 all_tools_succeeded = False
-                        
+
                         # Add assistant message with tool calls
                         tool_calls_list = []
                         for tc in message.tool_calls:
-                            tool_calls_list.append({
-                                "id": tc.id,
-                                "type": "function",
-                                "function": {
-                                    "name": tc.function.name,
-                                    "arguments": tc.function.arguments
-                                }
-                            })
+                            if isinstance(tc, dict):
+                                tool_calls_list.append(tc)
+                            else:
+                                tool_calls_list.append({
+                                    "id": tc.id,
+                                    "type": "function",
+                                    "function": {
+                                        "name": tc.function.name,
+                                        "arguments": tc.function.arguments
+                                    }
+                                })
                         
-                        full_messages.append({
+                        # Build assistant message with tool calls
+                        assistant_msg = {
                             "role": "assistant",
                             "content": message.content or "",
                             "tool_calls": tool_calls_list  # type: ignore[typeddict-item]
-                        })
+                        }
+                        # Add reasoning_content if present (for extended thinking mode)
+                        if hasattr(message, 'reasoning_content') and message.reasoning_content:
+                            assistant_msg["reasoning_content"] = message.reasoning_content  # type: ignore[typeddict-item]
+
+                        full_messages.append(assistant_msg)
                         
                         # Add tool results
                         full_messages.extend(tool_results)  # type: ignore[arg-type]

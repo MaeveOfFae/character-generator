@@ -1570,19 +1570,20 @@ class SettingsDialog(QDialog):
 
 
 class RegenerateWorker(QThread):
-    """Worker thread for asset regeneration."""
-    
+    """Worker thread for asset regeneration using full compilation system."""
+
     output = Signal(str)
     finished = Signal(str)
     error = Signal(str)
-    
-    def __init__(self, config, asset_key, assets, instructions=""):
+
+    def __init__(self, config, draft_dir, asset_key, assets, instructions=""):
         super().__init__()
         self.config = config
+        self.draft_dir = draft_dir
         self.asset_key = asset_key
         self.assets = assets
         self.instructions = instructions
-    
+
     def run(self):
         """Run regeneration."""
         try:
@@ -1590,29 +1591,90 @@ class RegenerateWorker(QThread):
             asyncio.set_event_loop(loop)
             result = loop.run_until_complete(self._regenerate())
             loop.close()
-            
+
             if result:
                 self.finished.emit(result)
         except Exception as e:
             self.error.emit(str(e))
-    
+
     async def _regenerate(self):
-        """Perform regeneration."""
+        """Perform regeneration using full compilation system."""
         from ..llm.factory import create_engine
-        from ..prompting import load_blueprint
-
-        # Build regenerat prompt
-        blueprint = load_blueprint(self.asset_key)
-
-        context = f"Current {self.asset_key}:\n{self.assets.get(self.asset_key, '')}\n\n"
-        prompt = f"{context}Using this blueprint:\n\n{blueprint}\n\n"
-
-        if self.instructions:
-            prompt += f"User instructions: {self.instructions}\n\n"
-
-        prompt += f"Regenerate only the {self.asset_key} asset. Output only the asset content, no explanations."
+        from ..core.prompting import build_asset_prompt
+        from ..features.templates.templates import TemplateManager
+        from ..utils.topological_sort import topological_sort
+        from ..utils.metadata.metadata import DraftMetadata
+        from ..core.parse_blocks import extract_single_asset
 
         self.output.emit(f"Regenerating {self.asset_key}...\n\n")
+
+        # Load metadata to get seed and mode
+        metadata = DraftMetadata.load(self.draft_dir)
+        if not metadata:
+            raise RuntimeError("Could not load draft metadata")
+
+        # Load template to get dependencies
+        manager = TemplateManager()
+        template = None
+
+        # Try to get template from metadata
+        if metadata.template_name:
+            templates = manager.list_templates()
+            template = next((t for t in templates if t.name == metadata.template_name), None)
+
+        # Fall back to default template if not found
+        if not template:
+            self.output.emit("Using default template (metadata template not found)\n")
+            default_template = manager._create_official_template()
+            template = default_template
+
+        # Get ordered asset list
+        try:
+            asset_order = topological_sort(template.assets)
+        except ValueError as e:
+            raise RuntimeError(f"Template has circular dependencies: {e}")
+
+        if self.asset_key not in asset_order:
+            raise RuntimeError(f"Asset '{self.asset_key}' not found in template")
+
+        current_index = asset_order.index(self.asset_key)
+
+        # Extract PRIOR assets only (everything before current in dependency order)
+        prior_assets = {
+            name: self.assets[name]
+            for name in asset_order[:current_index]
+            if name in self.assets
+        }
+
+        if prior_assets:
+            self.output.emit(f"Using {len(prior_assets)} prior assets as context: {', '.join(prior_assets.keys())}\n\n")
+        else:
+            self.output.emit("No prior dependencies for this asset\n\n")
+
+        # Get blueprint content from template
+        blueprint_content = manager.get_blueprint_content(template, self.asset_key)
+
+        if not blueprint_content:
+            raise RuntimeError(f"Blueprint content for '{self.asset_key}' not found")
+
+        # Build proper prompt with prior context
+        try:
+            system_prompt, user_prompt = build_asset_prompt(
+                asset_name=self.asset_key,
+                seed=metadata.seed,
+                mode=metadata.mode,
+                prior_assets=prior_assets,
+                blueprint_content=blueprint_content
+            )
+        except Exception as e:
+            raise RuntimeError(f"Failed to build prompt: {e}")
+
+        # Add user instructions if provided
+        if self.instructions:
+            user_prompt += f"\n\nAdditional user instructions: {self.instructions}"
+            self.output.emit(f"User instructions: {self.instructions}\n\n")
+
+        self.output.emit("Generating...\n\n")
 
         # Create engine using factory
         try:
@@ -1623,14 +1685,22 @@ class RegenerateWorker(QThread):
             )
         except (ImportError, ValueError, RuntimeError) as e:
             raise RuntimeError(f"Failed to create engine: {e}")
-        
-        # Generate
-        response = ""
-        async for chunk in engine.generate_chat_stream([{"role": "user", "content": prompt}]):
-            response += chunk
+
+        # Generate using streaming
+        raw_output = ""
+        async for chunk in engine.generate_stream(system_prompt, user_prompt):
+            raw_output += chunk
             self.output.emit(chunk)
-        
-        return response.strip()
+
+        # Parse output (extract from codeblock if needed)
+        try:
+            regenerated = extract_single_asset(raw_output, self.asset_key)
+        except Exception as e:
+            # If extraction fails, use raw output
+            self.output.emit(f"\n\nWarning: Could not extract from codeblock, using full output\n")
+            regenerated = raw_output.strip()
+
+        return regenerated
 
 
 class RegenerateDialog(QDialog):
@@ -1644,16 +1714,24 @@ class RegenerateDialog(QDialog):
         self.asset_key = asset_key
         self.worker = None
         self.regenerated_content = ""
+        self.regenerated_assets = {}  # Dict of asset_name: content for all regenerated assets
+        self.dependent_assets = []  # Assets that depend on this one
+        self.cascade_checkbox = None  # Will be set in setup_dependency_panel if applicable
+        self.cascade_index = 0  # Track which dependent asset we're regenerating
+        self.cascading = False  # Whether we're in cascade mode
         
         self.setWindowTitle(f"Regenerate {asset_key}")
         self.setMinimumSize(700, 500)
         
         layout = QVBoxLayout(self)
-        
+
         # Info
         info = QLabel(f"Regenerate the <b>{asset_key}</b> asset using the LLM:")
         layout.addWidget(info)
-        
+
+        # NEW: Show dependency information
+        self.setup_dependency_panel(layout)
+
         # Instructions
         inst_label = QLabel("Optional instructions (leave empty for simple regeneration):")
         layout.addWidget(inst_label)
@@ -1701,17 +1779,108 @@ class RegenerateDialog(QDialog):
         btn_layout.addWidget(use_btn)
         
         layout.addLayout(btn_layout)
-    
+
+    def setup_dependency_panel(self, layout):
+        """Show which prior assets will be used as context."""
+        from ..features.templates.templates import TemplateManager
+        from ..utils.metadata.metadata import DraftMetadata
+        from ..utils.topological_sort import topological_sort
+
+        try:
+            # Load metadata and template
+            metadata = DraftMetadata.load(self.draft_dir)
+            if not metadata:
+                return  # No metadata, skip dependency info
+
+            manager = TemplateManager()
+            template = None
+
+            if metadata.template_name:
+                templates = manager.list_templates()
+                template = next((t for t in templates if t.name == metadata.template_name), None)
+
+            if not template:
+                template = manager._create_official_template()
+
+            # Get asset definition
+            asset_def = next((a for a in template.assets if a.name == self.asset_key), None)
+            if not asset_def:
+                return  # Asset not in template
+
+            # Show dependencies
+            if asset_def.depends_on:
+                dep_frame = QFrame()
+                dep_frame.setFrameShape(QFrame.Shape.StyledPanel)
+                dep_layout = QVBoxLayout(dep_frame)
+
+                dep_label = QLabel(
+                    f"<b>Dependencies:</b> This asset depends on: {', '.join(asset_def.depends_on)}"
+                )
+                dep_label.setWordWrap(True)
+                dep_layout.addWidget(dep_label)
+
+                context_label = QLabel(
+                    "These prior assets will be included as context during regeneration."
+                )
+                dep_layout.addWidget(context_label)
+
+                layout.addWidget(dep_frame)
+
+            # Get ordered asset list to check for dependent assets
+            asset_order = topological_sort(template.assets)
+            current_index = asset_order.index(self.asset_key)
+            dependent_assets = asset_order[current_index + 1:]
+
+            # Find assets that depend on this one
+            depends_on_this = [
+                name for name in dependent_assets
+                if any(self.asset_key in asset.depends_on
+                       for asset in template.assets
+                       if asset.name == name)
+            ]
+
+            # Store for cascade regeneration
+            self.dependent_assets = depends_on_this
+
+            if depends_on_this:
+                cascade_frame = QFrame()
+                cascade_frame.setFrameShape(QFrame.Shape.StyledPanel)
+                cascade_layout = QVBoxLayout(cascade_frame)
+
+                cascade_info = QLabel(
+                    f"<b>Note:</b> {len(depends_on_this)} asset(s) depend on this one: {', '.join(depends_on_this)}"
+                )
+                cascade_info.setWordWrap(True)
+                cascade_layout.addWidget(cascade_info)
+
+                # Add cascade regeneration checkbox
+                self.cascade_checkbox = QCheckBox(
+                    "Also regenerate assets that depend on this one"
+                )
+                self.cascade_checkbox.setToolTip(
+                    "Automatically regenerate dependent assets in sequence, "
+                    "using the updated version of this asset as context"
+                )
+                cascade_layout.addWidget(self.cascade_checkbox)
+
+                layout.addWidget(cascade_frame)
+
+        except Exception as e:
+            # Silently fail if we can't load dependencies
+            # The regeneration will still work without this info
+            pass
+
     def start_regeneration(self):
         """Start regeneration."""
         instructions = self.instructions_input.text().strip()
-        
+
         self.output_text.clear()
         self.regen_btn.setEnabled(False)
         self.cancel_btn.setEnabled(True)
-        
+
         self.worker = RegenerateWorker(
             self.config,
+            self.draft_dir,  # Pass draft_dir to worker
             self.asset_key,
             self.assets,
             instructions
@@ -1729,9 +1898,22 @@ class RegenerateDialog(QDialog):
     def on_finished(self, content):
         """Handle regeneration finished."""
         self.regenerated_content = content
-        self.regen_btn.setEnabled(True)
-        self.cancel_btn.setEnabled(False)
-        self.append_output("\n\n✓ Regeneration complete")
+
+        # Update assets dict with new content
+        self.assets[self.asset_key] = content
+
+        # Track regenerated assets
+        self.regenerated_assets[self.asset_key] = content
+
+        # Check if cascade regeneration is requested
+        if self.cascade_checkbox and self.cascade_checkbox.isChecked() and self.dependent_assets:
+            self.append_output("\n\n✓ Regeneration complete")
+            self.append_output(f"\n\n📦 Starting cascade regeneration of {len(self.dependent_assets)} dependent assets...")
+            self.start_cascade_regeneration()
+        else:
+            self.regen_btn.setEnabled(True)
+            self.cancel_btn.setEnabled(False)
+            self.append_output("\n\n✓ Regeneration complete")
     
     def on_error(self, error):
         """Handle regeneration error."""
@@ -1747,6 +1929,81 @@ class RegenerateDialog(QDialog):
             self.append_output("\n\n⏹️ Regeneration cancelled\n")
             self.regen_btn.setEnabled(True)
             self.cancel_btn.setEnabled(False)
+            self.cascading = False
+
+    def start_cascade_regeneration(self):
+        """Start regenerating dependent assets in sequence."""
+        self.cascading = True
+        self.cascade_index = 0
+        self.regenerate_next_dependent()
+
+    def regenerate_next_dependent(self):
+        """Regenerate the next dependent asset in sequence."""
+        if self.cascade_index >= len(self.dependent_assets):
+            # All done
+            self.append_output("\n\n✓ Cascade regeneration complete!")
+            self.regen_btn.setEnabled(True)
+            self.cancel_btn.setEnabled(False)
+            self.cascading = False
+            return
+
+        # Get next asset to regenerate
+        dependent_asset = self.dependent_assets[self.cascade_index]
+        self.append_output(f"\n\n🔄 Regenerating dependent asset: {dependent_asset} ({self.cascade_index + 1}/{len(self.dependent_assets)})\n")
+
+        # Create worker for this dependent asset
+        self.worker = RegenerateWorker(
+            self.config,
+            self.draft_dir,
+            dependent_asset,
+            self.assets,
+            ""  # No custom instructions for cascade
+        )
+        self.worker.output.connect(self.append_output)
+        self.worker.finished.connect(self.on_cascade_asset_finished)
+        self.worker.error.connect(self.on_cascade_asset_error)
+        self.worker.start()
+
+    def on_cascade_asset_finished(self, content):
+        """Handle completion of a cascaded asset regeneration."""
+        dependent_asset = self.dependent_assets[self.cascade_index]
+
+        # Update assets dict with new content
+        self.assets[dependent_asset] = content
+
+        # Track regenerated assets
+        self.regenerated_assets[dependent_asset] = content
+
+        self.append_output(f"\n✓ {dependent_asset} complete")
+
+        # Move to next asset
+        self.cascade_index += 1
+        self.regenerate_next_dependent()
+
+    def on_cascade_asset_error(self, error):
+        """Handle error during cascade regeneration."""
+        dependent_asset = self.dependent_assets[self.cascade_index]
+        self.append_output(f"\n\n✗ Error regenerating {dependent_asset}: {error}\n")
+
+        # Ask user if they want to continue
+        from PySide6.QtWidgets import QMessageBox
+        reply = QMessageBox.question(
+            self,
+            "Cascade Regeneration Error",
+            f"Error regenerating {dependent_asset}.\n\nContinue with remaining assets?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            # Skip this asset and continue
+            self.cascade_index += 1
+            self.regenerate_next_dependent()
+        else:
+            # Stop cascade
+            self.append_output("\n\n⏹️ Cascade regeneration stopped\n")
+            self.regen_btn.setEnabled(True)
+            self.cancel_btn.setEnabled(False)
+            self.cascading = False
 
 
 class VersionHistoryDialog(QDialog):

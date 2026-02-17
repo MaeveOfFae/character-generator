@@ -137,8 +137,19 @@ class OpenAICompatEngine(LLMEngine):
     async def generate_chat(
         self,
         messages: list[dict],
-    ) -> str:
-        """Generate completion from full messages list (multi-turn chat)."""
+        tools: list[dict] | None = None,
+        tool_choice: str | dict | None = None,
+    ) -> str | dict:
+        """Generate completion from full messages list (multi-turn chat).
+
+        Args:
+            messages: List of message dicts with role and content
+            tools: Optional list of tool definitions for function calling
+            tool_choice: Optional tool choice strategy ("auto", "none", or specific tool)
+
+        Returns:
+            Either a string (text response) or dict (with tool_calls if tools were used)
+        """
         headers = self._build_headers()
 
         payload = {
@@ -149,6 +160,12 @@ class OpenAICompatEngine(LLMEngine):
             "stream": False,
         }
 
+        # Add tools if provided
+        if tools:
+            payload["tools"] = tools
+            if tool_choice:
+                payload["tool_choice"] = tool_choice
+
         async with httpx.AsyncClient(timeout=300.0) as client:
             try:
                 response = await client.post(
@@ -158,7 +175,30 @@ class OpenAICompatEngine(LLMEngine):
                 )
                 response.raise_for_status()
                 data = response.json()
-                return data["choices"][0]["message"]["content"]
+
+                # Check if response contains tool calls
+                choice = data["choices"][0]
+                message = choice.get("message", {})
+
+                # Preserve extended thinking content if present (for Claude models)
+                result_message = {}
+                if "content" in message:
+                    result_message["content"] = message["content"]
+                if "reasoning_content" in message:
+                    result_message["reasoning_content"] = message["reasoning_content"]
+                if "tool_calls" in message and message["tool_calls"]:
+                    result_message["tool_calls"] = message["tool_calls"]
+
+                # Return based on what's in the response
+                if "tool_calls" in result_message:
+                    # Return full message dict with tool calls (and optionally reasoning)
+                    return result_message
+                elif "reasoning_content" in result_message:
+                    # Return dict with both content and reasoning
+                    return result_message
+                else:
+                    # Return just the text content
+                    return message.get("content", "")
             except httpx.HTTPStatusError as e:
                 # Try to extract error details from response
                 error_detail = ""
@@ -174,14 +214,27 @@ class OpenAICompatEngine(LLMEngine):
     def generate_chat_stream(
         self,
         messages: list[dict],
-    ) -> AsyncIterator[str]:
-        """Generate completion from full messages list with streaming."""
-        return self._generate_chat_stream_impl(messages)
+        tools: list[dict] | None = None,
+        tool_choice: str | dict | None = None,
+    ) -> AsyncIterator[str | dict]:
+        """Generate completion from full messages list with streaming.
+
+        Args:
+            messages: List of message dicts with role and content
+            tools: Optional list of tool definitions for function calling
+            tool_choice: Optional tool choice strategy ("auto", "none", or specific tool)
+
+        Returns:
+            AsyncIterator yielding either strings (text chunks) or dicts (tool calls)
+        """
+        return self._generate_chat_stream_impl(messages, tools, tool_choice)
 
     async def _generate_chat_stream_impl(
         self,
         messages: list[dict],
-    ) -> AsyncIterator[str]:
+        tools: list[dict] | None = None,
+        tool_choice: str | dict | None = None,
+    ) -> AsyncIterator[str | dict]:
         """Internal streaming implementation for chat."""
         headers = self._build_headers()
 
@@ -192,6 +245,12 @@ class OpenAICompatEngine(LLMEngine):
             "max_tokens": self.max_tokens,
             "stream": True,
         }
+
+        # Add tools if provided
+        if tools:
+            payload["tools"] = tools
+            if tool_choice:
+                payload["tool_choice"] = tool_choice
 
         async with httpx.AsyncClient(timeout=300.0) as client:
             async with client.stream(
@@ -210,8 +269,12 @@ class OpenAICompatEngine(LLMEngine):
                             data = json.loads(data_str)
                             if "choices" in data and len(data["choices"]) > 0:
                                 delta = data["choices"][0].get("delta", {})
+                                # Yield content if present
                                 if "content" in delta:
                                     yield delta["content"]
+                                # Yield tool calls if present
+                                elif "tool_calls" in delta:
+                                    yield {"tool_calls": delta["tool_calls"]}
                         except json.JSONDecodeError:
                             continue
 

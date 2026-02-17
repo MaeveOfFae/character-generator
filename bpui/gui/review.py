@@ -293,8 +293,21 @@ class ReviewWidget(QWidget):
         
         dialog = RegenerateDialog(self, self.draft_dir, self.assets, self.config, asset_key)
         if dialog.exec():
-            # Reload from dialog result
-            if hasattr(dialog, 'regenerated_content'):
+            # Update all regenerated assets (including cascaded ones)
+            if hasattr(dialog, 'regenerated_assets'):
+                for asset_name, content in dialog.regenerated_assets.items():
+                    if asset_name in self.text_editors:
+                        self.text_editors[asset_name].setPlainText(content)
+                    self.assets[asset_name] = content
+
+                self.dirty = True
+                count = len(dialog.regenerated_assets)
+                if count == 1:
+                    self.main_window.status_bar.showMessage("✓ Asset regenerated", 3000)
+                else:
+                    self.main_window.status_bar.showMessage(f"✓ {count} assets regenerated", 3000)
+            # Fallback to old behavior for backward compatibility
+            elif hasattr(dialog, 'regenerated_content'):
                 self.text_editors[asset_key].setPlainText(dialog.regenerated_content)
                 self.assets[asset_key] = dialog.regenerated_content
                 self.dirty = True

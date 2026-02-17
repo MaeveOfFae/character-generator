@@ -139,46 +139,56 @@ class BlueprintBrowserDialog(QDialog):
     def load_blueprints(self):
         """Load blueprints from the organized directory structure."""
         self.blueprint_tree.clear()
-        
+
         if not self.official_dir.exists():
             self.preview_text.setPlainText("Blueprints directory not found.")
             return
-        
+
+        # Root-level blueprints (legacy/shared)
+        root_md_files = [f for f in self.official_dir.glob("*.md") if f.name != "README.md"]
+        if root_md_files:
+            root_item = QTreeWidgetItem(self.blueprint_tree)
+            root_item.setText(0, "📋 Core Blueprints")
+            root_item.setData(0, Qt.ItemDataRole.UserRole, self.official_dir)
+
+            for md_file in sorted(root_md_files):
+                self.add_blueprint_item(root_item, md_file, "core")
+
         # System blueprints
         system_dir = self.official_dir / "system"
         if system_dir.exists():
             system_item = QTreeWidgetItem(self.blueprint_tree)
             system_item.setText(0, "🔧 System Blueprints")
             system_item.setData(0, Qt.ItemDataRole.UserRole, system_dir)
-            
+
             for md_file in sorted(system_dir.glob("*.md")):
                 self.add_blueprint_item(system_item, md_file, "system")
-        
+
         # Template blueprints
         templates_dir = self.official_dir / "templates"
         if templates_dir.exists():
             templates_item = QTreeWidgetItem(self.blueprint_tree)
             templates_item.setText(0, "📦 Template Blueprints")
             templates_item.setData(0, Qt.ItemDataRole.UserRole, templates_dir)
-            
+
             for template_dir in sorted(templates_dir.iterdir()):
                 if template_dir.is_dir():
                     template_item = QTreeWidgetItem(templates_item)
                     template_item.setText(0, f"📁 {template_dir.name}")
-                    
+
                     for md_file in sorted(template_dir.glob("*.md")):
                         self.add_blueprint_item(template_item, md_file, template_dir.name)
-        
+
         # Example blueprints
         examples_dir = self.official_dir / "examples"
         if examples_dir.exists():
             examples_item = QTreeWidgetItem(self.blueprint_tree)
             examples_item.setText(0, "💡 Example Blueprints")
             examples_item.setData(0, Qt.ItemDataRole.UserRole, examples_dir)
-            
+
             for md_file in sorted(examples_dir.glob("*.md")):
                 self.add_blueprint_item(examples_item, md_file, "examples")
-        
+
         # Expand all top-level items
         for i in range(self.blueprint_tree.topLevelItemCount()):
             item = self.blueprint_tree.topLevelItem(i)
