@@ -37,13 +37,6 @@ def test_imports():
         return False
 
     try:
-        from bpui.llm.litellm_engine import LiteLLMEngine
-        print("✓ bpui.llm.litellm_engine (optional)")
-    except ImportError as e:
-        print(f"⚠ bpui.llm.litellm_engine (optional): {e}")
-        print("  Install with: pip install litellm")
-
-    try:
         from bpui.core.prompting import build_orchestrator_prompt
         print("✓ bpui.prompting")
     except ImportError as e:
@@ -164,7 +157,6 @@ def main():
         print("✗ Some tests failed")
         print("\nPlease check the errors above and:")
         print("  1. Ensure dependencies are installed: pip install -e .")
-        print("  2. For LiteLLM support: pip install -e '.[litellm]'")
         return 1
 
 

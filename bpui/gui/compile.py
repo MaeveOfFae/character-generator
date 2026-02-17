@@ -267,7 +267,7 @@ class CompileWidget(QWidget):
     def generate_seed(self):
         """Generate a random seed idea using LLM."""
         from PySide6.QtWidgets import QMessageBox
-        from ..llm.litellm_engine import LiteLLMEngine
+        from ..llm.factory import create_engine
         import asyncio
         
         # Ask for genre/style
@@ -290,12 +290,7 @@ class CompileWidget(QWidget):
                 prompt = "Generate a unique, creative character concept seed for roleplay. Output ONLY a single sentence describing the character concept. Be specific and intriguing. Mix genres if interesting. Example format: 'Victorian ghost hunter who accidentally became undead'"
             
             # Quick sync call
-            engine = LiteLLMEngine(
-                model=self.config.model,
-                api_key=self.config.get_api_key_for_model(self.config.model),
-                base_url=self.config.api_base_url,
-                api_version=self.config.api_version
-            )
+            engine = create_engine(self.config)
             
             # Run async in sync context
             loop = asyncio.new_event_loop()

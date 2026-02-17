@@ -39,6 +39,8 @@ def detect_provider_from_model(model: str) -> str:
     # These are often specified with a prefix.
     if model_lower.startswith((
         "openrouter/",
+        "openai/",
+        "google/",
         "anthropic/",
         "deepseek/",
         "zai/",
@@ -49,6 +51,10 @@ def detect_provider_from_model(model: str) -> str:
         # through a generic engine or a specific one if implemented.
         if model_lower.startswith("openrouter/"):
             return "openrouter"
+        if model_lower.startswith("openai/"):
+            return "openai"
+        if model_lower.startswith("google/"):
+            return "google"
         if model_lower.startswith("anthropic/"):
             return "anthropic"
         if model_lower.startswith("deepseek/"):
@@ -264,8 +270,10 @@ def _create_google_engine(
         kwargs.update(google_config)
 
     logger.info(f"Using native GoogleEngine for model '{model}'")
+    api_model = model[len("google/"):] if model.startswith("google/") else model
+
     return GoogleEngine(
-        model=model,
+        model=api_model,
         api_key=api_key,
         temperature=temperature,
         max_tokens=max_tokens,
@@ -319,8 +327,10 @@ def _create_openai_engine(
         kwargs.update(openai_config)
 
     logger.info(f"Using native OpenAIEngine for model '{model}'")
+    api_model = model[len("openai/"):] if model.startswith("openai/") else model
+
     return OpenAIEngine(
-        model=model,
+        model=api_model,
         api_key=api_key,
         temperature=temperature,
         max_tokens=max_tokens,

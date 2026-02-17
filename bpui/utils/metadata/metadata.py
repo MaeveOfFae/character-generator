@@ -318,6 +318,46 @@ def search_metadata(
     return results
 
 
+def _infer_character_name_from_path(draft_path: Path) -> str:
+    """Infer character name from timestamped draft folder name."""
+    parts = draft_path.name.split("_", 2)
+    if len(parts) > 2 and parts[2]:
+        return parts[2]
+    return draft_path.name
+
+
+def resolve_parent_display_names(metadata: DraftMetadata, draft_dir: Path) -> list[str]:
+    """Resolve human-readable parent names from metadata.parent_drafts references."""
+    names: list[str] = []
+    for parent_ref in metadata.parent_drafts or []:
+        parent_path = Path(parent_ref)
+        if not parent_path.is_absolute():
+            parent_path = (draft_dir / parent_path).resolve()
+
+        parent_meta = DraftMetadata.load(parent_path) if parent_path.exists() else None
+        if parent_meta and parent_meta.character_name:
+            names.append(parent_meta.character_name)
+        else:
+            names.append(_infer_character_name_from_path(parent_path))
+
+    return names
+
+
+def lineage_summary(metadata: DraftMetadata, draft_dir: Path, max_names: int = 2) -> str:
+    """Build a compact lineage label, e.g. '👪 child of alpha + beta'."""
+    parent_names = resolve_parent_display_names(metadata, draft_dir)
+    if not parent_names:
+        return ""
+
+    shown = parent_names[:max_names]
+    label = " + ".join(shown)
+    remaining = len(parent_names) - len(shown)
+    if remaining > 0:
+        label += f" +{remaining}"
+
+    return f"👪 child of {label}"
+
+
 def get_all_tags(drafts_dir: Path) -> list[str]:
     """
     Get all unique tags from all drafts.

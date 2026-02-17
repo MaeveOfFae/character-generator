@@ -173,8 +173,7 @@ class OffspringScreen(Screen):
             output_log.write("[dim]Importing modules...[/dim]")
             output_log.refresh()
             
-            from ..llm.litellm_engine import LiteLLMEngine
-            from ..llm.openai_compat_engine import OpenAICompatEngine
+            from ..llm.factory import create_engine
             from ..prompting import build_offspring_prompt, build_asset_prompt
             from ..parse_blocks import extract_single_asset, extract_character_name
             from bpui.utils.file_io.pack_io import create_draft_dir
@@ -235,18 +234,7 @@ class OffspringScreen(Screen):
             output_log.refresh()
 
             # Step 1: Generate offspring seed
-            engine_config = {
-                "model": self.config.model,
-                "api_key": self.config.api_key,
-                "temperature": self.config.temperature,
-                "max_tokens": self.config.max_tokens,
-            }
-
-            if self.config.engine == "litellm":
-                engine = LiteLLMEngine(**engine_config)
-            else:
-                engine_config["base_url"] = self.config.base_url
-                engine = OpenAICompatEngine(**engine_config)
+            engine = create_engine(self.config)
 
             # Build offspring prompt
             system_prompt, user_prompt = build_offspring_prompt(

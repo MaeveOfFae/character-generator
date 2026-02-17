@@ -283,36 +283,21 @@ class ExportDialog(QDialog):
 class SettingsDialog(QDialog):
     """Dialog for application settings."""
     
-    # Default theme colors
-    DEFAULT_THEME = {
-        "tokenizer": {
-            "brackets": "#e91e63",  # []
-            "asterisk": "#2196f3",  # **
-            "parentheses": "#ff9800",  # ()
-            "double_brackets": "#4caf50",  # {{}}
-            "curly_braces": "#9c27b0",  # {}
-            "pipes": "#00bcd4",  # ||
-            "at_sign": "#ff5722",  # @
-        },
-        "app": {
-            "background": "#1e1e1e",
-            "text": "#e0e0e0",
-            "accent": "#6200ea",
-            "button": "#3700b3",
-            "button_text": "#ffffff",
-            "border": "#424242",
-            "highlight": "#bb86fc",
-            "window": "#121212",
-        }
-    }
-    
     def __init__(self, parent, config):
         super().__init__(parent)
         self.config = config
+        # Get the actual MainWindow (parent might be HomeWidget or another widget)
+        self.main_window = parent.main_window if hasattr(parent, 'main_window') else parent
+        # Get default theme from unified system
+        from bpui.core.theme import BUILTIN_THEMES
+        self.DEFAULT_THEME = BUILTIN_THEMES["dark"].legacy_theme_dict
         self.theme_colors = self.load_theme_colors()
-        self.main_window = parent
         self.model_fetcher = None
         self._model_fetch_seq = 0
+
+        # Store original theme for cancel restoration
+        self.original_theme_name = self.config.get("theme_name", "dark")
+        self.original_theme_colors = self.config.get("theme", {})
         
         self.setWindowTitle("Settings")
         self.setMinimumWidth(600)
@@ -330,15 +315,21 @@ class SettingsDialog(QDialog):
         # Buttons
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
-        
+
+        # Preview theme button
+        preview_btn = QPushButton("Preview Theme")
+        preview_btn.setToolTip("Preview theme changes without saving")
+        preview_btn.clicked.connect(self.preview_theme)
+        btn_layout.addWidget(preview_btn)
+
         cancel_btn = QPushButton("Cancel")
-        cancel_btn.clicked.connect(self.reject)
+        cancel_btn.clicked.connect(self.cancel_settings)
         btn_layout.addWidget(cancel_btn)
-        
+
         save_btn = QPushButton("Save")
         save_btn.clicked.connect(self.save_settings)
         btn_layout.addWidget(save_btn)
-        
+
         layout.addLayout(btn_layout)
     
     def create_general_tab(self):
@@ -704,12 +695,10 @@ class SettingsDialog(QDialog):
             self.update_preview()
     
     def load_theme_colors(self):
-        """Load theme colors from config."""
-        theme_config = self.config.get("theme", {})
-        return {
-            "tokenizer": theme_config.get("tokenizer", self.DEFAULT_THEME["tokenizer"]),
-            "app": theme_config.get("app", self.DEFAULT_THEME["app"])
-        }
+        """Load theme colors from config using unified theme system."""
+        from bpui.core.theme import load_theme_from_config
+        theme_def = load_theme_from_config(self.config)
+        return theme_def.legacy_theme_dict
     
     def reset_theme_colors(self):
         """Reset all theme colors to defaults."""
@@ -1472,43 +1461,92 @@ class SettingsDialog(QDialog):
             self.config._data["batch"]["rate_limit_delay"] = float(self.rate_limit_input.text())
         except ValueError:
             pass  # Keep existing values if invalid
-        
+
         # Save theme colors
         theme_colors = {"tokenizer": {}, "app": {}}
-        
+
         # Save tokenizer colors
         for key, btn in self.tokenizer_color_buttons.items():
             color = self.get_color_from_button(btn)
             if color:
                 theme_colors["tokenizer"][key] = color
-        
+
         # Save app colors
         for key, btn in self.app_color_buttons.items():
             color = self.get_color_from_button(btn)
             if color:
                 theme_colors["app"][key] = color
-        
+
         self.config.set("theme", theme_colors)
-        
+
         # Save selected theme preset name
         if hasattr(self, 'theme_preset_combo'):
             preset_key = self.theme_preset_combo.currentData()
             if preset_key:
                 self.config.set("theme_name", preset_key)
-        
+
         # Save config to disk
         self.config.save()
-        
+
         # Refresh theme if main window exists
-        if hasattr(self.main_window, 'theme_manager'):
-            self.main_window.theme_manager.refresh_theme()
-            self.main_window.theme_manager.apply_theme(self.main_window)
-        
-        # Refresh syntax highlighters in review widgets
-        if hasattr(self.main_window, 'refresh_all_highlighters'):
-            self.main_window.refresh_all_highlighters()
-        
+        try:
+            if hasattr(self.main_window, 'refresh_theme'):
+                self.main_window.refresh_theme()
+                # Show status message
+                if hasattr(self.main_window, 'status_bar'):
+                    self.main_window.status_bar.showMessage("✓ Settings saved and theme applied", 3000)
+        except Exception as e:
+            print(f"Error refreshing theme: {e}")
+            if hasattr(self.main_window, 'status_bar'):
+                self.main_window.status_bar.showMessage(f"✓ Settings saved (theme refresh failed: {e})", 5000)
+
         self.accept()
+
+    def preview_theme(self):
+        """Preview theme changes without saving to disk."""
+        # Temporarily update config with current UI values
+        theme_colors = {"tokenizer": {}, "app": {}}
+
+        # Get tokenizer colors
+        for key, btn in self.tokenizer_color_buttons.items():
+            color = self.get_color_from_button(btn)
+            if color:
+                theme_colors["tokenizer"][key] = color
+
+        # Get app colors
+        for key, btn in self.app_color_buttons.items():
+            color = self.get_color_from_button(btn)
+            if color:
+                theme_colors["app"][key] = color
+
+        # Temporarily set in config (not saved to disk)
+        self.config.set("theme", theme_colors)
+
+        # Set selected theme preset name temporarily
+        if hasattr(self, 'theme_preset_combo'):
+            preset_key = self.theme_preset_combo.currentData()
+            if preset_key:
+                self.config.set("theme_name", preset_key)
+
+        # Apply theme without saving
+        if hasattr(self.main_window, 'refresh_theme'):
+            self.main_window.refresh_theme()
+            # Show status message
+            if hasattr(self.main_window, 'status_bar'):
+                self.main_window.status_bar.showMessage("✓ Theme preview applied (not saved)", 3000)
+
+    def cancel_settings(self):
+        """Cancel settings and restore original theme if it was previewed."""
+        # Restore original theme
+        self.config.set("theme_name", self.original_theme_name)
+        self.config.set("theme", self.original_theme_colors)
+
+        # Refresh theme to restore original
+        if hasattr(self.main_window, 'refresh_theme'):
+            self.main_window.refresh_theme()
+
+        # Close dialog
+        self.reject()
 
 
 class RegenerateWorker(QThread):

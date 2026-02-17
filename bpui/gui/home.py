@@ -75,7 +75,13 @@ class HomeWidget(QWidget):
         similarity_btn.setStyleSheet("font-size: 14px; font-weight: bold;")
         similarity_btn.clicked.connect(lambda: self.main_window.show_similarity())
         btn_layout.addWidget(similarity_btn)
-        
+
+        lineage_btn = QPushButton("🌳 Family Tree")
+        lineage_btn.setFixedSize(200, 50)
+        lineage_btn.setStyleSheet("font-size: 14px; font-weight: bold;")
+        lineage_btn.clicked.connect(lambda: self.main_window.show_lineage())
+        btn_layout.addWidget(lineage_btn)
+
         validate_btn = QPushButton("✓ Validate Directory")
         validate_btn.setFixedSize(200, 50)
         validate_btn.setStyleSheet("font-size: 14px; font-weight: bold;")
@@ -203,18 +209,20 @@ class HomeWidget(QWidget):
             for draft_data in indexed_drafts:
                 draft_path = Path(draft_data["path"])
                 if draft_path.exists():
-                    metadata = DraftMetadata(
-                        seed=draft_data["seed"],
-                        mode=draft_data["mode"],
-                        model=draft_data["model"],
-                        genre=draft_data["genre"],
-                        created=draft_data["created"],
-                        modified=draft_data["modified"],
-                        tags=draft_data["tags"],
-                        notes=draft_data["notes"],
-                        favorite=draft_data["favorite"],
-                        character_name=draft_data["character_name"]
-                    )
+                    metadata = DraftMetadata.load(draft_path)
+                    if metadata is None:
+                        metadata = DraftMetadata(
+                            seed=draft_data["seed"],
+                            mode=draft_data["mode"],
+                            model=draft_data["model"],
+                            genre=draft_data["genre"],
+                            created=draft_data["created"],
+                            modified=draft_data["modified"],
+                            tags=draft_data["tags"],
+                            notes=draft_data["notes"],
+                            favorite=draft_data["favorite"],
+                            character_name=draft_data["character_name"]
+                        )
                     self.all_drafts.append({
                         'path': draft_path,
                         'metadata': metadata,
@@ -265,6 +273,8 @@ class HomeWidget(QWidget):
     
     def apply_filters(self):
         """Apply search and filters to drafts list."""
+        from bpui.utils.metadata.metadata import lineage_summary
+
         self.drafts_list.clear()
         
         if not self.all_drafts:
@@ -332,6 +342,10 @@ class HomeWidget(QWidget):
                     display_name = f"⭐ {draft_path.name}"
                 if metadata.genre:
                     display_name += f" [{metadata.genre}]"
+                if metadata.parent_drafts:
+                    lineage = lineage_summary(metadata, draft_path)
+                    if lineage:
+                        display_name += f" | {lineage}"
             
             item = QListWidgetItem(display_name)
             item.setData(Qt.ItemDataRole.UserRole, draft_path)

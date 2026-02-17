@@ -126,6 +126,7 @@ class DraftsScreen(Screen):
     async def apply_filters(self) -> None:
         """Apply current filters and update the list."""
         from bpui.utils.metadata.metadata import search_metadata
+        from bpui.utils.metadata.metadata import lineage_summary
         from pathlib import Path
         
         drafts_list = self.query_one("#drafts-list", ListView)
@@ -166,8 +167,9 @@ class DraftsScreen(Screen):
                     tags_str = f" [{', '.join(metadata.tags)}]" if metadata.tags else ""
                     fav_mark = "⭐ " if metadata.favorite else ""
                     genre_str = f" ({metadata.genre})" if metadata.genre else ""
+                    lineage_str = f" | {lineage_summary(metadata, draft_path)}" if metadata.parent_drafts else ""
                     
-                    display = f"{fav_mark}{char_name}{genre_str}{tags_str}"
+                    display = f"{fav_mark}{char_name}{genre_str}{tags_str}{lineage_str}"
                     item = ListItem(Static(display))
                     if metadata.favorite:
                         item.add_class("favorite-item")

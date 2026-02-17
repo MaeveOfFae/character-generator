@@ -5,7 +5,7 @@ A terminal TUI application for compiling RPBotGenerator character assets.
 ## Features
 
 - **Terminal UI**: Interactive Textual-based interface with keyboard shortcuts
-- **Any LLM Support**: LiteLLM (most providers) or OpenAI-compatible API
+- **Any LLM Support**: OpenRouter and OpenAI-compatible APIs
 - **Streaming Output**: Real-time generation feedback
 - **Draft Management**: Save, browse, and review generated assets
 - **Asset Editing**: Edit and save changes to generated assets
@@ -95,8 +95,8 @@ source .venv/bin/activate
 # Install base dependencies
 pip install textual rich tomli-w httpx
 
-# Optional: Install LiteLLM for 100+ providers
-pip install litellm
+# Optional provider SDKs
+pip install openai google-generativeai
 ```
 
 ### 2. Configure
@@ -104,10 +104,10 @@ pip install litellm
 On first run, configure settings via the TUI or create `.bpui.toml`:
 
 ```toml
-engine = "litellm"  # or "openai_compatible"
-model = "openai/gpt-4"  # or your model
-api_key_env = "OPENAI_API_KEY"  # environment variable name
-base_url = ""  # only for openai_compatible
+engine = "openai_compatible"
+model = "openrouter/openai/gpt-4o-mini"  # or your model
+api_key_env = "OPENROUTER_API_KEY"  # environment variable name
+base_url = "https://openrouter.ai/api/v1"  # only for openai_compatible
 temperature = 0.7
 max_tokens = 4096
 ```
@@ -227,7 +227,6 @@ bpui similarity "char1" "char2" --format json
 - **bpui/config.py**: Configuration management (`.bpui.toml`)
 - **bpui/llm/**: LLM adapters
   - `base.py`: Abstract interface
-  - `litellm_engine.py`: LiteLLM adapter (multi-provider)
   - `openai_compat_engine.py`: OpenAI-compatible REST API
 - **bpui/prompting.py**: Blueprint loading and prompt construction
 - **bpui/similarity.py**: Character similarity analyzer with LLM support
@@ -265,13 +264,7 @@ Character name is extracted from `character_sheet` (`name: ...` field).
 
 ### LLM Adapters
 
-**LiteLLM** (default):
-
-- Supports 100+ providers via unified API
-- Format: `provider/model` (e.g., `openai/gpt-4`, `anthropic/claude-3`)
-- Streaming support
-
-**OpenAI-compatible**:
+**OpenAI-compatible** (default):
 
 - Direct REST API calls
 - Requires `base_url` (e.g., `http://localhost:11434/v1` for Ollama)
@@ -319,25 +312,16 @@ python -m bpui.cli
 
 ```python
 from bpui.config import Config
-from bpui.llm.litellm_engine import LiteLLMEngine
+from bpui.llm.factory import create_engine
 
 config = Config()
-engine = LiteLLMEngine(
-    model=config.model,
-    api_key=config.api_key,
-)
+engine = create_engine(config)
 
 result = await engine.test_connection()
 print(result)
 ```
 
 ## Troubleshooting
-
-**LiteLLM not found:**
-
-```bash
-pip install litellm
-```
 
 **Connection errors:**
 

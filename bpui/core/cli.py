@@ -99,7 +99,31 @@ def main():
     similarity_parser.add_argument("--cluster", action="store_true", help="Cluster similar characters")
     similarity_parser.add_argument("--threshold", type=float, default=0.6, help="Similarity threshold for clustering (0.0-1.0)")
     similarity_parser.add_argument("--use-llm", action="store_true", help="Enable LLM-powered deep analysis")
-    
+
+    # Lineage command
+    lineage_parser = subparsers.add_parser("lineage", help="Display character family tree and lineage")
+    lineage_parser.add_argument("character", nargs="?", help="Character name or draft directory name (optional)")
+    lineage_parser.add_argument("--drafts-dir", type=Path, help="Drafts directory (default: ./drafts)")
+    lineage_parser.add_argument("--format", choices=["tree", "markdown", "json"], default="tree",
+                               help="Output format (tree=ASCII art, markdown=MD list, json=data)")
+    lineage_parser.add_argument("--max-depth", type=int, help="Maximum tree depth to display")
+    lineage_parser.add_argument("--generation", type=int, help="Show only specific generation number")
+    lineage_parser.add_argument("--roots-only", action="store_true", help="Show only root characters (no parents)")
+    lineage_parser.add_argument("--leaves-only", action="store_true", help="Show only leaf characters (no children)")
+
+    # Asset versions command
+    versions_parser = subparsers.add_parser("versions", help="Manage asset version history")
+    versions_parser.add_argument("draft", help="Draft directory name or path")
+    versions_parser.add_argument("asset", help="Asset name (e.g., character_sheet, intro_scene)")
+    versions_parser.add_argument("--list", action="store_true", help="List all versions")
+    versions_parser.add_argument("--show", type=int, metavar="VERSION", help="Show specific version content")
+    versions_parser.add_argument("--diff", nargs=2, type=int, metavar=("V1", "V2"), help="Show diff between two versions")
+    versions_parser.add_argument("--diff-current", type=int, metavar="VERSION", help="Show diff between version and current")
+    versions_parser.add_argument("--rollback", type=int, metavar="VERSION", help="Rollback to specific version")
+    versions_parser.add_argument("--stats", action="store_true", help="Show version statistics")
+    versions_parser.add_argument("--prune", type=int, metavar="KEEP", help="Prune old versions, keeping N most recent")
+    versions_parser.add_argument("--drafts-dir", type=Path, help="Drafts directory (default: ./drafts)")
+
     # List models command
     list_models_parser = subparsers.add_parser("list-models", help="List available AI models")
     list_models_parser.add_argument("--provider", help="Provider (openrouter, openai, google, etc.)")
@@ -152,6 +176,10 @@ def main():
         asyncio.run(run_offspring(args))
     elif args.command == "similarity":
         run_similarity(args)
+    elif args.command == "lineage":
+        run_lineage(args)
+    elif args.command == "versions":
+        run_versions(args)
     elif args.command == "list-models":
         asyncio.run(run_list_models(args))
     
@@ -224,26 +252,11 @@ async def run_compile(args):
     model = args.model or config.model
     config.validate_api_key(model)
 
-    # Create engine (legacy-compatible paths for tests)
+    # Create engine
     try:
-        if config.engine == "openai_compatible":
-            from bpui.llm.openai_compat_engine import OpenAICompatEngine
-            engine = OpenAICompatEngine(
-                model=model,
-                api_key=config.api_key,
-                temperature=config.temperature,
-                max_tokens=config.max_tokens,
-                base_url=getattr(config, "base_url", None),
-            )
-        else:
-            from bpui.llm.litellm_engine import LiteLLMEngine
-            engine = LiteLLMEngine(
-                model=model,
-                api_key=config.api_key,
-                temperature=config.temperature,
-                max_tokens=config.max_tokens,
-            )
-    except (ImportError, ValueError) as e:
+        from bpui.llm.factory import create_engine
+        engine = create_engine(config, model_override=model)
+    except (ImportError, ValueError, RuntimeError) as e:
         logger.error(f"Failed to create engine: {e}")
         sys.exit(1)
 
@@ -326,26 +339,11 @@ async def run_seedgen(args):
     # Build prompt
     system_prompt, user_prompt = build_seedgen_prompt(genre_lines)
 
-    # Create engine (legacy-compatible paths for tests)
+    # Create engine
     try:
-        if config.engine == "openai_compatible":
-            from bpui.llm.openai_compat_engine import OpenAICompatEngine
-            engine = OpenAICompatEngine(
-                model=config.model,
-                api_key=config.api_key,
-                temperature=config.temperature,
-                max_tokens=config.max_tokens,
-                base_url=getattr(config, "base_url", None),
-            )
-        else:
-            from bpui.llm.litellm_engine import LiteLLMEngine
-            engine = LiteLLMEngine(
-                model=config.model,
-                api_key=config.api_key,
-                temperature=config.temperature,
-                max_tokens=config.max_tokens,
-            )
-    except (ImportError, ValueError) as e:
+        from bpui.llm.factory import create_engine
+        engine = create_engine(config)
+    except (ImportError, ValueError, RuntimeError) as e:
         logger.error(f"Failed to create engine: {e}")
         sys.exit(1)
 
@@ -1324,6 +1322,254 @@ def run_similarity(args):
             }, indent=2))
         else:
             print(format_similarity_report(result))
+
+
+def run_lineage(args):
+    """Display character family tree and lineage."""
+    import json
+    from bpui.utils.lineage import LineageTree, render_lineage_for_character
+
+    drafts_root = args.drafts_dir or Path.cwd() / "drafts"
+
+    if not drafts_root.exists():
+        print(f"✗ Drafts directory not found: {drafts_root}")
+        sys.exit(1)
+
+    # Build lineage tree
+    tree = LineageTree(drafts_root)
+
+    if not tree.nodes:
+        print(f"✗ No characters found in {drafts_root}")
+        sys.exit(1)
+
+    # If specific character requested
+    if args.character:
+        # Find character node
+        node = None
+        for n in tree.nodes.values():
+            if n.character_name == args.character or n.draft_path.name == args.character:
+                node = n
+                break
+
+        if not node:
+            print(f"✗ Character '{args.character}' not found")
+            print(f"\nAvailable characters:")
+            for n in sorted(tree.nodes.values(), key=lambda x: x.character_name):
+                print(f"  - {n.character_name} ({n.draft_path.name})")
+            sys.exit(1)
+
+        # Display character-specific lineage
+        if args.format == "json":
+            summary = tree.get_family_summary(node)
+            paths = tree.get_lineage_path(node)
+            summary["lineage_paths"] = [
+                [n.character_name for n in path] for path in paths
+            ]
+            print(json.dumps(summary, indent=2))
+        else:
+            print(render_lineage_for_character(drafts_root, args.character))
+
+    # Filter by generation
+    elif args.generation is not None:
+        nodes = tree.get_generation(args.generation)
+        if not nodes:
+            print(f"✗ No characters found at generation {args.generation}")
+            print(f"  (Max generation: {tree.get_max_generation()})")
+            sys.exit(1)
+
+        print(f"Generation {args.generation} Characters ({len(nodes)}):")
+        for node in sorted(nodes, key=lambda x: x.character_name):
+            info = f"  - {node.character_name}"
+            if node.offspring_type:
+                info += f" ({node.offspring_type})"
+            if node.parents:
+                parent_names = ", ".join(p.character_name for p in node.parents)
+                info += f" [parents: {parent_names}]"
+            print(info)
+
+    # Show only roots
+    elif args.roots_only:
+        roots = tree.get_roots()
+        print(f"Root Characters ({len(roots)}):")
+        for node in sorted(roots, key=lambda x: x.character_name):
+            info = f"  - {node.character_name}"
+            if node.children:
+                info += f" ({len(node.children)} offspring)"
+            print(info)
+
+    # Show only leaves
+    elif args.leaves_only:
+        leaves = tree.get_leaves()
+        print(f"Leaf Characters ({len(leaves)}):")
+        for node in sorted(leaves, key=lambda x: x.character_name):
+            info = f"  - {node.character_name} (Generation {node.generation})"
+            if node.parents:
+                parent_names = ", ".join(p.character_name for p in node.parents)
+                info += f" [parents: {parent_names}]"
+            print(info)
+
+    # Show full tree
+    else:
+        if args.format == "markdown":
+            print(tree.render_tree_markdown())
+        elif args.format == "json":
+            # JSON export of full tree structure
+            def node_to_dict(node):
+                return {
+                    "name": node.character_name,
+                    "draft_path": str(node.draft_path),
+                    "generation": node.generation,
+                    "offspring_type": node.offspring_type,
+                    "mode": node.metadata.mode,
+                    "model": node.metadata.model,
+                    "created": node.metadata.created,
+                    "parents": [p.character_name for p in node.parents],
+                    "children": [c.character_name for c in node.children],
+                }
+
+            output = {
+                "total_characters": len(tree.nodes),
+                "total_roots": len(tree.roots),
+                "max_generation": tree.get_max_generation(),
+                "roots": [node_to_dict(root) for root in tree.roots],
+                "all_nodes": {name: node_to_dict(node) for name, node in tree.nodes.items()},
+            }
+            print(json.dumps(output, indent=2))
+        else:
+            # ASCII tree
+            print(tree.render_tree_ascii(max_depth=args.max_depth))
+
+
+def run_versions(args):
+    """Manage asset version history."""
+    from bpui.utils.metadata.asset_versions import (
+        list_versions, load_version, get_diff, get_diff_from_current,
+        rollback_to_version, get_version_stats, prune_old_versions
+    )
+    from bpui.core.parse_blocks import DEFAULT_ASSET_FILENAMES
+
+    drafts_root = args.drafts_dir or Path.cwd() / "drafts"
+
+    # Find draft directory
+    draft_dir = None
+    if Path(args.draft).is_absolute() and Path(args.draft).exists():
+        draft_dir = Path(args.draft)
+    else:
+        # Look in drafts directory
+        potential_path = drafts_root / args.draft
+        if potential_path.exists() and potential_path.is_dir():
+            draft_dir = potential_path
+        else:
+            # Try to find by character name
+            for item in drafts_root.iterdir():
+                if item.is_dir() and args.draft.lower() in item.name.lower():
+                    draft_dir = item
+                    break
+
+    if not draft_dir or not draft_dir.exists():
+        print(f"✗ Draft directory not found: {args.draft}")
+        sys.exit(1)
+
+    asset_name = args.asset
+
+    # Get asset filename for rollback
+    asset_filename = DEFAULT_ASSET_FILENAMES.get(asset_name, f"{asset_name}.txt")
+
+    # List versions
+    if args.list or not any([args.show, args.diff, args.diff_current, args.rollback, args.stats, args.prune]):
+        versions = list_versions(draft_dir, asset_name)
+        if not versions:
+            print(f"No versions found for {asset_name} in {draft_dir.name}")
+            sys.exit(0)
+
+        print(f"Version History for {asset_name} in {draft_dir.name}:")
+        print(f"{'Version':<10} {'Timestamp':<25} {'Size':<10}")
+        print("-" * 50)
+        for v in versions:
+            size = len(v.content)
+            timestamp = v.timestamp[:19] if len(v.timestamp) > 19 else v.timestamp
+            print(f"v{v.version:<9} {timestamp:<25} {size:<10} bytes")
+
+    # Show specific version
+    elif args.show:
+        version = load_version(draft_dir, asset_name, args.show)
+        if not version:
+            print(f"✗ Version {args.show} not found")
+            sys.exit(1)
+
+        print(f"=== {asset_name} v{version.version} (from {version.timestamp[:19]}) ===\n")
+        print(version.content)
+
+    # Show diff between two versions
+    elif args.diff:
+        v1, v2 = args.diff
+        diff_lines = get_diff(draft_dir, asset_name, v1, v2)
+        if not diff_lines:
+            print(f"✗ Could not generate diff (versions may not exist)")
+            sys.exit(1)
+
+        print(f"=== Diff: {asset_name} v{v1} -> v{v2} ===\n")
+        for line in diff_lines:
+            # Color diff output
+            if line.startswith('+') and not line.startswith('+++'):
+                print(f"\033[32m{line}\033[0m")  # Green for additions
+            elif line.startswith('-') and not line.startswith('---'):
+                print(f"\033[31m{line}\033[0m")  # Red for deletions
+            elif line.startswith('@@'):
+                print(f"\033[36m{line}\033[0m")  # Cyan for chunk headers
+            else:
+                print(line)
+
+    # Show diff between version and current
+    elif args.diff_current:
+        current_file = draft_dir / asset_filename
+        if not current_file.exists():
+            print(f"✗ Current file not found: {asset_filename}")
+            sys.exit(1)
+
+        current_content = current_file.read_text(encoding="utf-8")
+        diff_lines = get_diff_from_current(draft_dir, asset_name, args.diff_current, current_content)
+
+        if not diff_lines:
+            print(f"✗ Could not generate diff (version may not exist)")
+            sys.exit(1)
+
+        print(f"=== Diff: {asset_name} v{args.diff_current} -> current ===\n")
+        for line in diff_lines:
+            if line.startswith('+') and not line.startswith('+++'):
+                print(f"\033[32m{line}\033[0m")
+            elif line.startswith('-') and not line.startswith('---'):
+                print(f"\033[31m{line}\033[0m")
+            elif line.startswith('@@'):
+                print(f"\033[36m{line}\033[0m")
+            else:
+                print(line)
+
+    # Rollback to version
+    elif args.rollback:
+        success = rollback_to_version(draft_dir, asset_name, args.rollback, asset_filename)
+        if success:
+            print(f"✓ Rolled back {asset_name} to version {args.rollback}")
+            print(f"  (Previous current version saved as new version)")
+        else:
+            print(f"✗ Failed to rollback (version may not exist)")
+            sys.exit(1)
+
+    # Show statistics
+    elif args.stats:
+        stats = get_version_stats(draft_dir, asset_name)
+        print(f"Version Statistics for {asset_name}:")
+        print(f"  Total versions: {stats['total_versions']}")
+        print(f"  Latest version: v{stats['latest_version']}")
+        if stats['oldest_timestamp']:
+            print(f"  Oldest: {stats['oldest_timestamp'][:19]}")
+        if stats['newest_timestamp']:
+            print(f"  Newest: {stats['newest_timestamp'][:19]}")
+
+    # Prune old versions
+    elif args.prune:
+        deleted = prune_old_versions(draft_dir, asset_name, args.prune)
+        print(f"✓ Pruned {deleted} old versions (kept {args.prune} most recent)")
 
 
 if __name__ == "__main__":

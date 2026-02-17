@@ -15,7 +15,7 @@ def temp_config(tmp_path):
     config_file = tmp_path / ".bpui.toml"
     config = Config(config_file)
     config._data["model"] = "test/model"
-    config._data["engine"] = "litellm"
+    config._data["engine"] = "openai_compatible"
     return config
 
 

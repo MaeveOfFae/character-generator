@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 from typing import Optional, Dict, List, TYPE_CHECKING
 from bpui.utils.profiler import profile
+from bpui.core.content_validation import validate_assets_content
 
 if TYPE_CHECKING:
     from bpui.features.templates.templates import Template
@@ -166,6 +167,16 @@ def parse_blueprint_output(text: str, template: Optional['Template'] = None) -> 
         assets = {}
         for i, asset_name in enumerate(expected_assets):
             assets[asset_name] = asset_blocks[i]
+
+        # Validate generated content for fatal contract violations
+        content_failures = validate_assets_content(assets)
+        if content_failures:
+            details = []
+            for asset_name, issues in content_failures.items():
+                details.append(f"{asset_name}: {', '.join(sorted(set(issues)))}")
+            raise ParseError(
+                "Generated content failed validation checks: " + "; ".join(details)
+            )
 
         return assets
 

@@ -16,12 +16,12 @@ from bpui.utils.logging_config import setup_logging, get_logger
 
 
 DEFAULT_CONFIG = {
-    "engine": "litellm",
+    "engine": "openai_compatible",
     "engine_mode": "auto",  # "auto" (detect from model) or "explicit" (use engine field)
-    "model": "openai/gpt-4",
-    "api_key_env": "OPENAI_API_KEY",
+    "model": "openrouter/openai/gpt-4o-mini",
+    "api_key_env": "OPENROUTER_API_KEY",
     "api_key": "",  # Legacy single key (deprecated)
-    "base_url": "",
+    "base_url": "https://openrouter.ai/api/v1",
     "temperature": 0.7,
     "max_tokens": 4096,
     "api_keys": {},  # Provider-specific keys: {"openai": "sk-...", "anthropic": "sk-ant-..."}
@@ -169,7 +169,7 @@ class Config:
     @property
     def engine(self) -> str:
         """Get engine type."""
-        return self.get("engine", "litellm")
+        return self.get("engine", "openai_compatible")
 
     @property
     def model(self) -> str:

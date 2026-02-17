@@ -178,24 +178,8 @@ class BatchScreen(Screen):
         mode_str = mode_param or "Auto"
 
         # Get LLM engine
-        from ..llm.litellm_engine import LiteLLMEngine
-        from ..llm.openai_compat_engine import OpenAICompatEngine
-
-        if self.config.engine == "litellm":
-            engine = LiteLLMEngine(
-                model=self.config.model,
-                api_key=self.config.api_key,
-                temperature=self.config.temperature,
-                max_tokens=self.config.max_tokens,
-            )
-        else:
-            engine = OpenAICompatEngine(
-                model=self.config.model,
-                base_url=self.config.base_url,
-                api_key=self.config.api_key,
-                temperature=self.config.temperature,
-                max_tokens=self.config.max_tokens,
-            )
+        from ..llm.factory import create_engine
+        engine = create_engine(self.config)
 
         for i, seed in enumerate(self.seeds):
             if not self.batch_running:

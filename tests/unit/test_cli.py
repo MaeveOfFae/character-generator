@@ -99,7 +99,7 @@ class TestRunCompile:
         mock_config.api_key = "sk-test"
         mock_config.temperature = 0.7
         mock_config.max_tokens = 4096
-        mock_config.engine = "litellm"
+        mock_config.engine = "openai_compatible"
         
         # Mock Engine
         mock_engine = MagicMock()
@@ -107,7 +107,7 @@ class TestRunCompile:
         
         # Mock functions at the point they're imported in run_compile
         with patch("bpui.core.config.Config", return_value=mock_config):
-            with patch("bpui.llm.litellm_engine.LiteLLMEngine", return_value=mock_engine):
+            with patch("bpui.llm.factory.create_engine", return_value=mock_engine):
                 with patch("bpui.prompting.build_asset_prompt", return_value=("sys", "user")):
                     with patch("bpui.parse_blocks.extract_single_asset", return_value="content"):
                         with patch("bpui.parse_blocks.extract_character_name", return_value="test_char"):
@@ -135,13 +135,13 @@ class TestRunCompile:
         mock_config.api_key = "sk-test"
         mock_config.temperature = 0.7
         mock_config.max_tokens = 4096
-        mock_config.engine = "litellm"
+        mock_config.engine = "openai_compatible"
         
         mock_engine = MagicMock()
         mock_engine.generate = AsyncMock(return_value="Asset content")
         
         with patch("bpui.core.config.Config", return_value=mock_config):
-            with patch("bpui.llm.litellm_engine.LiteLLMEngine", return_value=mock_engine):
+            with patch("bpui.llm.factory.create_engine", return_value=mock_engine):
                 with patch("bpui.prompting.build_asset_prompt", return_value=("sys", "user")) as mock_build:
                     with patch("bpui.parse_blocks.extract_single_asset", return_value="content"):
                         with patch("bpui.parse_blocks.extract_character_name", return_value="char"):
@@ -173,13 +173,13 @@ class TestRunCompile:
         mock_config.api_key = "sk-test"
         mock_config.temperature = 0.7
         mock_config.max_tokens = 4096
-        mock_config.engine = "litellm"
+        mock_config.engine = "openai_compatible"
         
         mock_engine = MagicMock()
         mock_engine.generate = AsyncMock(return_value="Asset content")
         
         with patch("bpui.core.config.Config", return_value=mock_config):
-            with patch("bpui.llm.litellm_engine.LiteLLMEngine", return_value=mock_engine):
+            with patch("bpui.llm.factory.create_engine", return_value=mock_engine):
                 with patch("bpui.prompting.build_asset_prompt", return_value=("sys", "user")):
                     with patch("bpui.parse_blocks.extract_single_asset", return_value="content"):
                         with patch("bpui.parse_blocks.extract_character_name", return_value="char"):
@@ -191,8 +191,8 @@ class TestRunCompile:
                                 assert output_dir.exists()
     
     @pytest.mark.asyncio
-    async def test_compile_with_openai_compat_engine(self):
-        """Test compilation with OpenAI-compatible engine."""
+    async def test_compile_with_factory_engine(self):
+        """Test compilation with factory-created engine."""
         from argparse import Namespace
         
         args = Namespace(
@@ -214,7 +214,7 @@ class TestRunCompile:
         mock_engine.generate = AsyncMock(return_value="Asset content")
         
         with patch("bpui.core.config.Config", return_value=mock_config):
-            with patch("bpui.llm.openai_compat_engine.OpenAICompatEngine", return_value=mock_engine) as mock_openai:
+            with patch("bpui.llm.factory.create_engine", return_value=mock_engine) as mock_create_engine:
                 with patch("bpui.prompting.build_asset_prompt", return_value=("sys", "user")):
                     with patch("bpui.parse_blocks.extract_single_asset", return_value="content"):
                         with patch("bpui.parse_blocks.extract_character_name", return_value="char"):
@@ -223,7 +223,7 @@ class TestRunCompile:
                                     from bpui.cli import run_compile
                                     await run_compile(args)
                                     
-                                    mock_openai.assert_called_once()
+                                    mock_create_engine.assert_called_once()
 
 
 class TestRunSeedgen:
@@ -248,13 +248,13 @@ class TestRunSeedgen:
         mock_config.api_key = "sk-test"
         mock_config.temperature = 0.7
         mock_config.max_tokens = 4096
-        mock_config.engine = "litellm"
+        mock_config.engine = "openai_compatible"
         
         mock_engine = MagicMock()
         mock_engine.generate = AsyncMock(return_value="Seed 1\nSeed 2\nSeed 3")
         
         with patch("bpui.core.config.Config", return_value=mock_config):
-            with patch("bpui.llm.litellm_engine.LiteLLMEngine", return_value=mock_engine):
+            with patch("bpui.llm.factory.create_engine", return_value=mock_engine):
                 with patch("bpui.prompting.build_seedgen_prompt", return_value=("sys", "user")):
                     with patch("builtins.print"):
                         from bpui.core.cli import run_seedgen
@@ -280,13 +280,13 @@ class TestRunSeedgen:
         mock_config.api_key = "sk-test"
         mock_config.temperature = 0.7
         mock_config.max_tokens = 4096
-        mock_config.engine = "litellm"
+        mock_config.engine = "openai_compatible"
         
         mock_engine = MagicMock()
         mock_engine.generate = AsyncMock(return_value="Seed 1\nSeed 2")
         
         with patch("bpui.core.config.Config", return_value=mock_config):
-            with patch("bpui.llm.litellm_engine.LiteLLMEngine", return_value=mock_engine):
+            with patch("bpui.llm.factory.create_engine", return_value=mock_engine):
                 with patch("bpui.prompting.build_seedgen_prompt", return_value=("sys", "user")):
                     with patch("builtins.print"):
                         from bpui.core.cli import run_seedgen

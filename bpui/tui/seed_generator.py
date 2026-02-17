@@ -66,8 +66,7 @@ class SeedGeneratorScreen(Screen):
         status.remove_class("error")
 
         try:
-            from ..llm.litellm_engine import LiteLLMEngine
-            from ..llm.openai_compat_engine import OpenAICompatEngine
+            from ..llm.factory import create_engine
             from ..prompting import build_seedgen_prompt
 
             genre_input = self.query_one("#genre-input", TextArea)
@@ -82,21 +81,7 @@ class SeedGeneratorScreen(Screen):
             system_prompt, user_prompt = build_seedgen_prompt(genre_lines)
 
             # Create engine
-            if self.config.engine == "litellm":
-                engine = LiteLLMEngine(
-                    model=self.config.model,
-                    api_key=self.config.api_key,
-                    temperature=self.config.temperature,
-                    max_tokens=self.config.max_tokens,
-                )
-            else:
-                engine = OpenAICompatEngine(
-                    model=self.config.model,
-                    api_key=self.config.api_key,
-                    base_url=self.config.base_url,
-                    temperature=self.config.temperature,
-                    max_tokens=self.config.max_tokens,
-                )
+            engine = create_engine(self.config)
 
             # Generate
             output = await engine.generate(system_prompt, user_prompt)

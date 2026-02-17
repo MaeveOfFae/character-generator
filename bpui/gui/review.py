@@ -272,25 +272,15 @@ class ReviewWidget(QWidget):
     
     def create_highlighter(self, editor):
         """Create and store syntax highlighter for editor."""
-        # Load theme colors from config
-        theme_config = self.config.get("theme", {})
-        from .theme import ThemeManager, SyntaxHighlighter, DEFAULT_THEME
-        
-        # Get theme colors
-        theme_colors = {
-            "tokenizer": theme_config.get("tokenizer", DEFAULT_THEME["tokenizer"]),
-            "app": theme_config.get("app", DEFAULT_THEME["app"])
-        }
-        
-        # Create highlighter instance (stores the colors)
-        highlighter = SyntaxHighlighter(theme_colors)
-        
+        # Get highlighter from main window's theme manager
+        highlighter = self.main_window.theme_manager.get_syntax_highlighter()
+
         # Store reference to highlighter for each editor
         for asset_key, ed in self.text_editors.items():
             if ed == editor:
                 self.highlighters[asset_key] = highlighter
                 break
-        
+
         # Apply highlighting to the editor
         self.apply_highlighting(editor, highlighter)
     
@@ -403,24 +393,18 @@ class ReviewWidget(QWidget):
     
     def refresh_highlighters(self):
         """Refresh all syntax highlighters with updated theme colors."""
-        from .theme import ThemeManager, SyntaxHighlighter, DEFAULT_THEME
-        
-        # Reload theme colors
-        theme_config = self.config.get("theme", {})
-        theme_colors = {
-            "tokenizer": theme_config.get("tokenizer", DEFAULT_THEME["tokenizer"]),
-            "app": theme_config.get("app", DEFAULT_THEME["app"])
-        }
-        
-        # Update all highlighters
-        for asset_key, highlighter in self.highlighters.items():
-            highlighter.theme_colors = theme_colors
-            highlighter.formats = highlighter._create_formats()
-            
-            # Reapply highlighting to the editor
+        # Refresh main window's theme manager
+        self.main_window.theme_manager.refresh_theme()
+
+        # Get fresh highlighter from theme manager
+        fresh_highlighter = self.main_window.theme_manager.get_syntax_highlighter()
+
+        # Update all stored highlighters and reapply
+        for asset_key in self.highlighters.keys():
+            self.highlighters[asset_key] = fresh_highlighter
             editor = self.text_editors.get(asset_key)
             if editor:
-                self.apply_highlighting(editor, highlighter)
+                self.apply_highlighting(editor, fresh_highlighter)
     
     def apply_highlighting(self, editor, highlighter):
         """Apply syntax highlighting to an editor."""

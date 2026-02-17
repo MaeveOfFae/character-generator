@@ -48,6 +48,17 @@ class ThemeColors:
     tok_pipes: str = "#00bcd4"
     tok_at_sign: str = "#ff5722"
 
+    # Semantic GUI colors (used by property-based QSS selectors)
+    muted_text: str = "#888888"
+    surface: str = "#2a2a2a"
+    success_bg: str = "#2d5f2d"
+    danger_bg: str = "#5f2d2d"
+    accent_bg: str = "#4a2d5f"
+    accent_title: str = "#9b59b6"
+    success_text: str = "#44aa44"
+    error_text: str = "#ff4444"
+    warning_text: str = "#ffaa44"
+
     # TUI-specific Textual design tokens
     tui_primary: str = "#6200ea"
     tui_secondary: str = "#03dac6"
@@ -84,6 +95,15 @@ class ThemeDefinition:
             "border": c.border,
             "highlight": c.highlight,
             "window": c.window,
+            "muted_text": c.muted_text,
+            "surface": c.surface,
+            "success_bg": c.success_bg,
+            "danger_bg": c.danger_bg,
+            "accent_bg": c.accent_bg,
+            "accent_title": c.accent_title,
+            "success_text": c.success_text,
+            "error_text": c.error_text,
+            "warning_text": c.warning_text,
         }
 
     @property
@@ -154,6 +174,16 @@ DARK_THEME = ThemeDefinition(
         tok_curly_braces="#9c27b0",
         tok_pipes="#00bcd4",
         tok_at_sign="#ff5722",
+        # Semantic GUI
+        muted_text="#888888",
+        surface="#2a2a2a",
+        success_bg="#2d5f2d",
+        danger_bg="#5f2d2d",
+        accent_bg="#4a2d5f",
+        accent_title="#9b59b6",
+        success_text="#44aa44",
+        error_text="#ff4444",
+        warning_text="#ffaa44",
         # TUI
         tui_primary="#6200ea",
         tui_secondary="#03dac6",
@@ -188,6 +218,16 @@ LIGHT_THEME = ThemeDefinition(
         tok_curly_braces="#6a1b9a",
         tok_pipes="#00838f",
         tok_at_sign="#d84315",
+        # Semantic GUI
+        muted_text="#757575",
+        surface="#f0f0f0",
+        success_bg="#2e7d32",
+        danger_bg="#c62828",
+        accent_bg="#1565c0",
+        accent_title="#7b1fa2",
+        success_text="#2e7d32",
+        error_text="#c62828",
+        warning_text="#ef6c00",
         # TUI
         tui_primary="#1565c0",
         tui_secondary="#00897b",
@@ -222,6 +262,16 @@ NYX_THEME = ThemeDefinition(
         tok_curly_braces="#ea80fc",
         tok_pipes="#18ffff",
         tok_at_sign="#ff6e40",
+        # Semantic GUI
+        muted_text="#9e8fb5",
+        surface="#150330",
+        success_bg="#1b5e20",
+        danger_bg="#5f2d3d",
+        accent_bg="#880e4f",
+        accent_title="#f48fb1",
+        success_text="#69f0ae",
+        error_text="#ff5252",
+        warning_text="#ffab40",
         # TUI
         tui_primary="#e91e63",
         tui_secondary="#7c4dff",
@@ -383,6 +433,15 @@ def _apply_custom_overrides(
         "border": "border",
         "highlight": "highlight",
         "window": "window",
+        "muted_text": "muted_text",
+        "surface": "surface",
+        "success_bg": "success_bg",
+        "danger_bg": "danger_bg",
+        "accent_bg": "accent_bg",
+        "accent_title": "accent_title",
+        "success_text": "success_text",
+        "error_text": "error_text",
+        "warning_text": "warning_text",
     }
 
     # Map legacy "tokenizer" keys to ThemeColors fields

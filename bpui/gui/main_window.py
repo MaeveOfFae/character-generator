@@ -9,6 +9,7 @@ from .home import HomeWidget
 from .compile import CompileWidget
 from .review import ReviewWidget
 from .batch import BatchScreen
+from .lineage import LineageWidget
 from .theme import ThemeManager
 from .agent_chatbox import AgentChatbox
 from .agent_context import (
@@ -68,7 +69,8 @@ class MainWindow(QMainWindow):
         self.template_manager = TemplateManagerScreen(self, self.config)
         self.offspring = OffspringWidget(self.config, self)
         self.similarity = SimilarityWidget(self)
-        
+        self.lineage = LineageWidget(self)
+
         # Add screens to stack
         self.stack.addWidget(self.home)
         self.stack.addWidget(self.compile)
@@ -78,6 +80,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.template_manager)
         self.stack.addWidget(self.offspring)
         self.stack.addWidget(self.similarity)
+        self.stack.addWidget(self.lineage)
         
         # Register context providers (after screens are created)
         self.context_manager.register_provider("home", HomeScreenContextProvider(self.home))
@@ -90,6 +93,7 @@ class MainWindow(QMainWindow):
         
         # Connect signals
         self.batch.back_requested.connect(self.show_home)
+        self.lineage.back_requested.connect(self.show_home)
         
         # Start on home screen
         self.show_home()
@@ -136,11 +140,21 @@ class MainWindow(QMainWindow):
         self.status_bar.showMessage("Offspring Generator")
         self.context_manager.update_context("offspring", "Offspring Generator")
     
-    def show_similarity(self):
+    def show_similarity(self, draft1=None, draft2=None):
         """Show similarity analyzer screen."""
         self.stack.setCurrentWidget(self.similarity)
         self.status_bar.showMessage("Similarity Analyzer")
         self.context_manager.update_context("similarity", "Similarity Analyzer")
+        # Load drafts if provided
+        if draft1 and draft2:
+            self.similarity.load_drafts(draft1, draft2)
+
+    def show_lineage(self):
+        """Show lineage tree screen."""
+        self.stack.setCurrentWidget(self.lineage)
+        self.lineage.refresh()
+        self.status_bar.showMessage("Character Lineage")
+        self.context_manager.update_context("lineage", "Character Lineage")
     
     def show_review(self, draft_dir, assets):
         """Show review screen."""
@@ -167,3 +181,29 @@ class MainWindow(QMainWindow):
             widget = self.stack.widget(i)
             if isinstance(widget, ReviewWidget):
                 widget.refresh_highlighters()
+
+    def refresh_theme(self):
+        """Refresh the entire application theme."""
+        from PySide6.QtWidgets import QApplication
+
+        # Reload theme from config
+        self.theme_manager.refresh_theme()
+
+        # Clear existing stylesheet first to force Qt to reprocess
+        self.setStyleSheet("")
+        QApplication.processEvents()
+
+        # Apply new stylesheet to main window (cascades to children automatically)
+        stylesheet = self.theme_manager.get_app_stylesheet()
+        self.setStyleSheet(stylesheet)
+
+        # Refresh syntax highlighters in review widgets
+        self.refresh_all_highlighters()
+
+        # Process pending events to ensure theme changes are applied
+        QApplication.processEvents()
+
+        # Force full refresh of all widgets
+        self.update()
+        for widget in self.findChildren(QWidget):
+            widget.update()

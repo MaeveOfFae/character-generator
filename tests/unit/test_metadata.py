@@ -5,7 +5,7 @@ import pytest
 from pathlib import Path
 from datetime import datetime
 
-from bpui.utils.metadata.metadata import DraftMetadata
+from bpui.utils.metadata.metadata import DraftMetadata, lineage_summary
 
 
 def test_metadata_creation():
@@ -246,3 +246,34 @@ def test_metadata_json_format(tmp_path):
     assert data["seed"] == "Test"
     assert data["mode"] == "SFW"
     assert data["tags"] == ["tag1", "tag2"]
+
+
+def test_lineage_summary_with_parent_metadata(tmp_path):
+    """Lineage summary should use parent character names when available."""
+    parent_a = tmp_path / "20260205_100000_parent_a"
+    parent_b = tmp_path / "20260205_100001_parent_b"
+    child = tmp_path / "20260205_100002_child"
+    parent_a.mkdir()
+    parent_b.mkdir()
+    child.mkdir()
+
+    DraftMetadata(seed="a", character_name="Aria").save(parent_a)
+    DraftMetadata(seed="b", character_name="Bram").save(parent_b)
+
+    child_meta = DraftMetadata(
+        seed="child",
+        character_name="Cora",
+        parent_drafts=["../20260205_100000_parent_a", "../20260205_100001_parent_b"],
+    )
+
+    summary = lineage_summary(child_meta, child)
+    assert summary == "👪 child of Aria + Bram"
+
+
+def test_lineage_summary_without_parents(tmp_path):
+    """Lineage summary should be empty for non-offspring drafts."""
+    draft = tmp_path / "20260205_100003_solo"
+    draft.mkdir()
+    meta = DraftMetadata(seed="solo", character_name="Solo")
+
+    assert lineage_summary(meta, draft) == ""

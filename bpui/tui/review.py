@@ -460,21 +460,8 @@ class ReviewScreen(Screen):
             validation_log.write("[dim]Creating LLM engine...[/dim]")
             
             # Create LLM engine
-            from ..llm.litellm_engine import LiteLLMEngine
-            from ..llm.openai_compat_engine import OpenAICompatEngine
-            
-            engine_config = {
-                "model": self.model or self.config.model,
-                "api_key": self.config.api_key,
-                "temperature": self.config.temperature,
-                "max_tokens": self.config.max_tokens,
-            }
-            
-            if self.config.engine == "litellm":
-                engine = LiteLLMEngine(**engine_config)
-            else:
-                engine_config["base_url"] = self.config.base_url
-                engine = OpenAICompatEngine(**engine_config)
+            from ..llm.factory import create_engine
+            engine = create_engine(self.config, model_override=self.model or self.config.model)
             
             validation_log.write("[dim]Streaming generation...[/dim]\n")
             
@@ -624,24 +611,8 @@ class ReviewScreen(Screen):
             messages = [{"role": "system", "content": system_prompt}] + self.chat_messages
             
             # Get LLM engine
-            from ..llm.litellm_engine import LiteLLMEngine
-            from ..llm.openai_compat_engine import OpenAICompatEngine
-            
-            if self.config.engine == "litellm":
-                engine = LiteLLMEngine(
-                    model=self.config.model,
-                    api_key=self.config.api_key,
-                    temperature=self.config.temperature,
-                    max_tokens=self.config.max_tokens,
-                )
-            else:
-                engine = OpenAICompatEngine(
-                    model=self.config.model,
-                    api_key=self.config.api_key,
-                    base_url=self.config.base_url,
-                    temperature=self.config.temperature,
-                    max_tokens=self.config.max_tokens,
-                )
+            from ..llm.factory import create_engine
+            engine = create_engine(self.config)
             
             # Stream response
             assistant_response = ""

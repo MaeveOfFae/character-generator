@@ -8,26 +8,39 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from pathlib import Path
 import subprocess
+import sys
 from typing import Optional, Dict, Any
 
 
+def _resolve_validator(repo_root: Path) -> Optional[Path]:
+    """Resolve validator path, supporting legacy and new tool layouts."""
+    candidates = [
+        repo_root / "tools" / "validate_pack.py",
+        repo_root / "tools" / "validation" / "validate_pack.py",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None
+
+
 def validate_pack(pack_dir: Path, repo_root: Optional[Path] = None) -> Dict[str, Any]:
-    """Validate a character pack directory using tools/validate_pack.py."""
+    """Validate a character pack directory using tools validator script."""
     if repo_root is None:
         repo_root = Path.cwd()
 
-    validator = repo_root / "tools" / "validate_pack.py"
-    if not validator.exists():
+    validator = _resolve_validator(repo_root)
+    if not validator:
         return {
             "output": "",
-            "errors": f"Validator not found: {validator}",
+            "errors": "Validator not found. Expected tools/validate_pack.py or tools/validation/validate_pack.py",
             "exit_code": 1,
             "success": False,
         }
 
     try:
         result = subprocess.run(
-            ["python3", str(validator), str(pack_dir)],
+            [sys.executable, str(validator), str(pack_dir)],
             capture_output=True,
             text=True,
             timeout=30,

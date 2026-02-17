@@ -12,11 +12,11 @@ class TestConfigDefaults:
         """Test that defaults are loaded when no config file exists."""
         config = Config(tmp_path / ".bpui.toml")
         
-        assert config.engine == "litellm"
-        assert config.model == "openai/gpt-4"
+        assert config.engine == "openai_compatible"
+        assert config.model == "openrouter/openai/gpt-4o-mini"
         assert config.temperature == 0.7
         assert config.max_tokens == 4096
-        assert config.base_url == ""
+        assert config.base_url == "https://openrouter.ai/api/v1"
     
     def test_config_file_not_exists(self, tmp_path):
         """Test behavior when config file doesn't exist."""

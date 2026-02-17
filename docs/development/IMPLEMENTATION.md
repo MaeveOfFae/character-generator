@@ -8,9 +8,9 @@ A complete terminal TUI application (`bpui`) that provides a portable, repo-loca
 
 ### 1. Dual LLM Support ("Any LLM")
 
-- **LiteLLM adapter**: Supports 100+ providers (OpenAI, Anthropic, Cohere, etc.) via unified API
-- **OpenAI-compatible adapter**: Direct REST API calls for local models (Ollama, LM Studio, etc.)
-- Both adapters support streaming for real-time output feedback
+- **OpenRouter/OpenAI-compatible adapter**: Unified REST API for OpenRouter and local endpoints (Ollama, LM Studio, etc.)
+- **Native adapters**: Optional direct SDK engines for OpenAI and Google
+- Streaming support for real-time output feedback
 
 ### 2. Terminal UI (Textual-based)
 
@@ -76,7 +76,6 @@ bpui/
   llm/
     __init__.py
     base.py              # Abstract LLM interface
-    litellm_engine.py    # LiteLLM adapter
     openai_compat_engine.py  # OpenAI-compatible adapter
   prompting.py           # Blueprint loading & prompt construction
   parse_blocks.py        # Strict 7-codeblock parser
@@ -144,12 +143,13 @@ INSTALL.md               # Installation & quick start guide
 
 ### Optional
 
-- `litellm>=1.0.0` - Multi-provider LLM support (install with `pip install -e ".[litellm]"`)
+- `openai>=1.0.0` - Native OpenAI SDK support
+- `google-generativeai>=0.3.0` - Native Google SDK support
 
 ## Installation Flow
 
 1. User clones/downloads repo
-2. Run `pip install -e .` (basic) or `pip install -e ".[litellm]"` (recommended)
+2. Run `pip install -e .`
 3. Run `python test_bpui.py` to verify
 4. Launch with `bpui` or `./run_bpui.sh`
 5. Configure via Settings screen or edit `.bpui.toml`
@@ -247,7 +247,7 @@ INSTALL.md               # Installation & quick start guide
 ## Success Criteria Met
 
 ✅ Portable, repo-local terminal application
-✅ "Any LLM" support (LiteLLM + OpenAI-compatible)
+✅ "Any LLM" support (OpenRouter + OpenAI-compatible)
 ✅ Streaming output during generation
 ✅ Strict 7-codeblock parser with Adjustment Note support
 ✅ Draft management (save, browse, load)

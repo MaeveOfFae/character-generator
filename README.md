@@ -27,7 +27,6 @@ Launch the interactive TUI with full keyboard navigation:
 # Or install manually
 source .venv/bin/activate
 pip install textual rich tomli-w httpx
-pip install litellm  # optional, for 100+ providers
 bpui
 
 # Explicit terminal UI mode
@@ -69,7 +68,6 @@ bpui similarity "character1" "character2" --use-llm
 
 ### 🤖 LLM Integration
 
-- **Multi-Provider Support**: LiteLLM for 100+ providers (OpenAI, Anthropic, DeepSeek, Google, Cohere, Mistral, etc.)
 - **OpenRouter Integration**: Unified access to multiple AI models through OpenRouter API
 - **OpenAI-Compatible**: Support for local models (Ollama, LM Studio, vLLM, etc.)
 - **Provider-Specific API Keys**: Auto-selected based on model
@@ -210,10 +208,7 @@ cd character-generator
 python -m venv .venv
 source .venv/bin/activate
 
-# Install with LiteLLM support (recommended)
-pip install -e ".[litellm]"
-
-# Or basic install (OpenAI-compatible only)
+# Install package
 pip install -e .
 ```
 
@@ -226,9 +221,6 @@ pip install -e .
 - tomli-w (TOML parsing)
 - httpx (HTTP client)
 
-**Optional (for LiteLLM):**
-- litellm (100+ LLM providers)
-
 **Optional (for GUI):**
 - PySide6 (Qt6 bindings)
 
@@ -238,8 +230,8 @@ Configuration is handled via `.bpui.toml` file:
 
 ```toml
 # LLM Provider
-engine = "litellm"  # or "openai_compatible"
-model = "openai/gpt-4"  # or "openrouter/anthropic/claude-3-opus"
+engine = "openai_compatible"
+model = "openrouter/openai/gpt-4o-mini"
 
 # API Keys
 [api_keys]
@@ -248,7 +240,7 @@ openrouter = "sk-or-v1-..."  # For OpenRouter models
 anthropic = "sk-ant-..."     # For Anthropic direct access
 
 # OpenAI-compatible settings
-base_url = ""  # e.g., "http://localhost:11434/v1" for Ollama
+base_url = "https://openrouter.ai/api/v1"  # or e.g., "http://localhost:11434/v1" for Ollama
 
 # Generation settings
 temperature = 0.7

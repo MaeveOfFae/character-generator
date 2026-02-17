@@ -114,6 +114,24 @@ class TestParseRBlueprintOutput:
         for name in ASSET_ORDER:
             assert assets[name] == f"{name}_content"
 
+    def test_parse_fails_on_placeholder_content(self):
+        """Parse should reject unresolved placeholder output."""
+        blocks = [f"```\n{name}_content\n```" for name in ASSET_ORDER]
+        blocks[4] = "```\nWelcome to {PLACEHOLDER}\n```"
+        output = "\n".join(blocks)
+
+        with pytest.raises(ParseError, match="failed validation checks"):
+            parse_blueprint_output(output)
+
+    def test_parse_fails_on_user_authorship_violation(self):
+        """Parse should reject narration of {{user}} actions/thoughts."""
+        blocks = [f"```\n{name}_content\n```" for name in ASSET_ORDER]
+        blocks[3] = "```\n{{user}} nods and agrees immediately.\n```"
+        output = "\n".join(blocks)
+
+        with pytest.raises(ParseError, match="failed validation checks"):
+            parse_blueprint_output(output)
+
 
 class TestExtractSingleAsset:
     """Tests for extract_single_asset function."""

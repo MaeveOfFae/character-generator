@@ -16,9 +16,6 @@ dependencies = [
     "httpx>=0.26.0",
 ]
 
-[project.optional-dependencies]
-litellm = ["litellm>=1.0.0"]
-
 [project.scripts]
 bpui = "bpui.cli:main"
 

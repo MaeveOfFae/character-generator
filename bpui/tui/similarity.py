@@ -140,21 +140,10 @@ class SimilarityScreen(Screen):
         llm_engine = None
         
         if use_llm:
-            from ..llm.litellm_engine import LiteLLMEngine
-            from ..llm.openai_compat_engine import OpenAICompatEngine
+            from ..llm.factory import create_engine
             
             try:
-                engine_config = {
-                    'model': self.config.model,
-                    'temperature': self.config.temperature,
-                    'max_tokens': self.config.max_tokens,
-                }
-                
-                if self.config.engine == "litellm":
-                    import litellm
-                    llm_engine = LiteLLMEngine(**engine_config)
-                else:
-                    llm_engine = OpenAICompatEngine(**engine_config)
+                llm_engine = create_engine(self.config)
                 
                 self._show_status("Comparing with LLM analysis...")
             except Exception as e:

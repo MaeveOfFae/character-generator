@@ -99,20 +99,32 @@ class AgentWorker(QThread):
                 # Generate with optional tools
                 if self.use_tools and self.action_handler:
                     # Use non-streaming for tool calls
-                    import litellm
+                    try:
+                        from openai import AsyncOpenAI  # type: ignore
+                    except ImportError as import_error:
+                        raise Exception(
+                            "OpenAI SDK is required for tool-calling chat. Install with: pip install openai"
+                        ) from import_error
                     
                     try:
-                        response = await litellm.acompletion(
-                            model=self.config.model,
+                        client_kwargs: Dict[str, Any] = {
+                            "api_key": self.config.get_api_key_for_model(self.config.model),
+                        }
+                        if hasattr(engine, "base_url") and getattr(engine, "base_url", ""):
+                            client_kwargs["base_url"] = getattr(engine, "base_url")
+
+                        client = AsyncOpenAI(**client_kwargs)
+
+                        response = await client.chat.completions.create(
+                            model=engine.model,
                             messages=full_messages,
                             temperature=self.personality.temperature,
                             max_tokens=self.personality.max_tokens,
-                            api_key=self.config.get_api_key_for_model(self.config.model),
                             tools=AGENT_TOOLS,
                             tool_choice="auto",
                             stream=False,
                             timeout=60.0,  # 60 second timeout for LLM calls
-                            **engine.extra_params
+                            **getattr(engine, "extra_params", {})
                         )
                     except Exception as llm_error:
                         # LLM API error - report to user and try to recover

@@ -6,9 +6,6 @@
 # Basic (OpenAI-compatible only)
 pip install -e .
 
-# Recommended (with LiteLLM)
-pip install -e ".[litellm]"
-
 # Verify
 python test_bpui.py
 ```
@@ -92,17 +89,19 @@ bpui similarity drafts --cluster --threshold 0.75
 ### OpenAI
 
 ```toml
-engine = "litellm"
-model = "openai/gpt-4"
-api_key_env = "OPENAI_API_KEY"
+engine = "openai_compatible"
+model = "openrouter/openai/gpt-4o-mini"
+api_key_env = "OPENROUTER_API_KEY"
+base_url = "https://openrouter.ai/api/v1"
 ```
 
 ### Claude
 
 ```toml
-engine = "litellm"
-model = "anthropic/claude-3-opus-20240229"
-api_key_env = "ANTHROPIC_API_KEY"
+engine = "openai_compatible"
+model = "openrouter/anthropic/claude-3-opus"
+api_key_env = "OPENROUTER_API_KEY"
+base_url = "https://openrouter.ai/api/v1"
 ```
 
 ### Ollama (Local)
@@ -141,8 +140,8 @@ base_url = "http://localhost:11434/v1"
 
 ```bash
 pip install textual rich tomli-w httpx
-# For LiteLLM:
-pip install litellm
+# Optional provider SDKs:
+pip install openai google-generativeai
 ```
 
 ## File Locations

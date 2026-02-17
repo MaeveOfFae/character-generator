@@ -62,7 +62,7 @@ class TestValidatePack:
         pack_dir = tmp_path / "test_pack"
         pack_dir.mkdir()
         
-        with patch("bpui.validate.subprocess.run") as mock_run:
+        with patch("bpui.utils.file_io.validate.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(
                 returncode=0,
                 stdout="Valid",
@@ -83,7 +83,7 @@ class TestValidatePack:
         pack_dir = tmp_path / "test_pack"
         pack_dir.mkdir()
         
-        with patch("bpui.validate.subprocess.run") as mock_run:
+        with patch("bpui.utils.file_io.validate.subprocess.run") as mock_run:
             mock_run.side_effect = subprocess.TimeoutExpired("python3", 30)
             
             result = validate_pack(pack_dir, repo_root=tmp_path)
@@ -102,7 +102,7 @@ class TestValidatePack:
         pack_dir = tmp_path / "test_pack"
         pack_dir.mkdir()
         
-        with patch("bpui.validate.subprocess.run") as mock_run:
+        with patch("bpui.utils.file_io.validate.subprocess.run") as mock_run:
             mock_run.side_effect = OSError("Permission denied")
             
             result = validate_pack(pack_dir, repo_root=tmp_path)
@@ -110,6 +110,24 @@ class TestValidatePack:
             assert result["success"] is False
             assert "Permission denied" in result["errors"]
             assert result["exit_code"] == 1
+
+    def test_validate_with_new_validator_path(self, tmp_path):
+        """Test validation finds validator in tools/validation/validate_pack.py."""
+        tools_validation_dir = tmp_path / "tools" / "validation"
+        tools_validation_dir.mkdir(parents=True)
+        validator = tools_validation_dir / "validate_pack.py"
+        validator.write_text("#!/usr/bin/env python3\nimport sys\nsys.exit(0)")
+
+        pack_dir = tmp_path / "test_pack"
+        pack_dir.mkdir()
+
+        with patch("bpui.utils.file_io.validate.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="OK", stderr="")
+
+            result = validate_pack(pack_dir, repo_root=tmp_path)
+
+            assert result["success"] is True
+            mock_run.assert_called_once()
 
 
 class TestCreateDraftDir:

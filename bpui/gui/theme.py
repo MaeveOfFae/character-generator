@@ -1,7 +1,8 @@
 """Theme management for Qt6 GUI."""
 
-from PySide6.QtGui import QTextCharFormat, QColor, QFont
-from PySide6.QtCore import QRegularExpression
+from PySide6.QtGui import QTextCharFormat, QColor, QFont, QPalette
+from PySide6.QtWidgets import QWidget, QApplication
+from PySide6.QtCore import QRegularExpression, Qt
 from typing import Dict, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
