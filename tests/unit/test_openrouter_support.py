@@ -146,6 +146,26 @@ class TestOpenRouterEngineCreation:
         
         assert engine.max_tokens == 8192
 
+    def test_explicit_openai_compat_strips_openrouter_prefix(self):
+        """Explicit OpenAI-compatible mode should normalize legacy OpenRouter model IDs."""
+        config = Mock()
+        config.model = "openrouter/deepseek/deepseek-v3.2"
+        config.temperature = 0.7
+        config.max_tokens = 4096
+        config.engine = "openai_compatible"
+        config.base_url = "https://openrouter.ai/api/v1"
+        config.api_key = "test-api-key"
+        config.get = Mock(side_effect=lambda key, default=None: {
+            "engine_mode": "explicit",
+            "temperature": 0.7,
+            "max_tokens": 4096,
+        }.get(key, default))
+
+        engine = create_engine(config)
+        assert isinstance(engine, OpenAICompatEngine)
+        assert engine.model == "deepseek/deepseek-v3.2"
+        assert engine.base_url == "https://openrouter.ai/api/v1"
+
 
 class TestOpenRouterApiKeys:
     """Test OpenRouter API key handling."""
