@@ -31,127 +31,6 @@ class ReviewScreen(Screen):
         ("n", "edit_notes", "Edit Notes"),
     ]
 
-    CSS = """
-    ReviewScreen {
-        layout: vertical;
-    }
-
-    #review-container {
-        height: 100%;
-        width: 100%;
-        padding: 1;
-    }
-
-    .title {
-        content-align: center middle;
-        text-style: bold;
-        color: $primary;
-        margin-bottom: 1;
-    }
-
-    #metadata-section {
-        layout: horizontal;
-        height: auto;
-        padding: 1;
-        border: solid $accent;
-        margin-bottom: 1;
-    }
-
-    #metadata-info {
-        width: 2fr;
-    }
-
-    #metadata-buttons {
-        width: 1fr;
-        layout: horizontal;
-    }
-
-    #metadata-buttons Button {
-        margin-left: 1;
-    }
-
-    .favorite-star {
-        color: $warning;
-    }
-
-    #main-split {
-        width: 100%;
-        height: 1fr;
-        layout: horizontal;
-    }
-
-    #left-panel {
-        width: 100%;
-        layout: vertical;
-    }
-
-    #tabs {
-        height: 1fr;
-        margin-bottom: 1;
-    }
-
-    TextArea {
-        height: 1fr;
-        width: 100%;
-    }
-
-    .button-row {
-        layout: horizontal;
-        width: 100%;
-        height: auto;
-        margin-bottom: 1;
-    }
-
-    .button-row Button {
-        width: 1fr;
-        margin-right: 1;
-    }
-
-    #validation-log {
-        height: 10;
-        border: solid $primary;
-        margin-bottom: 1;
-    }
-
-    .status {
-        text-align: center;
-        color: $text-muted;
-    }
-
-    .error {
-        color: $error;
-    }
-
-    .success {
-        color: $success;
-    }
-
-    .dirty {
-        color: $warning;
-    }
-
-    #chat-panel {
-        width: 30%;
-        border-left: solid $primary;
-        padding: 1;
-    }
-
-    #chat-panel.hidden {
-        display: none;
-    }
-
-    #chat-log {
-        height: 1fr;
-        border: solid $accent;
-        margin-bottom: 1;
-    }
-
-    #chat-input {
-        width: 100%;
-        margin-bottom: 1;
-    }
-    """
-
     def __init__(self, config, draft_dir: Path, assets: dict, seed: str = None, mode: str = None, model: str = None, template=None):
         """Initialize review screen."""
         super().__init__()
@@ -1029,46 +908,6 @@ class TagsEditorDialog(Screen):
         ("ctrl+s", "save", "Save"),
     ]
     
-    CSS = """
-    TagsEditorDialog {
-        layout: horizontal;
-        align: center middle;
-    }
-    
-    #dialog {
-        width: 70;
-        height: 20;
-        border: solid $primary;
-        background: $panel;
-        padding: 1;
-    }
-    
-    #title {
-        text-align: center;
-        margin-bottom: 1;
-    }
-    
-    #input {
-        width: 100%;
-        margin-bottom: 1;
-    }
-    
-    #help {
-        text-align: center;
-        color: $text-muted;
-        margin-bottom: 1;
-    }
-    
-    #buttons {
-        layout: horizontal;
-        height: 3;
-    }
-    
-    #buttons Button {
-        width: 1fr;
-    }
-    """
-    
     def __init__(self, draft_dir: Path, tags: list[str], callback):
         super().__init__()
         self.draft_dir = draft_dir
@@ -1122,40 +961,6 @@ class GenreEditorDialog(Screen):
         ("ctrl+s", "save", "Save"),
     ]
     
-    CSS = """
-    GenreEditorDialog {
-        layout: horizontal;
-        align: center middle;
-    }
-    
-    #dialog {
-        width: 60;
-        height: 15;
-        border: solid $primary;
-        background: $panel;
-        padding: 1;
-    }
-    
-    #title {
-        text-align: center;
-        margin-bottom: 1;
-    }
-    
-    #input {
-        width: 100%;
-        margin-bottom: 1;
-    }
-    
-    #buttons {
-        layout: horizontal;
-        height: 3;
-    }
-    
-    #buttons Button {
-        width: 1fr;
-    }
-    """
-    
     def __init__(self, draft_dir: Path, genre: str, callback):
         super().__init__()
         self.draft_dir = draft_dir
@@ -1205,41 +1010,6 @@ class NotesEditorDialog(Screen):
         ("ctrl+s", "save", "Save"),
     ]
     
-    CSS = """
-    NotesEditorDialog {
-        layout: horizontal;
-        align: center middle;
-    }
-    
-    #dialog {
-        width: 80;
-        height: 25;
-        border: solid $primary;
-        background: $panel;
-        padding: 1;
-    }
-    
-    #title {
-        text-align: center;
-        margin-bottom: 1;
-    }
-    
-    #textarea {
-        width: 100%;
-        height: 1fr;
-        margin-bottom: 1;
-    }
-    
-    #buttons {
-        layout: horizontal;
-        height: 3;
-    }
-    
-    #buttons Button {
-        width: 1fr;
-    }
-    """
-    
     def __init__(self, draft_dir: Path, notes: str, callback):
         super().__init__()
         self.draft_dir = draft_dir
@@ -1288,63 +1058,6 @@ class SaveFileDialog(Screen):
         ("escape,q", "cancel", "Cancel"),
         ("enter", "confirm", "Save"),
     ]
-    
-    CSS = """
-    SaveFileDialog {
-        layout: horizontal;
-        align: center middle;
-    }
-    
-    #dialog {
-        width: 80;
-        height: 25;
-        border: solid $primary;
-        background: $panel;
-        padding: 1;
-    }
-    
-    #title {
-        content-align: center middle;
-        text-style: bold;
-        color: $primary;
-        margin-bottom: 1;
-    }
-    
-    #options {
-        height: 12;
-        border: solid $accent;
-        padding: 1;
-        margin-bottom: 1;
-    }
-    
-    #path-row {
-        layout: horizontal;
-        height: 3;
-        margin-bottom: 1;
-    }
-    
-    #path-label {
-        width: 15;
-        content-align: left middle;
-    }
-    
-    #path-input {
-        width: 1fr;
-    }
-    
-    #buttons {
-        layout: horizontal;
-        height: 3;
-    }
-    
-    #buttons Button {
-        width: 1fr;
-    }
-    
-    .radio-option {
-        height: 2;
-    }
-    """
     
     def __init__(self, parent_screen: ReviewScreen):
         """Initialize save dialog."""
@@ -1525,47 +1238,6 @@ class ExportPresetDialog(Screen):
         ("escape,q", "cancel", "Cancel"),
         ("enter", "confirm", "Export"),
     ]
-    
-    CSS = """
-    ExportPresetDialog {
-        layout: horizontal;
-        align: center middle;
-    }
-    
-    #dialog {
-        width: 70;
-        height: 30;
-        border: solid $primary;
-        background: $panel;
-        padding: 1;
-    }
-    
-    #title {
-        text-align: center;
-        margin-bottom: 1;
-    }
-    
-    #help {
-        text-align: center;
-        color: $text-muted;
-        margin-bottom: 1;
-    }
-    
-    #preset-list {
-        height: 1fr;
-        border: solid $accent;
-        margin-bottom: 1;
-    }
-    
-    #buttons {
-        layout: horizontal;
-        height: 3;
-    }
-    
-    #buttons Button {
-        width: 1fr;
-    }
-    """
     
     def __init__(self, parent_screen, draft_dir: Path, assets: dict, config):
         super().__init__()

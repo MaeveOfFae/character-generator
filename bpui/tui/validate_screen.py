@@ -15,62 +15,6 @@ class ValidateScreen(Screen):
         ("enter", "run_validation", "Validate"),
     ]
 
-    CSS = """
-    ValidateScreen {
-        layout: vertical;
-    }
-
-    #validate-container {
-        height: 100%;
-        width: 100%;
-        padding: 1;
-    }
-
-    .title {
-        content-align: center middle;
-        text-style: bold;
-        color: $primary;
-        margin-bottom: 1;
-    }
-
-    .field-label {
-        margin-top: 1;
-        margin-bottom: 0;
-    }
-
-    Input {
-        width: 100%;
-        margin-bottom: 1;
-    }
-
-    .button-row {
-        layout: horizontal;
-        width: 100%;
-        height: auto;
-        margin-bottom: 1;
-    }
-
-    .button-row Button {
-        width: 1fr;
-        margin-right: 1;
-    }
-
-    #validation-log {
-        height: 1fr;
-        border: solid $primary;
-        margin-bottom: 1;
-    }
-
-    .status {
-        text-align: center;
-        color: $text-muted;
-    }
-
-    .error {
-        color: $error;
-    }
-    """
-
     def __init__(self, config):
         """Initialize validate screen."""
         super().__init__()

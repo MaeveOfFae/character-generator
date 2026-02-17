@@ -20,37 +20,6 @@ class HomeScreen(Screen):
         ("7", "action_settings", "Settings"),
     ]
 
-    CSS = """
-    HomeScreen {
-        align: center middle;
-    }
-
-    #home-container {
-        width: 60;
-        height: auto;
-        border: solid $primary;
-        padding: 2;
-    }
-
-    .title {
-        content-align: center middle;
-        text-style: bold;
-        color: $primary;
-        margin-bottom: 1;
-    }
-
-    .subtitle {
-        content-align: center middle;
-        color: $text-muted;
-        margin-bottom: 2;
-    }
-
-    Button {
-        width: 100%;
-        margin-bottom: 1;
-    }
-    """
-
     def __init__(self, config):
         """Initialize home screen."""
         super().__init__()

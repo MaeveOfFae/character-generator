@@ -2,29 +2,19 @@
 
 from PySide6.QtGui import QTextCharFormat, QColor, QFont
 from PySide6.QtCore import QRegularExpression
-from typing import Dict, Any
+from typing import Dict, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from bpui.core.config import Config
+
+# Import unified theme definitions
+from bpui.core.theme import BUILTIN_THEMES, load_theme
 
 
+# Legacy DEFAULT_THEME for backward compatibility
 DEFAULT_THEME = {
-    "tokenizer": {
-        "brackets": "#e91e63",  # []
-        "asterisk": "#2196f3",  # **
-        "parentheses": "#ff9800",  # ()
-        "double_brackets": "#4caf50",  # {{}}
-        "curly_braces": "#9c27b0",  # {}
-        "pipes": "#00bcd4",  # ||
-        "at_sign": "#ff5722",  # @
-    },
-    "app": {
-        "background": "#1e1e1e",
-        "text": "#e0e0e0",
-        "accent": "#6200ea",
-        "button": "#3700b3",
-        "button_text": "#ffffff",
-        "border": "#424242",
-        "highlight": "#bb86fc",
-        "window": "#121212",
-    }
+    "tokenizer": BUILTIN_THEMES["dark"].tokenizer_colors,
+    "app": BUILTIN_THEMES["dark"].app_colors,
 }
 
 
@@ -92,11 +82,14 @@ class ThemeManager:
         self.theme_colors = self.load_theme_colors()
     
     def load_theme_colors(self) -> Dict[str, Any]:
-        """Load theme colors from config."""
-        theme_config = self.config.get("theme", {})
+        """Load theme colors from config using unified theme system."""
+        # Load theme using unified system
+        theme_def = load_theme(self.config)
+        
+        # Return in legacy format for compatibility
         return {
-            "tokenizer": theme_config.get("tokenizer", DEFAULT_THEME["tokenizer"]),
-            "app": theme_config.get("app", DEFAULT_THEME["app"])
+            "tokenizer": theme_def.tokenizer_colors,
+            "app": theme_def.app_colors
         }
     
     def get_app_stylesheet(self) -> str:
