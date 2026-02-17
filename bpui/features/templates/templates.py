@@ -349,45 +349,64 @@ class TemplateManager:
     
     def validate_template(self, template: Template) -> Dict[str, List[str]]:
         """Validate a template for correctness.
-        
+
         Args:
             template: Template to validate
-            
+
         Returns:
             Dict with 'errors' and 'warnings' lists
         """
         errors = []
         warnings = []
-        
+
         # Check for empty assets
         if not template.assets:
             errors.append("Template has no assets defined")
-        
+
         # Check for duplicate asset names
         asset_names = [asset.name for asset in template.assets]
         if len(asset_names) != len(set(asset_names)):
             errors.append("Template has duplicate asset names")
-        
+
         # Check dependencies
         for asset in template.assets:
             for dep in asset.depends_on:
                 if dep not in asset_names:
                     errors.append(f"Asset '{asset.name}' depends on unknown asset '{dep}'")
-        
-        # Check for circular dependencies
-        if self._has_circular_dependencies(template.assets):
-            errors.append("Template has circular dependencies")
-        
-        # Check blueprint files exist
+
+        # Check for circular dependencies using topological sort
+        try:
+            from bpui.utils.topological_sort import topological_sort
+            topological_sort(template.assets)
+        except ValueError as e:
+            errors.append(f"Circular dependency detected: {e}")
+
+        # Check blueprint files exist and validate syntax
         for asset in template.assets:
-            if asset.blueprint_file:
-                blueprint_path = template.path / "assets" / asset.blueprint_file
-                if not blueprint_path.exists():
-                    # Check official blueprints directory as fallback
-                    official_path = self.official_dir / asset.blueprint_file
-                    if not official_path.exists():
-                        warnings.append(f"Blueprint file not found: {asset.blueprint_file}")
-        
+            # Check if blueprint file is specified
+            if not asset.blueprint_file:
+                warnings.append(f"Asset '{asset.name}' has no blueprint file specified")
+                continue
+
+            # Try to find blueprint file
+            blueprint_content = self.get_blueprint_content(template, asset.name)
+
+            if not blueprint_content:
+                errors.append(
+                    f"Blueprint file for '{asset.name}' not found: {asset.blueprint_file}. "
+                    f"Expected at: {template.path / 'assets' / asset.blueprint_file}"
+                )
+            else:
+                # Validate blueprint syntax (check for frontmatter)
+                if not blueprint_content.strip().startswith('---'):
+                    warnings.append(
+                        f"Blueprint '{asset.name}' missing frontmatter (should start with '---')"
+                    )
+
+            # Check for missing asset description
+            if not asset.description:
+                warnings.append(f"Asset '{asset.name}' has no description")
+
         return {"errors": errors, "warnings": warnings}
     
     def _has_circular_dependencies(self, assets: List[AssetDefinition]) -> bool:

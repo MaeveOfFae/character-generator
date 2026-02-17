@@ -35,26 +35,15 @@ class TemplateManagerScreen(QWidget):
         
         # Back button
         self.back_btn = QPushButton("← Back")
-        self.back_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #4a2d5f;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #5a3d6f;
-            }
-        """)
         self.back_btn.clicked.connect(self.go_back)
         header_layout.addWidget(self.back_btn)
         
         header_layout.addStretch()
         
         # Title
-        title = QLabel("🎨 Template Manager")
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #9b59b6;")
+        title = QLabel("Template Manager")
+        title_font = QFont("Arial", 20, QFont.Weight.Bold)
+        title.setFont(title_font)
         header_layout.addWidget(title)
         
         header_layout.addStretch()
@@ -67,7 +56,6 @@ class TemplateManagerScreen(QWidget):
             "and their dependencies."
         )
         instructions.setWordWrap(True)
-        instructions.setStyleSheet("color: #888; margin: 10px;")
         layout.addWidget(instructions)
         
         # Main content area
@@ -83,34 +71,21 @@ class TemplateManagerScreen(QWidget):
         left_layout.addWidget(list_label)
         
         self.templates_list = QListWidget()
-        self.templates_list.setStyleSheet("""
-            QListWidget {
-                background-color: #1a1a1a;
-                border: 2px solid #444;
-            }
-            QListWidget::item {
-                padding: 8px;
-            }
-            QListWidget::item:selected {
-                background-color: #4a2d5f;
-            }
-        """)
         self.templates_list.currentItemChanged.connect(self.on_template_selected)
         left_layout.addWidget(self.templates_list)
         
         # Template actions
         action_layout = QHBoxLayout()
         
-        new_btn = QPushButton("➕ New Template")
-        new_btn.setStyleSheet("background-color: #2d4a2d; font-weight: bold;")
+        new_btn = QPushButton("New Template")
         new_btn.clicked.connect(self.new_template)
         action_layout.addWidget(new_btn)
-        
-        refresh_btn = QPushButton("🔄 Refresh")
+
+        refresh_btn = QPushButton("Refresh")
         refresh_btn.clicked.connect(self.load_templates)
         action_layout.addWidget(refresh_btn)
-        
-        import_btn = QPushButton("📥 Import")
+
+        import_btn = QPushButton("Import")
         import_btn.clicked.connect(self.import_template)
         action_layout.addWidget(import_btn)
         
@@ -130,40 +105,33 @@ class TemplateManagerScreen(QWidget):
         self.details_text = QTextEdit()
         self.details_text.setReadOnly(True)
         self.details_text.setFont(QFont("Courier New", 10))
-        self.details_text.setStyleSheet("""
-            QTextEdit {
-                background-color: #1a1a1a;
-                border: 2px solid #444;
-            }
-        """)
         right_layout.addWidget(self.details_text)
         
         # Detail actions
         detail_action_layout = QHBoxLayout()
         
-        self.validate_btn = QPushButton("✓ Validate")
+        self.validate_btn = QPushButton("Validate")
         self.validate_btn.setEnabled(False)
         self.validate_btn.clicked.connect(self.validate_template)
         detail_action_layout.addWidget(self.validate_btn)
-        
-        self.edit_btn = QPushButton("✏️ Edit")
+
+        self.edit_btn = QPushButton("Edit")
         self.edit_btn.setEnabled(False)
         self.edit_btn.clicked.connect(self.edit_template)
         detail_action_layout.addWidget(self.edit_btn)
-        
-        self.duplicate_btn = QPushButton("📑 Duplicate")
+
+        self.duplicate_btn = QPushButton("Duplicate")
         self.duplicate_btn.setEnabled(False)
         self.duplicate_btn.clicked.connect(self.duplicate_template)
         detail_action_layout.addWidget(self.duplicate_btn)
-        
-        self.export_btn = QPushButton("📤 Export")
+
+        self.export_btn = QPushButton("Export")
         self.export_btn.setEnabled(False)
         self.export_btn.clicked.connect(self.export_template)
         detail_action_layout.addWidget(self.export_btn)
-        
-        self.delete_btn = QPushButton("🗑️ Delete")
+
+        self.delete_btn = QPushButton("Delete")
         self.delete_btn.setEnabled(False)
-        self.delete_btn.setStyleSheet("background-color: #5f2d2d;")
         self.delete_btn.clicked.connect(self.delete_template)
         detail_action_layout.addWidget(self.delete_btn)
         
@@ -175,7 +143,6 @@ class TemplateManagerScreen(QWidget):
         
         # Status label
         self.status_label = QLabel("")
-        self.status_label.setStyleSheet("color: #888; margin: 5px;")
         layout.addWidget(self.status_label)
     
     def go_back(self):
@@ -203,12 +170,10 @@ class TemplateManagerScreen(QWidget):
                 item.setData(Qt.ItemDataRole.UserRole, template.name)
                 self.templates_list.addItem(item)
             
-            self.status_label.setText(f"✓ Loaded {len(self.templates)} templates")
-            self.status_label.setStyleSheet("color: #4a4;")
-        
+            self.status_label.setText(f"Loaded {len(self.templates)} templates")
+
         except Exception as e:
-            self.status_label.setText(f"❌ Error loading templates: {e}")
-            self.status_label.setStyleSheet("color: #f44;")
+            self.status_label.setText(f"Error loading templates: {e}")
     
     def on_template_selected(self, current, previous):
         """Handle template selection."""
@@ -266,141 +231,232 @@ class TemplateManagerScreen(QWidget):
         self.delete_btn.setEnabled(not self.selected_template.is_official)
     
     def validate_template(self):
-        """Validate selected template."""
+        """Validate selected template with enhanced error reporting."""
         if not self.selected_template:
             return
-        
+
         from bpui.features.templates.templates import TemplateManager
-        
+
         try:
             manager = TemplateManager()
             result = manager.validate_template(self.selected_template)
-            
+
             if not result["errors"] and not result["warnings"]:
                 QMessageBox.information(
                     self,
                     "Validation Passed",
-                    f"✓ Template '{self.selected_template.name}' is valid!"
+                    f"Template '{self.selected_template.name}' is valid and ready to use."
                 )
             else:
                 message = []
                 if result["errors"]:
-                    message.append("Errors:")
+                    message.append("ERRORS (must be fixed):")
                     for error in result["errors"]:
                         message.append(f"  • {error}")
                     message.append("")
-                
+
                 if result["warnings"]:
-                    message.append("Warnings:")
+                    message.append("WARNINGS (recommended fixes):")
                     for warning in result["warnings"]:
                         message.append(f"  • {warning}")
-                
+
                 QMessageBox.warning(
                     self,
                     "Validation Issues",
                     "\n".join(message)
                 )
-        
+
         except Exception as e:
-            QMessageBox.critical(self, "Validation Error", f"Failed to validate: {e}")
+            QMessageBox.critical(
+                self,
+                "Validation Error",
+                f"Failed to validate template '{self.selected_template.name}'.\n\n"
+                f"Error: {e}\n\n"
+                f"Please check that the template files are not corrupted."
+            )
     
     def export_template(self):
-        """Export selected template."""
+        """Export selected template with enhanced error reporting."""
         if not self.selected_template:
             return
-        
+
         # Ask for export location
         export_dir = QFileDialog.getExistingDirectory(
             self,
             "Select Export Directory",
             str(Path.home())
         )
-        
+
         if not export_dir:
             return
-        
+
         try:
             from bpui.features.templates.templates import TemplateManager
-            
+
             manager = TemplateManager()
             output_path = Path(export_dir) / self.selected_template.name.lower().replace(" ", "_")
+
+            # Check if export directory already exists
+            if output_path.exists():
+                reply = QMessageBox.question(
+                    self,
+                    "Directory Exists",
+                    f"Directory '{output_path.name}' already exists.\n\n"
+                    f"Do you want to overwrite it?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                )
+                if reply != QMessageBox.StandardButton.Yes:
+                    return
+
             manager.export_template(self.selected_template, output_path)
-            
+
             QMessageBox.information(
                 self,
                 "Export Complete",
-                f"✓ Template exported to:\n{output_path}"
+                f"Template '{self.selected_template.name}' exported successfully.\n\n"
+                f"Location: {output_path}\n\n"
+                f"You can now share this directory or import it on another machine."
             )
-        
+
+        except PermissionError:
+            QMessageBox.critical(
+                self,
+                "Export Error",
+                f"Permission denied writing to:\n{export_dir}\n\n"
+                f"Please choose a different location or check your permissions."
+            )
         except Exception as e:
-            QMessageBox.critical(self, "Export Error", f"Failed to export: {e}")
+            QMessageBox.critical(
+                self,
+                "Export Error",
+                f"Failed to export template '{self.selected_template.name}'.\n\n"
+                f"Error: {e}\n\n"
+                f"Please ensure you have write permissions and sufficient disk space."
+            )
     
     def import_template(self):
-        """Import a template."""
+        """Import a template with enhanced error reporting."""
         # Ask for template directory
         template_dir = QFileDialog.getExistingDirectory(
             self,
             "Select Template Directory to Import",
             str(Path.home())
         )
-        
+
         if not template_dir:
             return
-        
+
         try:
             from bpui.features.templates.templates import TemplateManager
-            
+
+            template_path = Path(template_dir)
+
+            # Validate template structure before importing
+            if not (template_path / "template.toml").exists():
+                QMessageBox.warning(
+                    self,
+                    "Invalid Template",
+                    f"The selected directory does not contain a valid template.\n\n"
+                    f"Missing: template.toml\n\n"
+                    f"Please select a directory that was exported from the template manager."
+                )
+                return
+
             manager = TemplateManager()
-            template = manager.import_template(Path(template_dir))
-            
+            template = manager.import_template(template_path)
+
             if template:
                 QMessageBox.information(
                     self,
                     "Import Complete",
-                    f"✓ Imported template: {template.name}"
+                    f"Successfully imported template: {template.name}\n\n"
+                    f"The template is now available for use in compilation."
                 )
                 self.load_templates()
             else:
                 QMessageBox.warning(
                     self,
                     "Import Failed",
-                    "Failed to import template. Check that template.toml exists and is valid."
+                    f"Failed to import template from:\n{template_dir}\n\n"
+                    f"Possible causes:\n"
+                    f"  • Missing or invalid template.toml\n"
+                    f"  • Corrupted template files\n"
+                    f"  • Template already exists with the same name\n\n"
+                    f"Please verify the template directory structure."
                 )
-        
+
+        except PermissionError:
+            QMessageBox.critical(
+                self,
+                "Import Error",
+                f"Permission denied reading from:\n{template_dir}\n\n"
+                f"Please check your read permissions."
+            )
         except Exception as e:
-            QMessageBox.critical(self, "Import Error", f"Failed to import: {e}")
+            QMessageBox.critical(
+                self,
+                "Import Error",
+                f"Failed to import template.\n\n"
+                f"Error: {e}\n\n"
+                f"Please check that the directory contains a valid template."
+            )
     
     def delete_template(self):
-        """Delete selected template."""
+        """Delete selected template with confirmation and enhanced error reporting."""
         if not self.selected_template or self.selected_template.is_official:
             return
-        
+
         reply = QMessageBox.question(
             self,
             "Confirm Delete",
-            f"Delete template '{self.selected_template.name}'?\n\nThis cannot be undone.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            f"Are you sure you want to delete template '{self.selected_template.name}'?\n\n"
+            f"This will permanently remove:\n"
+            f"  • Template configuration\n"
+            f"  • All blueprint files\n"
+            f"  • Asset definitions\n\n"
+            f"This action cannot be undone.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No  # Default to No for safety
         )
-        
+
         if reply != QMessageBox.StandardButton.Yes:
             return
-        
+
         try:
             from bpui.features.templates.templates import TemplateManager
-            
+
             manager = TemplateManager()
             if manager.delete_template(self.selected_template):
                 QMessageBox.information(
                     self,
                     "Delete Complete",
-                    f"✓ Deleted template: {self.selected_template.name}"
+                    f"Template '{self.selected_template.name}' has been deleted successfully."
                 )
                 self.load_templates()
             else:
-                QMessageBox.warning(self, "Delete Failed", "Failed to delete template")
-        
+                QMessageBox.warning(
+                    self,
+                    "Delete Failed",
+                    f"Failed to delete template '{self.selected_template.name}'.\n\n"
+                    f"The template may be in use or protected."
+                )
+
+        except PermissionError:
+            QMessageBox.critical(
+                self,
+                "Delete Error",
+                f"Permission denied deleting template '{self.selected_template.name}'.\n\n"
+                f"Location: {self.selected_template.path}\n\n"
+                f"Please check your write permissions."
+            )
         except Exception as e:
-            QMessageBox.critical(self, "Delete Error", f"Failed to delete: {e}")
+            QMessageBox.critical(
+                self,
+                "Delete Error",
+                f"Failed to delete template '{self.selected_template.name}'.\n\n"
+                f"Error: {e}\n\n"
+                f"The template files may be in use or locked by another process."
+            )
     
     def new_template(self):
         """Create a new template using the wizard."""
@@ -504,9 +560,31 @@ class TemplateManagerScreen(QWidget):
             QMessageBox.information(
                 self,
                 "Duplicate Complete",
-                f"✓ Created duplicate template: {new_name}"
+                f"Successfully created duplicate template: {new_name}\n\n"
+                f"The new template is now available for editing and use."
             )
             self.load_templates()
-        
+
+        except PermissionError:
+            QMessageBox.critical(
+                self,
+                "Duplicate Error",
+                f"Permission denied creating template '{new_name}'.\n\n"
+                f"Please check your write permissions."
+            )
+        except FileNotFoundError as e:
+            QMessageBox.critical(
+                self,
+                "Duplicate Error",
+                f"Failed to duplicate template '{self.selected_template.name}'.\n\n"
+                f"Some template files are missing:\n{e}\n\n"
+                f"The source template may be corrupted."
+            )
         except Exception as e:
-            QMessageBox.critical(self, "Duplicate Error", f"Failed to duplicate template:\n{e}")
+            QMessageBox.critical(
+                self,
+                "Duplicate Error",
+                f"Failed to duplicate template '{self.selected_template.name}'.\n\n"
+                f"Error: {e}\n\n"
+                f"Please ensure you have sufficient disk space and write permissions."
+            )
