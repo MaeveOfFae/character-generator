@@ -1465,34 +1465,51 @@ class SettingsDialog(QDialog):
         except ValueError:
             pass  # Keep existing values if invalid
 
-        # Save selected theme preset name
+        # Save selected theme preset name and color customizations
         if hasattr(self, 'theme_preset_combo'):
             preset_key = self.theme_preset_combo.currentData()
             if preset_key:
                 self.config.set("theme_name", preset_key)
 
-                # Only save custom color overrides if "custom" theme is selected
-                # For built-in themes, clear any custom overrides
-                from bpui.core.theme import BUILTIN_THEMES
-                if preset_key == "custom":
-                    # Save theme colors for custom theme
-                    theme_colors = {"tokenizer": {}, "app": {}}
+                # Check if user has modified any colors from the preset defaults
+                from bpui.core.theme import BUILTIN_THEMES, get_theme
+                has_modifications = False
+                theme_colors = {"tokenizer": {}, "app": {}}
 
-                    # Save tokenizer colors
-                    for key, btn in self.tokenizer_color_buttons.items():
-                        color = self.get_color_from_button(btn)
-                        if color:
-                            theme_colors["tokenizer"][key] = color
+                # Get the base theme to compare against
+                try:
+                    base_theme = get_theme(preset_key)
+                except (ValueError, KeyError):
+                    # Fallback to dark theme if preset not found
+                    base_theme = BUILTIN_THEMES.get("dark", list(BUILTIN_THEMES.values())[0])
 
-                    # Save app colors
-                    for key, btn in self.app_color_buttons.items():
-                        color = self.get_color_from_button(btn)
-                        if color:
-                            theme_colors["app"][key] = color
+                # Check tokenizer colors for modifications
+                for key in self.tokenizer_color_buttons:
+                    btn = self.tokenizer_color_buttons[key]
+                    color = self.get_color_from_button(btn)
+                    if color:
+                        # Compare with base theme default
+                        default_color = base_theme.tokenizer_colors.get(key)
+                        if default_color and color.lower() != default_color.lower():
+                            has_modifications = True
+                        theme_colors["tokenizer"][key] = color
 
+                # Check app colors for modifications
+                for key in self.app_color_buttons:
+                    btn = self.app_color_buttons[key]
+                    color = self.get_color_from_button(btn)
+                    if color:
+                        # Compare with base theme default
+                        default_color = base_theme.app_colors.get(key)
+                        if default_color and color.lower() != default_color.lower():
+                            has_modifications = True
+                        theme_colors["app"][key] = color
+
+                # Save theme colors if there are modifications, or clear if back to defaults
+                if has_modifications:
                     self.config.set("theme", theme_colors)
-                elif preset_key in BUILTIN_THEMES:
-                    # Clear custom overrides for built-in presets
+                else:
+                    # No modifications, clear custom overrides
                     if "theme" in self.config._data:
                         del self.config._data["theme"]
 
@@ -1515,7 +1532,7 @@ class SettingsDialog(QDialog):
 
     def preview_theme(self):
         """Preview theme changes without saving to disk."""
-        from bpui.core.theme import BUILTIN_THEMES
+        from bpui.core.theme import BUILTIN_THEMES, get_theme
 
         # Get selected theme preset
         if hasattr(self, 'theme_preset_combo'):
@@ -1523,28 +1540,44 @@ class SettingsDialog(QDialog):
             if preset_key:
                 self.config.set("theme_name", preset_key)
 
-                # For built-in presets, clear custom overrides temporarily
-                # For custom theme, apply current UI colors
-                if preset_key == "custom":
-                    # Temporarily update config with current UI values
-                    theme_colors = {"tokenizer": {}, "app": {}}
+                # Check if user has modified any colors from preset defaults
+                has_modifications = False
+                theme_colors = {"tokenizer": {}, "app": {}}
 
-                    # Get tokenizer colors
-                    for key, btn in self.tokenizer_color_buttons.items():
-                        color = self.get_color_from_button(btn)
-                        if color:
-                            theme_colors["tokenizer"][key] = color
+                # Get the base theme to compare against
+                try:
+                    base_theme = get_theme(preset_key)
+                except (ValueError, KeyError):
+                    # Fallback to dark theme if preset not found
+                    base_theme = BUILTIN_THEMES.get("dark", list(BUILTIN_THEMES.values())[0])
 
-                    # Get app colors
-                    for key, btn in self.app_color_buttons.items():
-                        color = self.get_color_from_button(btn)
-                        if color:
-                            theme_colors["app"][key] = color
+                # Get tokenizer colors
+                for key in self.tokenizer_color_buttons:
+                    btn = self.tokenizer_color_buttons[key]
+                    color = self.get_color_from_button(btn)
+                    if color:
+                        # Compare with base theme default
+                        default_color = base_theme.tokenizer_colors.get(key)
+                        if default_color and color.lower() != default_color.lower():
+                            has_modifications = True
+                        theme_colors["tokenizer"][key] = color
 
-                    # Temporarily set in config (not saved to disk)
+                # Get app colors
+                for key in self.app_color_buttons:
+                    btn = self.app_color_buttons[key]
+                    color = self.get_color_from_button(btn)
+                    if color:
+                        # Compare with base theme default
+                        default_color = base_theme.app_colors.get(key)
+                        if default_color and color.lower() != default_color.lower():
+                            has_modifications = True
+                        theme_colors["app"][key] = color
+
+                # Temporarily set custom overrides if there are modifications
+                if has_modifications:
                     self.config.set("theme", theme_colors)
-                elif preset_key in BUILTIN_THEMES:
-                    # Temporarily clear custom overrides for built-in presets
+                else:
+                    # No modifications, clear custom overrides
                     if "theme" in self.config._data:
                         del self.config._data["theme"]
 
