@@ -499,7 +499,7 @@ class TemplateWizard(QDialog):
             
             # Write template.toml
             toml_path = template_dir / "template.toml"
-            toml_path.write_text(self.generate_toml())
+            toml_path.write_text(self.generate_toml(), encoding='utf-8')
             
             # Create assets directory
             assets_dir = template_dir / "assets"

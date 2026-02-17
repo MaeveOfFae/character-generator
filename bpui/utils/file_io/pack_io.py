@@ -50,7 +50,7 @@ def create_draft_dir(
     for asset_name, content in assets.items():
         filename = get_asset_filename(asset_name, template)
         if filename:
-            (draft_dir / filename).write_text(content)
+            (draft_dir / filename).write_text(content, encoding='utf-8')
 
     # Create and save metadata
     metadata = DraftMetadata(
@@ -110,13 +110,13 @@ def load_draft(draft_dir: Path, template: Optional['Template'] = None) -> Dict[s
             filename = get_asset_filename(asset_def.name, template)
             file_path = draft_dir / filename
             if file_path.exists():
-                assets[asset_def.name] = file_path.read_text()
+                assets[asset_def.name] = file_path.read_text(encoding='utf-8')
     else:
         # Load default assets
         for asset_name, filename in ASSET_FILENAMES.items():
             file_path = draft_dir / filename
             if file_path.exists():
-                assets[asset_name] = file_path.read_text()
+                assets[asset_name] = file_path.read_text(encoding='utf-8')
     
     return assets
 
@@ -188,14 +188,14 @@ def save_asset(draft_dir: Path, asset_name: str, content: str, template: Optiona
         raise ValueError(f"Unknown asset name: {asset_name}")
 
     file_path = draft_dir / filename
-    
+
     # Save version before overwriting (if file exists)
     if file_path.exists():
-        old_content = file_path.read_text()
+        old_content = file_path.read_text(encoding='utf-8')
         save_version(draft_dir, asset_name, old_content)
-    
+
     # Write new content
-    file_path.write_text(content)
+    file_path.write_text(content, encoding='utf-8')
 
     # Update metadata modified timestamp
     metadata = DraftMetadata.load(draft_dir)

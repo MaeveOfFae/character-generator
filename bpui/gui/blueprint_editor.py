@@ -200,7 +200,7 @@ class BlueprintEditor(QDialog):
             path: Path to blueprint markdown file
         """
         try:
-            content = path.read_text()
+            content = path.read_text(encoding='utf-8')
             frontmatter, body = self.parse_blueprint(content)
             
             # Populate frontmatter fields
@@ -329,7 +329,7 @@ class BlueprintEditor(QDialog):
         
         try:
             content = self.get_full_content()
-            self.blueprint_path.write_text(content)
+            self.blueprint_path.write_text(content, encoding='utf-8')
             
             self.status_label.setText(f"✓ Saved: {self.blueprint_path.name}")
             self.status_label.setStyleSheet("color: #4a4;")
@@ -407,7 +407,7 @@ class BlueprintEditor(QDialog):
             
             blueprint_path = assets_dir / filename
             content = self.get_full_content()
-            blueprint_path.write_text(content)
+            blueprint_path.write_text(content, encoding='utf-8')
             
             self.blueprint_path = blueprint_path
             self.modified = False

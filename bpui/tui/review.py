@@ -373,7 +373,7 @@ class ReviewScreen(Screen):
                     filename = ASSET_FILENAMES.get(asset_name, "")
                     if filename:
                         file_path = self.draft_dir / filename
-                        file_path.write_text(new_content)
+                        file_path.write_text(new_content, encoding='utf-8')
                         saved_count += 1
                         validation_log.write(f"[green]✓ Saved {filename}[/]")
             
@@ -1164,7 +1164,7 @@ class SaveFileDialog(Screen):
             output_file = output_path
         
         output_file.parent.mkdir(parents=True, exist_ok=True)
-        output_file.write_text(content)
+        output_file.write_text(content, encoding='utf-8')
         
         # Update parent status
         status = self.parent_screen.query_one("#status", Static)

@@ -308,7 +308,7 @@ async def run_compile(args):
             from .parse_blocks import ASSET_FILENAMES
             filename = ASSET_FILENAMES.get(asset_name)
             if filename:
-                (draft_dir / filename).write_text(content)
+                (draft_dir / filename).write_text(content, encoding='utf-8')
     else:
         draft_dir = create_draft_dir(assets, character_name)
 
@@ -332,7 +332,7 @@ async def run_seedgen(args):
         print(f"✗ Input file not found: {input_path}")
         sys.exit(1)
 
-    genre_lines = input_path.read_text()
+    genre_lines = input_path.read_text(encoding='utf-8')
 
     print(f"🎲 Generating seeds from: {input_path}")
 
@@ -362,7 +362,7 @@ async def run_seedgen(args):
     if args.out:
         output_path = Path(args.out)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text("\n".join(seeds))
+        output_path.write_text("\n".join(seeds), encoding='utf-8')
         print(f"✓ Saved {len(seeds)} seeds to: {output_path}")
     else:
         print(f"\n✓ Generated {len(seeds)} seeds:\n")
@@ -473,7 +473,7 @@ async def run_batch(args):
             print(f"✗ Original input file not found: {input_path}")
             sys.exit(1)
         
-        seeds_raw = input_path.read_text().strip().split("\n")
+        seeds_raw = input_path.read_text(encoding='utf-8').strip().split("\n")
         all_seeds = [s.strip() for s in seeds_raw if s.strip()]
         
         # Filter to remaining seeds
@@ -501,7 +501,7 @@ async def run_batch(args):
             print(f"✗ Input file not found: {input_path}")
             sys.exit(1)
 
-        seeds_raw = input_path.read_text().strip().split("\n")
+        seeds_raw = input_path.read_text(encoding='utf-8').strip().split("\n")
         seeds = [s.strip() for s in seeds_raw if s.strip()]
 
         if not seeds:
@@ -622,7 +622,7 @@ async def run_batch_sequential(seeds, engine, batch_state, args, model, template
                 for asset_name, content in assets.items():
                     filename = ASSET_FILENAMES.get(asset_name)
                     if filename:
-                        (draft_dir / filename).write_text(content)
+                        (draft_dir / filename).write_text(content, encoding='utf-8')
             else:
                 draft_dir = create_draft_dir(
                     assets, 
@@ -752,7 +752,7 @@ async def run_batch_parallel(seeds, engine, batch_state, args, model, max_concur
                     for asset_name, content in assets.items():
                         filename = ASSET_FILENAMES.get(asset_name)
                         if filename:
-                            (draft_dir / filename).write_text(content)
+                            (draft_dir / filename).write_text(content, encoding='utf-8')
                 else:
                     draft_dir = create_draft_dir(
                         assets, 

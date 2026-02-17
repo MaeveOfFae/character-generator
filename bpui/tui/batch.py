@@ -107,7 +107,7 @@ class BatchScreen(Screen):
             return
 
         try:
-            seeds_raw = file_path.read_text().strip().split("\n")
+            seeds_raw = file_path.read_text(encoding='utf-8').strip().split("\n")
             self.seeds = [s.strip() for s in seeds_raw if s.strip()]
 
             if not self.seeds:

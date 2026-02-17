@@ -310,7 +310,7 @@ class TemplateEditor(QDialog):
                 asset_to_save = next((a for a in self.template.assets if a.name == asset_name), None)
                 if asset_to_save and asset_to_save.blueprint_file:
                     blueprint_path = assets_dir / asset_to_save.blueprint_file
-                    blueprint_path.write_text(content)
+                    blueprint_path.write_text(content, encoding='utf-8')
 
             QMessageBox.information(self, "Save Complete", "Template saved successfully.")
             self.modified = False

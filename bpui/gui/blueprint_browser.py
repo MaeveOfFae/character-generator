@@ -199,7 +199,7 @@ class BlueprintBrowserDialog(QDialog):
         
         # Get description from frontmatter
         try:
-            content = blueprint_path.read_text()
+            content = blueprint_path.read_text(encoding='utf-8')
             description = self.parse_blueprint_description(content)
             if description:
                 item.setToolTip(0, description)
@@ -257,7 +257,7 @@ class BlueprintBrowserDialog(QDialog):
             return
         
         try:
-            content = blueprint_path.read_text()
+            content = blueprint_path.read_text(encoding='utf-8')
             self.preview_text.setPlainText(content)
             self.preview_label.setText(f"Preview: {blueprint_path.name}")
             
