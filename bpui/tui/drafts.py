@@ -17,79 +17,6 @@ class DraftsScreen(Screen):
         ("r", "toggle_favorite_filter", "Toggle Favorites"),
     ]
 
-    CSS = """
-    DraftsScreen {
-        layout: vertical;
-    }
-
-    #drafts-container {
-        height: 100%;
-        width: 100%;
-        padding: 1;
-    }
-
-    .title {
-        content-align: center middle;
-        text-style: bold;
-        color: $primary;
-        margin-bottom: 1;
-    }
-
-    #search-container {
-        layout: horizontal;
-        height: auto;
-        margin-bottom: 1;
-    }
-
-    #search-input {
-        width: 3fr;
-        margin-right: 1;
-    }
-
-    #genre-select {
-        width: 1fr;
-        margin-right: 1;
-    }
-
-    #sort-select {
-        width: 1fr;
-    }
-
-    #filter-info {
-        height: auto;
-        text-align: center;
-        color: $text-muted;
-        margin-bottom: 1;
-    }
-
-    #drafts-list {
-        height: 1fr;
-        border: solid $primary;
-        margin-bottom: 1;
-    }
-
-    .button-row {
-        layout: horizontal;
-        width: 100%;
-        height: auto;
-    }
-
-    .button-row Button {
-        width: 1fr;
-        margin-right: 1;
-    }
-
-    .status {
-        text-align: center;
-        color: $text-muted;
-        margin-top: 1;
-    }
-
-    .favorite-item {
-        color: $warning;
-    }
-    """
-
     def __init__(self, config):
         """Initialize drafts screen."""
         super().__init__()
@@ -172,13 +99,7 @@ class DraftsScreen(Screen):
     async def load_drafts(self) -> None:
         """Load drafts list."""
         from bpui.utils.metadata.metadata import search_metadata
-from bpui.utils.migrate_logging import migrate_draft_metadata
-        from pathlib import Path
-
-    async def load_drafts(self) -> None:
-        """Load drafts list."""
-        from bpui.utils.metadata.metadata import search_metadata
-from bpui.utils.migrate_logging import migrate_draft_metadata
+        from bpui.utils.migrate_logging import migrate_draft_metadata
         from pathlib import Path
 
         status = self.query_one("#status", Static)
@@ -371,35 +292,6 @@ class DeleteConfirmScreen(Screen):
         ("y", "confirm", "Yes, delete"),
         ("n,escape,q", "cancel", "No, cancel"),
     ]
-    
-    CSS = """
-    DeleteConfirmScreen {
-        layout: horizontal;
-        align: center middle;
-    }
-    
-    #dialog {
-        width: 60;
-        height: 12;
-        border: solid $warning;
-        background: $panel;
-        padding: 1;
-    }
-    
-    #message {
-        content-align: center middle;
-        margin-bottom: 2;
-    }
-    
-    #buttons {
-        layout: horizontal;
-        height: 3;
-    }
-    
-    #buttons Button {
-        width: 1fr;
-    }
-    """
     
     def __init__(self, draft_name: str, callback):
         """Initialize confirmation dialog."""

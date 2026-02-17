@@ -32,6 +32,9 @@ DEFAULT_CONFIG = {
     # Provider-specific configurations (optional)
     "google": {},  # e.g., {"top_k": 40, "top_p": 0.95, "safety_settings": [...]}
     "openai": {},  # e.g., {"seed": 42, "response_format": "json_object"}
+    # Theme configuration
+    "theme_name": "dark",  # Active theme: "dark", "light", "nyx", or custom name
+    "theme": {},  # Custom color overrides (legacy GUI format)
 }
 
 
@@ -342,6 +345,11 @@ class Config:
         """Get batch rate limit delay in seconds."""
         batch_config = self.get("batch", {})
         return batch_config.get("rate_limit_delay", 1.0) if isinstance(batch_config, dict) else 1.0
+    
+    @property
+    def theme_name(self) -> str:
+        """Get active theme name."""
+        return self.get("theme_name", "dark")
 
     def to_dict(self) -> Dict[str, Any]:
         """Get config as dict."""

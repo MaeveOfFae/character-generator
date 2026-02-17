@@ -16,66 +16,6 @@ class SettingsScreen(Screen):
         ("enter", "save_settings", "Save"),
     ]
 
-    CSS = """
-    SettingsScreen {
-        align: center middle;
-    }
-
-    #settings-container {
-        width: 80;
-        height: 100%;
-        border: solid $primary;
-        padding: 2;
-    }
-
-    .title {
-        content-align: center middle;
-        text-style: bold;
-        color: $primary;
-        margin-bottom: 2;
-        margin-top: 1;
-    }
-
-    .subtitle {
-        content-align: center middle;
-        color: $text-muted;
-        margin-bottom: 1;
-    }
-
-    .field-label {
-        margin-top: 1;
-        margin-bottom: 0;
-        color: $text;
-    }
-
-    Input, Select {
-        width: 100%;
-        margin-bottom: 1;
-    }
-
-    .button-row {
-        layout: horizontal;
-        width: 100%;
-        height: auto;
-        margin-top: 2;
-    }
-
-    .button-row Button {
-        width: 1fr;
-        margin-right: 1;
-    }
-
-    .status {
-        margin-top: 1;
-        text-align: center;
-        color: $success;
-    }
-
-    .error {
-        color: $error;
-    }
-    """
-
     def __init__(self, config):
         """Initialize settings screen."""
         super().__init__()
@@ -86,6 +26,19 @@ class SettingsScreen(Screen):
         with VerticalScroll(id="settings-container"):
             yield Static("⚙️  Settings", classes="title")
 
+            # Theme selector
+            yield Static("🎨 Theme", classes="title")
+            yield Label("Theme:", classes="field-label")
+            from bpui.core.theme import list_available_themes
+            available_themes = list_available_themes()
+            theme_options = [(name.title(), name) for name in available_themes]
+            yield Select(
+                theme_options,
+                value=self.config.theme_name,
+                id="theme",
+            )
+
+            yield Static("🔧 Engine Configuration", classes="title")
             yield Label("Engine:", classes="field-label")
             yield Select(
                 [("OpenAI Compatible", "openai_compatible")],
@@ -172,6 +125,7 @@ class SettingsScreen(Screen):
     async def save_settings(self) -> None:
         """Save settings to config file."""
         try:
+            theme_select = self.query_one("#theme", Select)
             engine_select = self.query_one("#engine", Select)
             model_input = self.query_one("#model", Input)
             api_key_env_input = self.query_one("#api_key_env", Input)
@@ -183,6 +137,11 @@ class SettingsScreen(Screen):
             model_value = model_input.value.strip()
             if not model_value:
                 raise ValueError("Model cannot be empty")
+
+            # Save theme selection
+            old_theme = self.config.theme_name
+            new_theme = theme_select.value
+            self.config.set("theme_name", new_theme)
 
             # Save basic settings
             self.config.set("engine", engine_select.value)
@@ -232,8 +191,38 @@ class SettingsScreen(Screen):
             if saved_model != model_value:
                 raise ValueError(f"Model save verification failed: expected '{model_value}', got '{saved_model}'")
 
+            # Reload theme if changed
+            if old_theme != new_theme:
+                try:
+                    # Reload theme manager with new theme
+                    self.app.theme_manager.reload_theme()
+                    
+                    # Reload CSS on app class
+                    self.app._reload_theme_css()
+                    
+                    # Show brief confirmation before screen refresh
+                    status = self.query_one("#status", Static)
+                    status.update(f"✓ Theme changed to '{new_theme}'. Refreshing...")
+                    status.remove_class("error")
+                    
+                    # Brief delay to show message
+                    import asyncio
+                    await asyncio.sleep(0.3)
+                    
+                    # Pop settings screen and push a new one with updated theme
+                    # This forces complete re-render with new CSS
+                    self.app.pop_screen()
+                    self.app.push_screen(self.__class__(self.config))
+                    return
+                        
+                except Exception as theme_error:
+                    status = self.query_one("#status", Static)
+                    status.update(f"⚠️ Settings saved but theme reload failed: {theme_error}")
+                    status.add_class("error")
+                    return
+
             status = self.query_one("#status", Static)
-            status.update(f"✓ Settings saved! Model: {model_value}")
+            status.update(f"✓ Settings saved! Model: {model_value}, Theme: {new_theme}")
             status.remove_class("error")
         except Exception as e:
             status = self.query_one("#status", Static)

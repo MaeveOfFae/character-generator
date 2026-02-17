@@ -15,58 +15,6 @@ class SeedGeneratorScreen(Screen):
         ("ctrl+s", "save_output", "Save Output"),
     ]
 
-    CSS = """
-    SeedGeneratorScreen {
-        layout: vertical;
-    }
-
-    #seed-gen-container {
-        height: 100%;
-        width: 100%;
-        padding: 1;
-    }
-
-    .title {
-        content-align: center middle;
-        text-style: bold;
-        color: $primary;
-        margin-bottom: 1;
-    }
-
-    #genre-input {
-        height: 10;
-        border: solid $primary;
-        margin-bottom: 1;
-    }
-
-    .button-row {
-        layout: horizontal;
-        width: 100%;
-        height: auto;
-        margin-bottom: 1;
-    }
-
-    .button-row Button {
-        width: 1fr;
-        margin-right: 1;
-    }
-
-    #seeds-list {
-        height: 1fr;
-        border: solid $primary;
-        margin-bottom: 1;
-    }
-
-    .status {
-        text-align: center;
-        color: $text-muted;
-    }
-
-    .error {
-        color: $error;
-    }
-    """
-
     def __init__(self, config):
         """Initialize seed generator screen."""
         super().__init__()

@@ -28,42 +28,6 @@ class SimilarityScreen(Screen):
         ("escape", "app.pop_screen", "Back"),
     ]
     
-    CSS = """
-    SimilarityScreen {
-        align: center middle;
-    }
-    
-    #similarity-container {
-        width: 80;
-        height: auto;
-        border: solid $primary;
-        padding: 2;
-    }
-    
-    .title {
-        content-align: center middle;
-        text-style: bold;
-        color: $primary;
-        margin-bottom: 1;
-    }
-    
-    Button {
-        width: 100%;
-        margin-bottom: 1;
-    }
-    
-    #results-container {
-        margin-top: 1;
-        border-top: solid $panel;
-        padding-top: 1;
-    }
-    
-    #results-text {
-        height: 30;
-        overflow-y: auto;
-    }
-    """
-    
     def __init__(self, config):
         """Initialize similarity screen."""
         super().__init__()

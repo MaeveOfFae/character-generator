@@ -497,6 +497,65 @@ class SettingsDialog(QDialog):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         
+        # Preset Selector Section
+        preset_section = QWidget()
+        preset_layout = QVBoxLayout(preset_section)
+        
+        preset_header = QLabel("<h3>Theme Preset</h3>")
+        preset_layout.addWidget(preset_header)
+        
+        # Preset selector and buttons
+        preset_controls = QHBoxLayout()
+        
+        preset_label = QLabel("Active Preset:")
+        preset_controls.addWidget(preset_label)
+        
+        self.theme_preset_combo = QComboBox()
+        self.theme_preset_combo.setMinimumWidth(200)
+        self.populate_theme_presets()
+        self.theme_preset_combo.currentTextChanged.connect(self.on_preset_changed)
+        preset_controls.addWidget(self.theme_preset_combo)
+        
+        preset_controls.addStretch()
+        
+        # Preset management buttons
+        save_preset_btn = QPushButton("💾 Save As...")
+        save_preset_btn.setToolTip("Save current colors as a new preset")
+        save_preset_btn.clicked.connect(self.save_theme_preset)
+        preset_controls.addWidget(save_preset_btn)
+        
+        delete_preset_btn = QPushButton("🗑️ Delete")
+        delete_preset_btn.setToolTip("Delete the selected custom preset")
+        delete_preset_btn.clicked.connect(self.delete_theme_preset)
+        preset_controls.addWidget(delete_preset_btn)
+        self.delete_preset_btn = delete_preset_btn
+        
+        import_btn = QPushButton("📂 Import")
+        import_btn.setToolTip("Import a theme preset file")
+        import_btn.clicked.connect(self.import_theme_preset)
+        preset_controls.addWidget(import_btn)
+        
+        export_btn = QPushButton("📤 Export")
+        export_btn.setToolTip("Export current preset to file")
+        export_btn.clicked.connect(self.export_theme_preset)
+        preset_controls.addWidget(export_btn)
+        
+        preset_layout.addLayout(preset_controls)
+        
+        # Info label
+        self.preset_info_label = QLabel()
+        self.preset_info_label.setStyleSheet("color: #888; font-style: italic;")
+        self.preset_info_label.setWordWrap(True)
+        preset_layout.addWidget(self.preset_info_label)
+        
+        layout.addWidget(preset_section)
+        
+        # Separator
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setFrameShadow(QFrame.Shadow.Sunken)
+        layout.addWidget(separator)
+        
         # Scroll area for all color settings
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -727,6 +786,301 @@ class SettingsDialog(QDialog):
             cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
             cursor.mergeCharFormat(fmt)
     
+    def populate_theme_presets(self):
+        """Populate the theme preset combobox with available presets."""
+        from bpui.core.theme import BUILTIN_THEMES, list_available_themes
+        
+        self.theme_preset_combo.clear()
+        
+        # Add built-in presets
+        for name in ["dark", "light", "nyx"]:
+            theme = BUILTIN_THEMES[name]
+            display = f"{theme.display_name} ⭐"
+            self.theme_preset_combo.addItem(display, name)
+        
+        # Add custom presets from config
+        custom_presets = self.config.get("custom_theme_presets", {})
+        if custom_presets:
+            self.theme_preset_combo.insertSeparator(self.theme_preset_combo.count())
+            for preset_name in sorted(custom_presets.keys()):
+                self.theme_preset_combo.addItem(preset_name, preset_name)
+        
+        # Add "Custom" option
+        self.theme_preset_combo.insertSeparator(self.theme_preset_combo.count())
+        self.theme_preset_combo.addItem("Custom (unsaved)", "custom")
+        
+        # Set current selection based on config
+        current_theme = self.config.get("theme_name", "dark")
+        for i in range(self.theme_preset_combo.count()):
+            if self.theme_preset_combo.itemData(i) == current_theme:
+                self.theme_preset_combo.setCurrentIndex(i)
+                break
+    
+    def on_preset_changed(self, display_text):
+        """Handle preset selection change."""
+        from bpui.core.theme import BUILTIN_THEMES
+        
+        preset_key = self.theme_preset_combo.currentData()
+        if not preset_key:
+            return
+        
+        # Update UI state
+        is_custom = preset_key == "custom"
+        self.delete_preset_btn.setEnabled(is_custom or preset_key not in ["dark", "light", "nyx"])
+        
+        # Load preset colors
+        if preset_key in BUILTIN_THEMES and preset_key != "custom":
+            theme = BUILTIN_THEMES[preset_key]
+            self.load_preset_colors(theme.app_colors, theme.tokenizer_colors, theme.description)
+        elif preset_key != "custom":
+            # Custom saved preset
+            custom_presets = self.config.get("custom_theme_presets", {})
+            if preset_key in custom_presets:
+                preset_data = custom_presets[preset_key]
+                self.load_preset_colors(
+                    preset_data.get("app", {}),
+                    preset_data.get("tokenizer", {}),
+                    preset_data.get("description", "Custom theme preset")
+                )
+        else:
+            # "Custom" - load from current config theme section
+            self.preset_info_label.setText("💡 Modify colors below and click 'Save As...' to create a preset")
+    
+    def load_preset_colors(self, app_colors, tokenizer_colors, description):
+        """Load colors into the color pickers."""
+        # Update tokenizer color buttons
+        for key, btn in self.tokenizer_color_buttons.items():
+            color = tokenizer_colors.get(key, self.DEFAULT_THEME["tokenizer"][key])
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {color};
+                    border: 2px solid #666;
+                    border-radius: 4px;
+                }}
+                QPushButton:hover {{
+                    border: 2px solid #999;
+                }}
+            """)
+            btn.setToolTip(f"Click to change color\\nCurrent: {color}")
+        
+        # Update app color buttons
+        for key, btn in self.app_color_buttons.items():
+            color = app_colors.get(key, self.DEFAULT_THEME["app"][key])
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {color};
+                    border: 2px solid #666;
+                    border-radius: 4px;
+                }}
+                QPushButton:hover {{
+                    border: 2px solid #999;
+                }}
+            """)
+            btn.setToolTip(f"Click to change color\\nCurrent: {color}")
+        
+        # Update preview
+        self.update_preview()
+        
+        # Update info label
+        self.preset_info_label.setText(f"ℹ️ {description}")
+    
+    def save_theme_preset(self):
+        """Save current colors as a new preset."""
+        from PySide6.QtWidgets import QInputDialog
+        
+        # Prompt for preset name
+        name, ok = QInputDialog.getText(
+            self,
+            "Save Theme Preset",
+            "Enter a name for this preset:",
+            text="My Custom Theme"
+        )
+        
+        if not ok or not name.strip():
+            return
+        
+        name = name.strip()
+        
+        # Check if name conflicts with built-in
+        if name.lower() in ["dark", "light", "nyx", "custom"]:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self,
+                "Invalid Name",
+                f"Cannot use reserved name '{name}'. Please choose a different name."
+            )
+            return
+        
+        # Gather current colors
+        app_colors = {}
+        for key, btn in self.app_color_buttons.items():
+            app_colors[key] = self.get_color_from_button(btn)
+        
+        tokenizer_colors = {}
+        for key, btn in self.tokenizer_color_buttons.items():
+            tokenizer_colors[key] = self.get_color_from_button(btn)
+        
+        # Save to config
+        custom_presets = self.config.get("custom_theme_presets", {})
+        custom_presets[name] = {
+            "app": app_colors,
+            "tokenizer": tokenizer_colors,
+            "description": f"Custom preset: {name}"
+        }
+        self.config.set("custom_theme_presets", custom_presets)
+        self.config.save()
+        
+        # Reload preset list and select new preset
+        self.populate_theme_presets()
+        for i in range(self.theme_preset_combo.count()):
+            if self.theme_preset_combo.itemData(i) == name:
+                self.theme_preset_combo.setCurrentIndex(i)
+                break
+        
+        self.preset_info_label.setText(f"✅ Preset '{name}' saved successfully!")
+    
+    def delete_theme_preset(self):
+        """Delete the currently selected custom preset."""
+        from PySide6.QtWidgets import QMessageBox
+        
+        preset_key = self.theme_preset_combo.currentData()
+        
+        # Can't delete built-ins
+        if preset_key in ["dark", "light", "nyx", "custom"]:
+            QMessageBox.warning(
+                self,
+                "Cannot Delete",
+                "Cannot delete built-in presets."
+            )
+            return
+        
+        # Confirm deletion
+        reply = QMessageBox.question(
+            self,
+            "Delete Preset",
+            f"Are you sure you want to delete the preset '{preset_key}'?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        
+        # Delete from config
+        custom_presets = self.config.get("custom_theme_presets", {})
+        if preset_key in custom_presets:
+            del custom_presets[preset_key]
+            self.config.set("custom_theme_presets", custom_presets)
+            self.config.save()
+        
+        # Reload preset list and select dark
+        self.populate_theme_presets()
+        self.theme_preset_combo.setCurrentIndex(0)
+        
+        self.preset_info_label.setText(f"✅ Preset '{preset_key}' deleted")
+    
+    def import_theme_preset(self):
+        """Import a theme preset from a JSON file."""
+        from PySide6.QtWidgets import QFileDialog, QMessageBox
+        import json
+        
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Import Theme Preset",
+            "",
+            "JSON Files (*.json);;All Files (*)"
+        )
+        
+        if not file_path:
+            return
+        
+        try:
+            with open(file_path, 'r') as f:
+                preset_data = json.load(f)
+            
+            # Validate structure
+            if not isinstance(preset_data, dict) or "name" not in preset_data:
+                raise ValueError("Invalid preset file format")
+            
+            name = preset_data["name"]
+            
+            # Check for conflicts
+            if name.lower() in ["dark", "light", "nyx", "custom"]:
+                raise ValueError(f"Cannot import preset with reserved name '{name}'")
+            
+            # Save to config
+            custom_presets = self.config.get("custom_theme_presets", {})
+            custom_presets[name] = {
+                "app": preset_data.get("app", {}),
+                "tokenizer": preset_data.get("tokenizer", {}),
+                "description": preset_data.get("description", f"Imported preset: {name}")
+            }
+            self.config.set("custom_theme_presets", custom_presets)
+            self.config.save()
+            
+            # Reload and select
+            self.populate_theme_presets()
+            for i in range(self.theme_preset_combo.count()):
+                if self.theme_preset_combo.itemData(i) == name:
+                    self.theme_preset_combo.setCurrentIndex(i)
+                    break
+            
+            self.preset_info_label.setText(f"✅ Preset '{name}' imported successfully!")
+            
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Import Failed",
+                f"Failed to import preset: {e}"
+            )
+    
+    def export_theme_preset(self):
+        """Export the current preset to a JSON file."""
+        from PySide6.QtWidgets import QFileDialog, QMessageBox
+        import json
+        
+        preset_key = self.theme_preset_combo.currentData()
+        
+        # Get colors
+        app_colors = {}
+        for key, btn in self.app_color_buttons.items():
+            app_colors[key] = self.get_color_from_button(btn)
+        
+        tokenizer_colors = {}
+        for key, btn in self.tokenizer_color_buttons.items():
+            tokenizer_colors[key] = self.get_color_from_button(btn)
+        
+        # Create export data
+        export_data = {
+            "name": preset_key if preset_key != "custom" else "Exported Theme",
+            "app": app_colors,
+            "tokenizer": tokenizer_colors,
+            "description": self.preset_info_label.text().replace("ℹ️ ", "").replace("💡 ", "")
+        }
+        
+        # Prompt for save location
+        default_name = f"{preset_key}_theme.json" if preset_key != "custom" else "custom_theme.json"
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Theme Preset",
+            default_name,
+            "JSON Files (*.json);;All Files (*)"
+        )
+        
+        if not file_path:
+            return
+        
+        try:
+            with open(file_path, 'w') as f:
+                json.dump(export_data, f, indent=2)
+            
+            self.preset_info_label.setText(f"✅ Preset exported to {file_path}")
+            
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Export Failed",
+                f"Failed to export preset: {e}"
+            )
 
     def populate_models_for_provider(self, provider: str):
         """Populate model dropdown with provider-specific models.
@@ -1135,6 +1489,12 @@ class SettingsDialog(QDialog):
                 theme_colors["app"][key] = color
         
         self.config.set("theme", theme_colors)
+        
+        # Save selected theme preset name
+        if hasattr(self, 'theme_preset_combo'):
+            preset_key = self.theme_preset_combo.currentData()
+            if preset_key:
+                self.config.set("theme_name", preset_key)
         
         # Save config to disk
         self.config.save()
