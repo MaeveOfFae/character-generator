@@ -55,14 +55,13 @@ AGENT_TOOLS = [
         "type": "function",
         "function": {
             "name": "switch_asset_tab",
-            "description": "Switch to a different asset tab in review mode",
+            "description": "Switch to a different asset tab in review mode. Use get_screen_state first to see available assets.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "asset": {
                         "type": "string",
-                        "enum": ["system_prompt", "post_history", "character_sheet", "intro_scene", "intro_page", "a1111", "suno"],
-                        "description": "The asset tab to switch to"
+                        "description": "The asset tab to switch to (e.g., system_prompt, post_history, char_basic_info, etc.). Check get_screen_state for available assets."
                     }
                 },
                 "required": ["asset"]
@@ -108,14 +107,13 @@ AGENT_TOOLS = [
         "type": "function",
         "function": {
             "name": "get_asset_content",
-            "description": "Get the full content of a specific asset in review mode",
+            "description": "Get the full content of a specific asset in review mode. Use get_screen_state first to see available assets.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "asset": {
                         "type": "string",
-                        "enum": ["system_prompt", "post_history", "character_sheet", "intro_scene", "intro_page", "a1111", "suno"],
-                        "description": "The asset to retrieve"
+                        "description": "The asset to retrieve (e.g., system_prompt, post_history, char_basic_info, etc.). Check get_screen_state for available assets."
                     }
                 },
                 "required": ["asset"]
@@ -654,20 +652,23 @@ class AgentActionHandler(QObject):
     def _switch_asset_tab(self, asset: str) -> Dict[str, Any]:
         """Switch to a different asset tab."""
         current_screen = self.main_window.stack.currentWidget()
-        
+
         from .review import ReviewWidget
         if not isinstance(current_screen, ReviewWidget):
             return {"success": False, "message": "Not on review screen"}
-        
+
         review_widget = current_screen
         asset_keys = list(review_widget.text_editors.keys())
-        
+
         if asset not in asset_keys:
-            return {"success": False, "message": f"Asset not found: {asset}"}
-        
+            return {
+                "success": False,
+                "message": f"Asset '{asset}' not found. Available assets: {', '.join(asset_keys)}"
+            }
+
         index = asset_keys.index(asset)
         review_widget.tab_widget.setCurrentIndex(index)
-        
+
         return {"success": True, "message": f"Switched to {asset}"}
     
     def _save_draft(self) -> Dict[str, Any]:
@@ -704,18 +705,22 @@ class AgentActionHandler(QObject):
     def _get_asset_content(self, asset: str) -> Dict[str, Any]:
         """Get full asset content."""
         current_screen = self.main_window.stack.currentWidget()
-        
+
         from .review import ReviewWidget
         if not isinstance(current_screen, ReviewWidget):
             return {"success": False, "message": "Not on review screen"}
-        
+
         review_widget = current_screen
-        
+
         if asset not in review_widget.text_editors:
-            return {"success": False, "message": f"Asset not found: {asset}"}
-        
+            available_assets = list(review_widget.text_editors.keys())
+            return {
+                "success": False,
+                "message": f"Asset '{asset}' not found. Available assets: {', '.join(available_assets)}"
+            }
+
         content = review_widget.text_editors[asset].toPlainText()
-        
+
         return {
             "success": True,
             "message": f"Retrieved {asset}",
