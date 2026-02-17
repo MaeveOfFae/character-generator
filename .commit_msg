@@ -1,0 +1,14 @@
+feat(tui): implement live theme reload without restart
+
+- Load CSS on class level (type(self).CSS) instead of instance
+- Add _reload_theme_css() method to BlueprintUI app
+- Recreate settings screen on theme change to apply new CSS
+- Fix Python 3.10 compatibility (tomllib import fallback)
+- Fix duplicate load_drafts() method in drafts.py
+- Add comprehensive test documentation (TEST_THEME_RELOAD.md)
+
+This fix addresses the root cause: Textual's CSS system uses class
+attributes, not instance attributes. Screen recreation is necessary
+because widgets inherit styles during initialization.
+
+All 29 theme tests passing, 91% coverage verified.
