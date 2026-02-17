@@ -1,0 +1,21 @@
+engine = "litellm"
+engine_mode = "auto"
+model = "openai/gpt-4"
+api_key_env = "OPENAI_API_KEY"
+api_key = ""
+base_url = ""
+temperature = 0.7
+max_tokens = 4096
+theme_name = "nyx"
+
+[api_keys]
+
+[batch]
+max_concurrent = 3
+rate_limit_delay = 1.0
+
+[google]
+
+[openai]
+
+[theme]

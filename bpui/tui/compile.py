@@ -16,62 +16,6 @@ class CompileScreen(Screen):
         ("enter", "start_compile", "Compile"),
     ]
 
-    CSS = """
-    CompileScreen {
-        layout: vertical;
-    }
-
-    #compile-container {
-        height: 100%;
-        width: 100%;
-        padding: 1;
-    }
-
-    .title {
-        content-align: center middle;
-        text-style: bold;
-        color: $primary;
-        margin-bottom: 1;
-    }
-
-    .field-label {
-        margin-top: 1;
-        margin-bottom: 0;
-    }
-
-    Input, Select {
-        width: 100%;
-        margin-bottom: 1;
-    }
-
-    .button-row {
-        layout: horizontal;
-        width: 100%;
-        height: auto;
-        margin-bottom: 1;
-    }
-
-    .button-row Button {
-        width: 1fr;
-        margin-right: 1;
-    }
-
-    #output-log {
-        height: 1fr;
-        border: solid $primary;
-        margin-bottom: 1;
-    }
-
-    .status {
-        text-align: center;
-        color: $text-muted;
-    }
-
-    .error {
-        color: $error;
-    }
-    """
-
     def __init__(self, config, initial_seed=""):
         """Initialize compile screen."""
         super().__init__()
@@ -216,10 +160,10 @@ class CompileScreen(Screen):
             output_log.refresh()
             
             from ..llm.openai_compat_engine import OpenAICompatEngine
-            from ..prompting import build_asset_prompt
-            from ..parse_blocks import extract_single_asset, extract_character_name
+            from bpui.core.prompting import build_asset_prompt
+            from bpui.core.parse_blocks import extract_single_asset, extract_character_name
             from bpui.utils.file_io.pack_io import create_draft_dir
-            from ..topological_sort import topological_sort
+            from bpui.utils.topological_sort import topological_sort
 
             output_log.write("[dim]Modules imported ✓[/dim]")
             output_log.refresh()

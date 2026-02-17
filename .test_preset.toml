@@ -1,0 +1,33 @@
+engine = "openai_compatible"
+engine_mode = "auto"
+model = "openai/gpt-4"
+api_key_env = "OPENAI_API_KEY"
+api_key = ""
+base_url = ""
+temperature = 0.7
+max_tokens = 4096
+theme_name = "My Purple Theme"
+
+[api_keys]
+
+[batch]
+max_concurrent = 3
+rate_limit_delay = 1.0
+
+[google]
+
+[openai]
+
+[theme]
+
+[custom_theme_presets."My Purple Theme"]
+description = "Custom purple theme"
+
+[custom_theme_presets."My Purple Theme".app]
+background = "#2d1b4e"
+accent = "#b388ff"
+text = "#ffffff"
+
+[custom_theme_presets."My Purple Theme".tokenizer]
+brackets = "#ff4081"
+asterisk = "#7c4dff"
