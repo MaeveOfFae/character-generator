@@ -34,8 +34,7 @@ async def test_concurrent_save(temp_state_dir):
     await asyncio.gather(*[save_multiple() for _ in range(3)])
     
     # Verify state is consistent
-    state_file = temp_state_dir / "batch_*.json"
-    state_files = list(state_file.glob("batch_*.json"))
+    state_files = list(temp_state_dir.glob("batch_*.json"))
     assert len(state_files) == 1
     
     loaded = BatchState.load(state_files[0])

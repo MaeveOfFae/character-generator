@@ -241,7 +241,7 @@ class BlueprintEditor(QDialog):
             Tuple of (frontmatter dict, body string)
         """
         # Match YAML frontmatter between --- delimiters
-        pattern = r'^---\\s*\\n(.*?)\\n---\\s*\\n(.*)$'
+        pattern = r'^\s*---\s*\n(.*?)\n\s*---\s*\n(.*)$'
         match = re.match(pattern, content, re.DOTALL)
         
         if not match:
@@ -250,21 +250,18 @@ class BlueprintEditor(QDialog):
         frontmatter_text = match.group(1)
         body = match.group(2)
         
-        try:
-            # Convert YAML-like to TOML-like by quoting string values
-            toml_text = ""
-            for line in frontmatter_text.split("\n"):
-                if ":" in line:
-                    key, value = line.split(":", 1)
-                    key = key.strip()
-                    value = value.strip()
-                    if value.lower() not in ("true", "false") and not value.replace(".", "", 1).isdigit():
-                        value = f'"{value}"'
-                    toml_text += f"{key} = {value}\n"
-            
-            frontmatter = tomllib.loads(toml_text)
-        except (tomllib.TOMLDecodeError, ValueError):
-            frontmatter = {}
+        frontmatter: Dict[str, Any] = {}
+        for raw_line in frontmatter_text.split("\n"):
+            line = raw_line.strip()
+            if not line or ":" not in line:
+                continue
+            key, value = line.split(":", 1)
+            key = key.strip()
+            value = value.strip()
+            if value.lower() in ("true", "false"):
+                frontmatter[key] = value.lower() == "true"
+            else:
+                frontmatter[key] = value
 
         return frontmatter, body
     
@@ -277,12 +274,14 @@ class BlueprintEditor(QDialog):
         version = f"{self.version_major.value()}.{self.version_minor.value()}"
         invokable = "true" if self.invokable_check.isChecked() else "false"
         
-        frontmatter = f"""---
-name = "{self.name_edit.text()}"
-description = "{self.description_edit.text()}"
-invokable = {invokable}
-version = {version}
----"""
+        frontmatter = (
+            "---\n"
+            f"name: {self.name_edit.text()}\n"
+            f"description: {self.description_edit.text()}\n"
+            f"invokable: {invokable}\n"
+            f"version: {version}\n"
+            "---"
+        )
         return frontmatter
     
     def update_frontmatter_preview(self):

@@ -120,7 +120,7 @@ def build_orchestrator_prompt(
     
     # If template provided, modify orchestrator to list custom assets
     if template:
-        from .topological_sort import topological_sort
+        from bpui.utils.topological_sort import topological_sort
         try:
             asset_order = topological_sort(template.assets)
         except ValueError:
@@ -334,7 +334,12 @@ def build_seedgen_prompt(
     Returns:
         Tuple of (system_prompt, user_prompt)
     """
-    seed_gen_path = (repo_root or Path.cwd()) / "tools" / "seed-gen.md"
+    root = repo_root or Path.cwd()
+    candidates = [
+        root / "tools" / "seed-gen.md",
+        root / "tools" / "generation" / "seed-gen.md",
+    ]
+    seed_gen_path = next((path for path in candidates if path.exists()), candidates[0])
     if not seed_gen_path.exists():
         raise FileNotFoundError(f"Seed generator not found: {seed_gen_path}")
 

@@ -6,7 +6,7 @@ from typing import Optional, Dict, List, TYPE_CHECKING
 from bpui.utils.profiler import profile
 
 if TYPE_CHECKING:
-    from .templates import Template
+    from bpui.features.templates.templates import Template
 
 
 # Ordered asset names as they appear in output
@@ -136,7 +136,7 @@ def parse_blueprint_output(text: str, template: Optional['Template'] = None) -> 
             template = manager.get_template("Official RPBotGenerator")
         
         if template:
-            from .topological_sort import topological_sort
+            from bpui.utils.topological_sort import topological_sort
             try:
                 expected_assets = topological_sort(template.assets)
             except ValueError:
@@ -157,8 +157,8 @@ def parse_blueprint_output(text: str, template: Optional['Template'] = None) -> 
                 block_previews += f"\n  ... and {len(asset_blocks) - 3} more blocks"
             
             raise ParseError(
-                f"Template '{template_name}' expects {expected_count} asset blocks, found {len(asset_blocks)}. "
-                f"Required order: {', '.join(expected_assets)}\n"
+                f"Expected {expected_count} asset blocks, found {len(asset_blocks)}. "
+                f"Template '{template_name}' requires order: {', '.join(expected_assets)}\n"
                 f"Actual blocks found:\n{block_previews}"
             )
 

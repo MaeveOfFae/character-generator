@@ -99,7 +99,7 @@ class DraftsScreen(Screen):
     async def load_drafts(self) -> None:
         """Load drafts list."""
         from bpui.utils.metadata.metadata import search_metadata
-        from bpui.utils.migrate_logging import migrate_draft_metadata
+        from bpui.utils.metadata.metadata import migrate_draft_metadata
         from pathlib import Path
 
         status = self.query_one("#status", Static)

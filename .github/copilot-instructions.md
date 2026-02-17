@@ -55,7 +55,8 @@ character-generator/
 ## bpui (Terminal TUI) architecture
 **Entry points:**
 - `./run_bpui.sh` (auto-creates venv, recommended)
-- `bpui` (after manual install: `pip install textual rich tomli-w httpx litellm`)
+- `bpui` (launches GUI by default)
+- `bpui tui` (launches terminal UI)
 - `bpui compile --seed "..." --mode NSFW` (CLI mode)
 
 **LLM adapter system:**
@@ -103,7 +104,7 @@ SEED → prompting.build_orchestrator_prompt() → LLM → parse_blocks.parse_bl
 ## Developer workflows
 **Setup:**
 ```bash
-./run_bpui.sh  # auto-creates venv, installs deps, launches TUI
+./run_bpui.sh  # auto-creates venv, installs deps, launches GUI by default
 # or manual: python3 -m venv .venv && source .venv/bin/activate && pip install -e .
 ```
 

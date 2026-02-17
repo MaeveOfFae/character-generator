@@ -10,7 +10,7 @@ from bpui.utils.metadata.metadata import DraftMetadata
 from bpui.utils.metadata.draft_index import DraftIndex
 
 if TYPE_CHECKING:
-    from .templates import Template
+    from bpui.features.templates.templates import Template
 
 
 def create_draft_dir(

@@ -78,7 +78,7 @@ class ReviewScreen(Screen):
                 with Vertical(id="left-panel"):
                     with TabbedContent(id="tabs"):
                         if self.template:
-                            from ..topological_sort import topological_sort
+                            from bpui.utils.topological_sort import topological_sort
                             try:
                                 asset_order = topological_sort(self.template.assets)
                             except ValueError:
@@ -429,7 +429,7 @@ class ReviewScreen(Screen):
             # Build prior assets dict (only higher-tier assets for hierarchy)
             asset_order = []
             if self.template:
-                from ..topological_sort import topological_sort
+                from bpui.utils.topological_sort import topological_sort
                 try:
                     asset_order = topological_sort(self.template.assets)
                 except ValueError:

@@ -37,7 +37,7 @@ class BatchWorker(QThread):
         from bpui.core.config import Config
         from ..llm.factory import create_engine
         from bpui.utils.file_io.pack_io import create_draft_dir
-        from ..topological_sort import topological_sort
+        from bpui.utils.topological_sort import topological_sort
 
         total = len(self.seeds)
         completed = 0

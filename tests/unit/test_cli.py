@@ -16,13 +16,13 @@ except ImportError:
 class TestMainArgumentParsing:
     """Tests for CLI argument parsing."""
     
-    def test_no_args_defaults_to_tui(self):
-        """Test that no arguments defaults to TUI."""
+    def test_no_args_defaults_to_gui(self):
+        """Test that no arguments defaults to GUI."""
         with patch("sys.argv", ["bpui"]):
-            with patch("bpui.cli.run_tui") as mock_tui:
+            with patch("bpui.core.cli.run_gui") as mock_gui:
                 from bpui.core.cli import main
                 main()
-                mock_tui.assert_called_once()
+                mock_gui.assert_called_once()
     
     def test_tui_command(self):
         """Test explicit tui command."""

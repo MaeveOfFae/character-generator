@@ -1,9 +1,11 @@
 
 from collections import deque
-from typing import List
-from .templates import AssetDefinition
+from typing import List, TYPE_CHECKING
 
-def topological_sort(assets: List[AssetDefinition]) -> List[str]:
+if TYPE_CHECKING:
+    from bpui.features.templates.templates import AssetDefinition
+
+def topological_sort(assets: List["AssetDefinition"]) -> List[str]:
     """Topologically sort a list of AssetDefinitions based on dependencies.
 
     Args:

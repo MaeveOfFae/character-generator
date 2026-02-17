@@ -134,7 +134,8 @@ def main():
         run_gui()
     elif args.command == "tui":
         logger.debug("Launching TUI")
-        run_tui()
+        import bpui.cli as cli_compat
+        cli_compat.run_tui()
     elif args.command == "compile":
         asyncio.run(run_compile(args))
     elif args.command == "batch":
@@ -191,12 +192,11 @@ async def run_compile(args):
     """Run compilation from CLI."""
     from .config import Config
     logger = logging.getLogger(__name__)
-    from bpui.llm.factory import create_engine
-    from .prompting import build_asset_prompt
-    from .parse_blocks import extract_single_asset, extract_character_name
-    from bpui.utils.file_io.pack_io import create_draft_dir
+    from bpui.prompting import build_asset_prompt
+    from bpui.parse_blocks import extract_single_asset, extract_character_name
+    from bpui.pack_io import create_draft_dir
     from bpui.features.templates.templates import TemplateManager
-    from .topological_sort import topological_sort
+    from bpui.utils.topological_sort import topological_sort
 
     config = Config()
 
@@ -206,7 +206,7 @@ async def run_compile(args):
 
     # Load template
     manager = TemplateManager()
-    template_name = args.template or "Official Aksho"
+    template_name = getattr(args, "template", None) or "Official RPBotGenerator"
     template = manager.get_template(template_name)
     if not template:
         logger.error(f"Template '{template_name}' not found.")
@@ -224,14 +224,25 @@ async def run_compile(args):
     model = args.model or config.model
     config.validate_api_key(model)
 
-    # Create engine using factory
+    # Create engine (legacy-compatible paths for tests)
     try:
-        engine = create_engine(
-            config,
-            model_override=model if args.model else None,
-            temperature=config.temperature,
-            max_tokens=config.max_tokens,
-        )
+        if config.engine == "openai_compatible":
+            from bpui.llm.openai_compat_engine import OpenAICompatEngine
+            engine = OpenAICompatEngine(
+                model=model,
+                api_key=config.api_key,
+                temperature=config.temperature,
+                max_tokens=config.max_tokens,
+                base_url=getattr(config, "base_url", None),
+            )
+        else:
+            from bpui.llm.litellm_engine import LiteLLMEngine
+            engine = LiteLLMEngine(
+                model=model,
+                api_key=config.api_key,
+                temperature=config.temperature,
+                max_tokens=config.max_tokens,
+            )
     except (ImportError, ValueError) as e:
         logger.error(f"Failed to create engine: {e}")
         sys.exit(1)
@@ -294,8 +305,7 @@ async def run_compile(args):
 async def run_seedgen(args):
     """Run seed generator from CLI."""
     from .config import Config
-    from bpui.llm.factory import create_engine
-    from .prompting import build_seedgen_prompt
+    from bpui.prompting import build_seedgen_prompt
 
     logger = logging.getLogger(__name__)
     config = Config()
@@ -316,13 +326,25 @@ async def run_seedgen(args):
     # Build prompt
     system_prompt, user_prompt = build_seedgen_prompt(genre_lines)
 
-    # Create engine using factory
+    # Create engine (legacy-compatible paths for tests)
     try:
-        engine = create_engine(
-            config,
-            temperature=config.temperature,
-            max_tokens=config.max_tokens,
-        )
+        if config.engine == "openai_compatible":
+            from bpui.llm.openai_compat_engine import OpenAICompatEngine
+            engine = OpenAICompatEngine(
+                model=config.model,
+                api_key=config.api_key,
+                temperature=config.temperature,
+                max_tokens=config.max_tokens,
+                base_url=getattr(config, "base_url", None),
+            )
+        else:
+            from bpui.llm.litellm_engine import LiteLLMEngine
+            engine = LiteLLMEngine(
+                model=config.model,
+                api_key=config.api_key,
+                temperature=config.temperature,
+                max_tokens=config.max_tokens,
+            )
     except (ImportError, ValueError) as e:
         logger.error(f"Failed to create engine: {e}")
         sys.exit(1)
@@ -352,7 +374,7 @@ async def run_seedgen(args):
 
 def run_validate(args):
     """Run validation from CLI."""
-    from .validate import validate_pack
+    from bpui.utils.file_io.validate import validate_pack
 
     pack_dir = Path(args.directory)
     if not pack_dir.exists():
@@ -371,7 +393,7 @@ def run_validate(args):
 
 def run_export(args):
     """Run export from CLI."""
-    from .export import export_character
+    from bpui.features.export.export import export_character
 
     source_dir = Path(args.source_dir)
     if not source_dir.exists():
@@ -822,7 +844,7 @@ async def run_offspring(args):
     from bpui.utils.file_io.pack_io import create_draft_dir, load_draft
     from bpui.utils.metadata.metadata import DraftMetadata
     from bpui.features.templates.templates import TemplateManager
-    from .topological_sort import topological_sort
+    from bpui.utils.topological_sort import topological_sort
 
     logger = logging.getLogger(__name__)
     config = Config()

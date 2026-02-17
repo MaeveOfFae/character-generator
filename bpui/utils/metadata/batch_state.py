@@ -157,18 +157,22 @@ class BatchState:
         return state_file
     
     @classmethod
-    def load(cls, state_file: Path) -> "BatchState":
+    def load(cls, state_file: Path) -> Optional["BatchState"]:
         """Load state from file.
         
         Args:
             state_file: Path to state file
             
         Returns:
-            BatchState instance
+            BatchState instance, or None if the file is invalid/corrupted
         """
-        with open(state_file) as f:
-            data = json.load(f)
-        return cls.from_dict(data)
+        try:
+            with open(state_file) as f:
+                data = json.load(f)
+            return cls.from_dict(data)
+        except (OSError, json.JSONDecodeError, TypeError, KeyError) as e:
+            logger.warning(f"Failed to load batch state {state_file}: {e}")
+            return None
     
     @classmethod
     def load_latest(cls, state_dir: Optional[Path] = None) -> Optional["BatchState"]:
@@ -215,12 +219,9 @@ class BatchState:
         state_files = sorted(state_dir.glob("batch_*.json"), reverse=True)
         
         for state_file in state_files:
-            try:
-                state = cls.load(state_file)
-                if state.status == "running":
-                    return state
-            except (json.JSONDecodeError, KeyError, TypeError):
-                continue
+            state = cls.load(state_file)
+            if state and state.status == "running":
+                return state
         
         return None
     
@@ -238,14 +239,13 @@ class BatchState:
         
         # Find exact match by loading and comparing batch_id
         for state_file in state_dir.glob("batch_*.json"):
-            try:
-                state = BatchState.load(state_file)
-                if state.batch_id == self.batch_id:
-                    state_file.unlink()
-                    logger.debug(f"Deleted state file: {state_file}")
-                    break
-            except (json.JSONDecodeError, KeyError, TypeError) as e:
-                logger.warning(f"Failed to load state file {state_file}: {e}")
+            state = BatchState.load(state_file)
+            if not state:
+                continue
+            if state.batch_id == self.batch_id:
+                state_file.unlink()
+                logger.debug(f"Deleted state file: {state_file}")
+                break
     
     @staticmethod
     def cleanup_old_states(state_dir: Optional[Path] = None, days: int = 7) -> int:

@@ -119,7 +119,7 @@ Asset 2 content
             parse_blueprint_output(output, template=minimal_template)
         
         assert "Test Template" in str(excinfo.value)
-        assert "expects 3 asset blocks, found 2" in str(excinfo.value)
+        assert "Expected 3 asset blocks, found 2" in str(excinfo.value)
     
     def test_parse_with_adjustment_note_and_template(self, minimal_template):
         """Test parsing with adjustment note and custom template."""
@@ -173,6 +173,13 @@ class TestTemplateManager:
         manager = TemplateManager()
         assert manager is not None
         assert manager.custom_dir.exists()
+
+    def test_official_blueprints_directory_resolves(self):
+        """Test manager resolves official blueprints directory in workspace."""
+        manager = TemplateManager()
+        assert manager.official_dir.exists()
+        assert (manager.official_dir / "rpbotgenerator.md").exists()
+        assert (manager.official_dir / "templates").exists()
     
     def test_list_templates(self):
         """Test listing templates."""
@@ -292,7 +299,7 @@ class TestPackIOTemplateSupport:
     
     def test_load_draft_with_template(self, minimal_template, tmp_path):
         """Test loading draft with template."""
-        from bpui.utils.file_io.pack_io import load_draft
+        from bpui.utils.file_io.pack_io import create_draft_dir, load_draft
         
         assets = {
             "asset1": "Content 1",

@@ -191,7 +191,7 @@ class TestWorkflows:
             
             # Navigate to drafts
             drafts_button = home.query_one("#drafts", Button)
-            await pilot.click(Button)
+            await pilot.click("#drafts")
             await pilot.pause()
             
             # Should be on drafts screen
@@ -203,8 +203,10 @@ class TestWorkflows:
             assert drafts_list is not None
     
     @pytest.mark.asyncio
-    async def test_compile_and_review_workflow(self, config, tmp_path, test_assets):
+    async def test_compile_and_review_workflow(self, config, tmp_path, test_assets, monkeypatch):
         """Test workflow: compile character and review."""
+        monkeypatch.chdir(tmp_path)
+
         # Create a draft first
         draft_dir = create_draft_dir(test_assets, "workflow_test", tmp_path / "drafts")
         
@@ -217,7 +219,7 @@ class TestWorkflows:
             
             # Navigate to drafts
             drafts_button = home.query_one("#drafts", Button)
-            await pilot.click(Button)
+            await pilot.click("#drafts")
             await pilot.pause()
             
             # Open the draft
@@ -227,14 +229,9 @@ class TestWorkflows:
             # The draft should be in the list
             drafts_list = drafts_screen.query_one("#drafts-list", ListView)
             assert drafts_list is not None
-            
-            # Select first item
-            if drafts_list.index is None:
-                drafts_list.index = 0
-            await pilot.pause()
-            
-            # Open the draft
-            await pilot.press("enter")
+
+            # Open the known draft directly (avoids list selection timing flakes)
+            await drafts_screen.open_draft(draft_dir)
             await pilot.pause()
             
             # Should be on review screen

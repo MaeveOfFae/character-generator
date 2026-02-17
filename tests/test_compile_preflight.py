@@ -3,11 +3,13 @@
 
 import asyncio
 from pathlib import Path
+import pytest
 from bpui.core.config import Config
 
 from bpui.llm.openai_compat_engine import OpenAICompatEngine
 from bpui.core.prompting import build_asset_prompt
 
+@pytest.mark.asyncio
 async def test_compile():
     """Test compile without TUI."""
     config = Config()

@@ -4,7 +4,19 @@ A comprehensive prompt blueprint system for compiling consistent character asset
 
 ## Quick Start
 
-### Option 1: Terminal UI (Recommended)
+### Option 1: Graphical UI (Qt6, Default)
+
+Launch the modern Qt6-based GUI:
+
+```bash
+# Install dependencies
+pip install PySide6
+
+# Launch GUI (default)
+bpui
+```
+
+### Option 2: Terminal UI (TUI)
 
 Launch the interactive TUI with full keyboard navigation:
 
@@ -17,18 +29,9 @@ source .venv/bin/activate
 pip install textual rich tomli-w httpx
 pip install litellm  # optional, for 100+ providers
 bpui
-```
 
-### Option 2: Graphical UI (Qt6)
-
-Launch the modern Qt6-based GUI:
-
-```bash
-# Install dependencies
-pip install PySide6
-
-# Launch GUI
-bpui
+# Explicit terminal UI mode
+bpui tui
 ```
 
 ### Option 3: CLI Mode (Scriptable)

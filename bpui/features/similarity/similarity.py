@@ -20,8 +20,24 @@ from PySide6.QtWidgets import (
 )
 
 from bpui.utils.file_io.pack_io import list_drafts
-from bpui.features.similarity.engine import SimilarityAnalyzer, format_similarity_report
+from bpui.features.similarity.engine import (
+    CharacterProfile,
+    LLMAnalysis,
+    MetaAnalysis,
+    SimilarityResult,
+    SimilarityAnalyzer,
+    format_similarity_report,
+)
 from bpui.core.config import Config
+
+__all__ = [
+    "CharacterProfile",
+    "LLMAnalysis",
+    "MetaAnalysis",
+    "SimilarityResult",
+    "SimilarityAnalyzer",
+    "SimilarityWidget",
+]
 
 
 class SimilarityWidget(QWidget):

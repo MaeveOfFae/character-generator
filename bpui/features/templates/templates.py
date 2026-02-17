@@ -14,6 +14,33 @@ else:
 import tomli_w
 
 
+def _resolve_official_blueprints_dir() -> Path:
+    """Resolve path to official blueprints directory.
+
+    Tries parent directories of this file first (source checkout), then cwd
+    (runtime execution from project root). Returns best-effort fallback.
+    """
+    marker_file = "rpbotgenerator.md"
+
+    # Walk up from this module location to support source checkout execution.
+    file_path = Path(__file__).resolve()
+    for parent in file_path.parents:
+        candidate = parent / "blueprints"
+        if (candidate / marker_file).exists():
+            return candidate
+
+    # Fallback to current working directory (common for CLI/TUI runtime).
+    cwd_candidate = Path.cwd() / "blueprints"
+    if (cwd_candidate / marker_file).exists():
+        return cwd_candidate
+
+    # Best-effort default.
+    return cwd_candidate
+
+
+OFFICIAL_BLUEPRINTS_DIR = _resolve_official_blueprints_dir()
+
+
 @dataclass
 class AssetDefinition:
     """Definition of a single asset in a template."""
@@ -36,7 +63,7 @@ class Template:
     @property
     def is_official(self) -> bool:
         """Check if this is an official template."""
-        official_dir = Path(__file__).parent.parent / "blueprints"
+        official_dir = OFFICIAL_BLUEPRINTS_DIR
         try:
             # Resolve both paths to handle symlinks, etc.
             return self.path.resolve().is_relative_to(official_dir.resolve())
@@ -60,7 +87,7 @@ class TemplateManager:
         self.config_dir = config_dir
         self.templates_dir = config_dir / "templates"
         self.custom_dir = self.templates_dir / "custom"
-        self.official_dir = Path(__file__).parent.parent / "blueprints"
+        self.official_dir = OFFICIAL_BLUEPRINTS_DIR
         
         # Ensure directories exist
         self.custom_dir.mkdir(parents=True, exist_ok=True)

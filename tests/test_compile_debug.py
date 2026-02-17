@@ -3,9 +3,11 @@
 
 import asyncio
 from pathlib import Path
+import pytest
 from bpui.core.config import Config
 from bpui.core.prompting import build_asset_prompt
 
+@pytest.mark.asyncio
 async def test_streaming():
     """Test that we can build prompts and simulate streaming."""
     config = Config()

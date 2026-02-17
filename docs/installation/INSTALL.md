@@ -58,10 +58,16 @@ Testing imports...
 You can now run: bpui
 ```
 
-### 3. Launch the TUI
+### 3. Launch the GUI (Default)
 
 ```bash
 bpui
+```
+
+To launch the terminal UI instead:
+
+```bash
+bpui tui
 ```
 
 ## First-time Setup
@@ -83,9 +89,9 @@ Your settings are saved to `.bpui.toml` in the repo root.
 
 ## Quick Start Guide
 
-### Compile a Character (TUI)
+### Compile a Character
 
-1. Launch `bpui`
+1. Launch `bpui` (GUI default) or `bpui tui` (terminal UI)
 2. Select **🌱 Compile from Seed**
 3. Enter your seed (e.g., "Noir detective with psychic abilities")
 4. Choose content mode: Auto / SFW / NSFW / Platform-Safe

@@ -47,7 +47,8 @@ Six interactive screens:
 
 Subcommands for scripting:
 
-- `bpui tui` - Launch TUI (default)
+- `bpui` - Launch GUI (default)
+- `bpui tui` - Launch TUI
 - `bpui compile` - Compile from seed
 - `bpui seed-gen` - Generate seeds from file
 - `bpui validate` - Validate directory

@@ -213,7 +213,7 @@ class SimilarityAnalyzer:
             return 0.0
         if not set1 or not set2:
             return 0.0
-        return len(set1 & set2) / len(set1 | set2)
+        return len(set1 & set2) / max(len(set1), len(set2))
 
     def compare_profiles(
         self,
@@ -437,19 +437,34 @@ class SimilarityAnalyzer:
         score2 = len(p2.personality_traits) + len(p2.core_values) + len(p2.background_keywords)
         primary, secondary = (p1, p2) if score1 >= score2 else (p2, p1)
 
-        unique_traits = set(secondary.personality_traits) - set(primary.personality_traits)
-        unique_values = set(secondary.core_values) - set(primary.core_values)
+        primary_unique_traits = set(primary.personality_traits) - set(secondary.personality_traits)
+        primary_unique_values = set(primary.core_values) - set(secondary.core_values)
+        secondary_unique_traits = set(secondary.personality_traits) - set(primary.personality_traits)
+        secondary_unique_values = set(secondary.core_values) - set(primary.core_values)
 
         parts = [
             f"Consider merging; {primary.name or 'Character 1'} is more developed.",
         ]
-        if unique_traits or unique_values:
+
+        if secondary_unique_traits or secondary_unique_values:
             additions = []
-            if unique_traits:
-                additions.append(f"traits: {', '.join(sorted(unique_traits))}")
-            if unique_values:
-                additions.append(f"values: {', '.join(sorted(unique_values))}")
-            parts.append(f"Include unique elements from {secondary.name or 'Character 2'} ({'; '.join(additions)}).")
+            if secondary_unique_traits:
+                additions.append(f"traits: {', '.join(sorted(secondary_unique_traits))}")
+            if secondary_unique_values:
+                additions.append(f"values: {', '.join(sorted(secondary_unique_values))}")
+            parts.append(
+                f"Include unique elements from {secondary.name or 'Character 2'} ({'; '.join(additions)})."
+            )
+
+        if primary_unique_traits or primary_unique_values:
+            additions = []
+            if primary_unique_traits:
+                additions.append(f"traits: {', '.join(sorted(primary_unique_traits))}")
+            if primary_unique_values:
+                additions.append(f"values: {', '.join(sorted(primary_unique_values))}")
+            parts.append(
+                f"Preserve defining elements from {primary.name or 'Character 1'} ({'; '.join(additions)})."
+            )
 
         return " ".join(parts)
 

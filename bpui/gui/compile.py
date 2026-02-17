@@ -44,7 +44,7 @@ class CompileWorker(QThread):
         from ..llm.factory import create_engine
         from ..parse_blocks import extract_single_asset, extract_character_name
         from bpui.utils.file_io.pack_io import create_draft_dir
-        from ..topological_sort import topological_sort
+        from bpui.utils.topological_sort import topological_sort
         from bpui.features.templates.templates import TemplateManager
         from datetime import datetime
 

@@ -484,7 +484,7 @@ class OffspringThread(QThread):
             from ..parse_blocks import extract_single_asset, extract_character_name
             from bpui.utils.file_io.pack_io import create_draft_dir
             from bpui.utils.metadata.metadata import DraftMetadata
-            from ..topological_sort import topological_sort
+            from bpui.utils.topological_sort import topological_sort
 
             self.log_signal.emit("Initializing offspring generation...")
 

@@ -114,11 +114,15 @@ max_tokens = 4096
 
 ### 3. Run
 
-Launch the TUI:
+Launch the GUI (default):
 
 ```bash
 bpui
-# or explicitly:
+```
+
+Launch the terminal UI explicitly:
+
+```bash
 bpui tui
 ```
 
@@ -129,7 +133,7 @@ bpui tui
 Launch the terminal UI:
 
 ```bash
-bpui
+bpui tui
 ```
 
 **Screens:**
