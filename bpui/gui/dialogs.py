@@ -889,9 +889,10 @@ class SettingsDialog(QDialog):
             return
         
         name = name.strip()
-        
+
         # Check if name conflicts with built-in
-        if name.lower() in ["dark", "light", "nyx", "custom"]:
+        from bpui.core.theme import BUILTIN_THEMES
+        if name.lower() in BUILTIN_THEMES or name.lower() == "custom":
             from PySide6.QtWidgets import QMessageBox
             QMessageBox.warning(
                 self,
@@ -992,9 +993,10 @@ class SettingsDialog(QDialog):
                 raise ValueError("Invalid preset file format")
             
             name = preset_data["name"]
-            
-            # Check for conflicts
-            if name.lower() in ["dark", "light", "nyx", "custom"]:
+
+            # Check for conflicts with built-in themes
+            from bpui.core.theme import BUILTIN_THEMES
+            if name.lower() in BUILTIN_THEMES or name.lower() == "custom":
                 raise ValueError(f"Cannot import preset with reserved name '{name}'")
             
             # Save to config
