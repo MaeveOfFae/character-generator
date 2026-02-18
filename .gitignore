@@ -9,6 +9,7 @@
 # Chub presets (user-specific)
 /chub preset/
 /chub-preset/
+docs/*
 
 # Python
 __pycache__/
