@@ -448,6 +448,7 @@ class SettingsDialog(QDialog):
         test_layout.addWidget(test_btn)
         
         self.test_status = QLabel("")
+        self.test_status.setWordWrap(True)
         self.test_status.setStyleSheet("color: #888;")
         test_layout.addWidget(self.test_status, 1)
         
@@ -461,6 +462,7 @@ class SettingsDialog(QDialog):
         rebuild_layout.addWidget(rebuild_btn)
         
         self.rebuild_status = QLabel("")
+        self.rebuild_status.setWordWrap(True)
         self.rebuild_status.setStyleSheet("color: #888;")
         rebuild_layout.addWidget(self.rebuild_status, 1)
         
@@ -474,6 +476,7 @@ class SettingsDialog(QDialog):
         migrate_layout.addWidget(migrate_btn)
         
         self.migrate_status = QLabel("")
+        self.migrate_status.setWordWrap(True)
         self.migrate_status.setStyleSheet("color: #888;")
         migrate_layout.addWidget(self.migrate_status, 1)
         
@@ -530,6 +533,11 @@ class SettingsDialog(QDialog):
         export_btn.setToolTip("Export current preset to file")
         export_btn.clicked.connect(self.export_theme_preset)
         preset_controls.addWidget(export_btn)
+        
+        reload_btn = QPushButton("🔄 Reload")
+        reload_btn.setToolTip("Reload theme presets from disk")
+        reload_btn.clicked.connect(self.reload_theme_presets)
+        preset_controls.addWidget(reload_btn)
         
         preset_layout.addLayout(preset_controls)
         
@@ -647,6 +655,14 @@ class SettingsDialog(QDialog):
         layout.addWidget(scroll)
         
         self.tabs.addTab(widget, "Theme")
+    
+    def reload_theme_presets(self):
+        """Force-reload all theme presets from disk and refresh the combobox."""
+        from bpui.core.theme import reload_themes
+        reload_themes()
+        self.populate_theme_presets()
+        QMessageBox.information(self, "Themes Reloaded", "Theme list has been updated from disk.")
+
     
     def create_color_button(self, color, tooltip):
         """Create a color selection button."""
