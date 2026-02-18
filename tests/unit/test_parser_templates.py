@@ -165,6 +165,47 @@ class TestAssetFilenameMapping:
         assert filename == "unknown_asset.txt"
 
 
+@pytest.fixture
+def valid_template_with_files(tmp_path):
+    """A valid template with files on disk."""
+    template_dir = tmp_path / "valid_template"
+    assets_dir = template_dir / "assets"
+    assets_dir.mkdir(parents=True)
+    (assets_dir / "asset1.md").write_text("---\n---\n")
+    (assets_dir / "asset2.md").write_text("---\n---\n")
+    (assets_dir / "asset3.md").write_text("---\n---\n")
+
+    return Template(
+        name="Valid Template",
+        version="1.0.0",
+        description="A valid template with files",
+        assets=[
+            AssetDefinition(
+                name="asset1",
+                required=True,
+                depends_on=[],
+                description="First asset",
+                blueprint_file="asset1.md"
+            ),
+            AssetDefinition(
+                name="asset2",
+                required=True,
+                depends_on=["asset1"],
+                description="Second asset",
+                blueprint_file="asset2.md"
+            ),
+            AssetDefinition(
+                name="asset3",
+                required=True,
+                depends_on=["asset1", "asset2"],
+                description="Third asset",
+                blueprint_file="asset3.md"
+            )
+        ],
+        path=template_dir
+    )
+
+
 class TestTemplateManager:
     """Tests for TemplateManager."""
     
@@ -203,10 +244,10 @@ class TestTemplateManager:
         assert template is not None
         assert template.name == "Official RPBotGenerator"
     
-    def test_validate_valid_template(self, minimal_template):
+    def test_validate_valid_template(self, valid_template_with_files):
         """Test validating a valid template."""
         manager = TemplateManager()
-        result = manager.validate_template(minimal_template)
+        result = manager.validate_template(valid_template_with_files)
         
         assert len(result["errors"]) == 0
     

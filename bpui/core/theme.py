@@ -13,9 +13,15 @@ theme picker automatically.
 from __future__ import annotations
 
 import importlib.resources
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field, asdict, fields
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import sys
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
 
 from bpui.utils.logging_config import get_logger
 
@@ -149,379 +155,9 @@ class ThemeDefinition:
 
 
 # ---------------------------------------------------------------------------
-# Built-in theme presets
+# Theme loading
 # ---------------------------------------------------------------------------
 
-DARK_THEME = ThemeDefinition(
-    name="dark",
-    display_name="Dark",
-    description="Default dark theme with purple accents",
-    colors=ThemeColors(
-        # App
-        background="#1e1e1e",
-        text="#e0e0e0",
-        accent="#6200ea",
-        button="#3700b3",
-        button_text="#ffffff",
-        border="#424242",
-        highlight="#bb86fc",
-        window="#121212",
-        # Tokenizer
-        tok_brackets="#e91e63",
-        tok_asterisk="#2196f3",
-        tok_parentheses="#ff9800",
-        tok_double_brackets="#4caf50",
-        tok_curly_braces="#9c27b0",
-        tok_pipes="#00bcd4",
-        tok_at_sign="#ff5722",
-        # Semantic GUI
-        muted_text="#888888",
-        surface="#2a2a2a",
-        success_bg="#2d5f2d",
-        danger_bg="#5f2d2d",
-        accent_bg="#4a2d5f",
-        accent_title="#9b59b6",
-        success_text="#44aa44",
-        error_text="#ff4444",
-        warning_text="#ffaa44",
-        # TUI
-        tui_primary="#6200ea",
-        tui_secondary="#03dac6",
-        tui_surface="#1e1e1e",
-        tui_panel="#2d2d2d",
-        tui_warning="#fb8c00",
-        tui_error="#cf6679",
-        tui_success="#4caf50",
-        tui_accent="#bb86fc",
-    ),
-)
-
-LIGHT_THEME = ThemeDefinition(
-    name="light",
-    display_name="Light",
-    description="Clean light theme for bright environments",
-    colors=ThemeColors(
-        # App
-        background="#fafafa",
-        text="#212121",
-        accent="#1565c0",
-        button="#1976d2",
-        button_text="#ffffff",
-        border="#bdbdbd",
-        highlight="#90caf9",
-        window="#ffffff",
-        # Tokenizer
-        tok_brackets="#c62828",
-        tok_asterisk="#1565c0",
-        tok_parentheses="#e65100",
-        tok_double_brackets="#2e7d32",
-        tok_curly_braces="#6a1b9a",
-        tok_pipes="#00838f",
-        tok_at_sign="#d84315",
-        # Semantic GUI
-        muted_text="#757575",
-        surface="#f0f0f0",
-        success_bg="#2e7d32",
-        danger_bg="#c62828",
-        accent_bg="#1565c0",
-        accent_title="#7b1fa2",
-        success_text="#2e7d32",
-        error_text="#c62828",
-        warning_text="#ef6c00",
-        # TUI
-        tui_primary="#1565c0",
-        tui_secondary="#00897b",
-        tui_surface="#fafafa",
-        tui_panel="#f5f5f5",
-        tui_warning="#ef6c00",
-        tui_error="#c62828",
-        tui_success="#2e7d32",
-        tui_accent="#42a5f5",
-    ),
-)
-
-NYX_THEME = ThemeDefinition(
-    name="nyx",
-    display_name="Nyx",
-    description="Deep purple and magenta — the blueprint architect's choice",
-    colors=ThemeColors(
-        # App
-        background="#0d0221",
-        text="#e8d5f5",
-        accent="#e91e63",
-        button="#880e4f",
-        button_text="#fce4ec",
-        border="#4a148c",
-        highlight="#f48fb1",
-        window="#1a0533",
-        # Tokenizer
-        tok_brackets="#ff4081",
-        tok_asterisk="#7c4dff",
-        tok_parentheses="#ffab40",
-        tok_double_brackets="#69f0ae",
-        tok_curly_braces="#ea80fc",
-        tok_pipes="#18ffff",
-        tok_at_sign="#ff6e40",
-        # Semantic GUI
-        muted_text="#9e8fb5",
-        surface="#150330",
-        success_bg="#1b5e20",
-        danger_bg="#5f2d3d",
-        accent_bg="#880e4f",
-        accent_title="#f48fb1",
-        success_text="#69f0ae",
-        error_text="#ff5252",
-        warning_text="#ffab40",
-        # TUI
-        tui_primary="#e91e63",
-        tui_secondary="#7c4dff",
-        tui_surface="#0d0221",
-        tui_panel="#1a0533",
-        tui_warning="#ffab40",
-        tui_error="#ff5252",
-        tui_success="#69f0ae",
-        tui_accent="#f48fb1",
-    ),
-)
-
-MIDNIGHT_THEME = ThemeDefinition(
-    name="midnight",
-    display_name="Midnight",
-    description="Deep blue ocean theme with cyan accents",
-    colors=ThemeColors(
-        # App
-        background="#0a1929",
-        text="#b2d4f0",
-        accent="#00b4d8",
-        button="#014361",
-        button_text="#caf0f8",
-        border="#1d3557",
-        highlight="#48cae4",
-        window="#051923",
-        # Tokenizer
-        tok_brackets="#00b4d8",
-        tok_asterisk="#90e0ef",
-        tok_parentheses="#f48c06",
-        tok_double_brackets="#06ffa5",
-        tok_curly_braces="#00b4d8",
-        tok_pipes="#48cae4",
-        tok_at_sign="#f77f00",
-        # Semantic GUI
-        muted_text="#6b8aa3",
-        surface="#0f2638",
-        success_bg="#1b4332",
-        danger_bg="#641220",
-        accent_bg="#014361",
-        accent_title="#48cae4",
-        success_text="#06ffa5",
-        error_text="#ff6b6b",
-        warning_text="#f48c06",
-        # TUI
-        tui_primary="#00b4d8",
-        tui_secondary="#48cae4",
-        tui_surface="#0a1929",
-        tui_panel="#0f2638",
-        tui_warning="#f48c06",
-        tui_error="#ff6b6b",
-        tui_success="#06ffa5",
-        tui_accent="#90e0ef",
-    ),
-)
-
-EMBER_THEME = ThemeDefinition(
-    name="ember",
-    display_name="Ember",
-    description="Warm theme with orange and amber tones",
-    colors=ThemeColors(
-        # App
-        background="#1a0f0a",
-        text="#ffd8b8",
-        accent="#ff6b35",
-        button="#c44536",
-        button_text="#fff8f0",
-        border="#5e1914",
-        highlight="#ff8c42",
-        window="#100a07",
-        # Tokenizer
-        tok_brackets="#ff6b35",
-        tok_asterisk="#ffa07a",
-        tok_parentheses="#ffb627",
-        tok_double_brackets="#7bed9f",
-        tok_curly_braces="#ff6348",
-        tok_pipes="#feca57",
-        tok_at_sign="#ff4757",
-        # Semantic GUI
-        muted_text="#a67c52",
-        surface="#261612",
-        success_bg="#2d4a2b",
-        danger_bg="#5e1914",
-        accent_bg="#c44536",
-        accent_title="#ff8c42",
-        success_text="#7bed9f",
-        error_text="#ff4757",
-        warning_text="#feca57",
-        # TUI
-        tui_primary="#ff6b35",
-        tui_secondary="#ffa07a",
-        tui_surface="#1a0f0a",
-        tui_panel="#261612",
-        tui_warning="#feca57",
-        tui_error="#ff4757",
-        tui_success="#7bed9f",
-        tui_accent="#ff8c42",
-    ),
-)
-
-MONO_THEME = ThemeDefinition(
-    name="mono",
-    display_name="Monochrome",
-    description="Clean grayscale theme for minimal distraction",
-    colors=ThemeColors(
-        # App
-        background="#1c1c1c",
-        text="#e0e0e0",
-        accent="#757575",
-        button="#424242",
-        button_text="#ffffff",
-        border="#505050",
-        highlight="#9e9e9e",
-        window="#141414",
-        # Tokenizer
-        tok_brackets="#bdbdbd",
-        tok_asterisk="#9e9e9e",
-        tok_parentheses="#757575",
-        tok_double_brackets="#e0e0e0",
-        tok_curly_braces="#a0a0a0",
-        tok_pipes="#c0c0c0",
-        tok_at_sign="#888888",
-        # Semantic GUI
-        muted_text="#707070",
-        surface="#242424",
-        success_bg="#3a3a3a",
-        danger_bg="#2e2e2e",
-        accent_bg="#424242",
-        accent_title="#9e9e9e",
-        success_text="#c0c0c0",
-        error_text="#a0a0a0",
-        warning_text="#b0b0b0",
-        # TUI
-        tui_primary="#757575",
-        tui_secondary="#9e9e9e",
-        tui_surface="#1c1c1c",
-        tui_panel="#242424",
-        tui_warning="#b0b0b0",
-        tui_error="#a0a0a0",
-        tui_success="#c0c0c0",
-        tui_accent="#9e9e9e",
-    ),
-)
-
-FOREST_THEME = ThemeDefinition(
-    name="forest",
-    display_name="Forest",
-    description="Natural green theme inspired by woodland twilight",
-    colors=ThemeColors(
-        # App
-        background="#0d1b0f",
-        text="#d4f1d4",
-        accent="#4ecca3",
-        button="#2d5f3f",
-        button_text="#e8f5e8",
-        border="#1e4620",
-        highlight="#7bed9f",
-        window="#081108",
-        # Tokenizer
-        tok_brackets="#4ecca3",
-        tok_asterisk="#7bed9f",
-        tok_parentheses="#ffd93d",
-        tok_double_brackets="#6bcf7f",
-        tok_curly_braces="#48c774",
-        tok_pipes="#95e1d3",
-        tok_at_sign="#f8b500",
-        # Semantic GUI
-        muted_text="#6b8f71",
-        surface="#152518",
-        success_bg="#2d5f3f",
-        danger_bg="#5c2a2a",
-        accent_bg="#2d5f3f",
-        accent_title="#7bed9f",
-        success_text="#95e1d3",
-        error_text="#ff6b6b",
-        warning_text="#ffd93d",
-        # TUI
-        tui_primary="#4ecca3",
-        tui_secondary="#7bed9f",
-        tui_surface="#0d1b0f",
-        tui_panel="#152518",
-        tui_warning="#ffd93d",
-        tui_error="#ff6b6b",
-        tui_success="#95e1d3",
-        tui_accent="#6bcf7f",
-    ),
-)
-
-SOLARIZED_DARK_THEME = ThemeDefinition(
-    name="solarized_dark",
-    display_name="Solarized Dark",
-    description="Popular Solarized color scheme with reduced eye strain",
-    colors=ThemeColors(
-        # App
-        background="#002b36",
-        text="#839496",
-        accent="#268bd2",
-        button="#073642",
-        button_text="#eee8d5",
-        border="#586e75",
-        highlight="#2aa198",
-        window="#001e26",
-        # Tokenizer
-        tok_brackets="#dc322f",
-        tok_asterisk="#268bd2",
-        tok_parentheses="#cb4b16",
-        tok_double_brackets="#859900",
-        tok_curly_braces="#d33682",
-        tok_pipes="#2aa198",
-        tok_at_sign="#b58900",
-        # Semantic GUI
-        muted_text="#586e75",
-        surface="#073642",
-        success_bg="#324d32",
-        danger_bg="#4d2626",
-        accent_bg="#073642",
-        accent_title="#2aa198",
-        success_text="#859900",
-        error_text="#dc322f",
-        warning_text="#b58900",
-        # TUI
-        tui_primary="#268bd2",
-        tui_secondary="#2aa198",
-        tui_surface="#002b36",
-        tui_panel="#073642",
-        tui_warning="#b58900",
-        tui_error="#dc322f",
-        tui_success="#859900",
-        tui_accent="#6c71c4",
-    ),
-)
-
-BUILTIN_THEMES: Dict[str, ThemeDefinition] = {
-    "dark": DARK_THEME,
-    "light": LIGHT_THEME,
-    "nyx": NYX_THEME,
-    "midnight": MIDNIGHT_THEME,
-    "ember": EMBER_THEME,
-    "mono": MONO_THEME,
-    "forest": FOREST_THEME,
-    "solarized_dark": SOLARIZED_DARK_THEME,
-    "custom": DARK_THEME,  # Sentinel - uses dark as base with config overrides
-}
-
-DEFAULT_THEME_NAME = "dark"
-
-
-# ---------------------------------------------------------------------------
-# Theme resolution helpers
-# ---------------------------------------------------------------------------
 
 def _get_themes_dir() -> Path:
     """Return the ``resources/themes/`` directory path."""
@@ -530,6 +166,68 @@ def _get_themes_dir() -> Path:
     themes_dir = project_root / "resources" / "themes"
     return themes_dir
 
+
+def _load_theme_from_file(path: Path) -> ThemeDefinition:
+    """Load a theme from a .toml file."""
+    with path.open("rb") as f:
+        data = tomllib.load(f)
+    colors_data = data.get("colors", {})
+    # Filter colors_data to only include keys that are in ThemeColors
+    valid_keys = {f.name for f in fields(ThemeColors)}
+    filtered_colors = {k: v for k, v in colors_data.items() if k in valid_keys}
+    colors = ThemeColors(**filtered_colors)
+    return ThemeDefinition(
+        name=data.get("name", path.stem),
+        display_name=data.get("display_name", path.stem.replace("_", " ").title()),
+        description=data.get("description", ""),
+        is_builtin=data.get("is_builtin", False),
+        colors=colors,
+    )
+
+
+def _load_themes_from_disk() -> Dict[str, ThemeDefinition]:
+    """Load all themes from the resources/themes directory."""
+    themes_dir = _get_themes_dir()
+    themes = {}
+    if themes_dir.is_dir():
+        for toml_file in sorted(themes_dir.glob("*.toml")):
+            try:
+                theme = _load_theme_from_file(toml_file)
+                themes[theme.name] = theme
+            except Exception as e:
+                logger.warning(f"Failed to load theme {toml_file.name}: {e}")
+    return themes
+
+
+BUILTIN_THEMES: Dict[str, ThemeDefinition] = {}
+
+
+def reload_themes():
+    """Force-reload all themes from disk."""
+    global BUILTIN_THEMES
+    BUILTIN_THEMES = _load_themes_from_disk()
+    # Add the sentinel for "custom" theme.
+    if "dark" in BUILTIN_THEMES:
+        # Use the dark theme as the base for custom themes
+        BUILTIN_THEMES["custom"] = BUILTIN_THEMES["dark"]
+    else:
+        # Fallback if dark theme isn't loaded for some reason
+        BUILTIN_THEMES["custom"] = ThemeDefinition(
+            name="custom", display_name="Custom", colors=ThemeColors()
+        )
+    logger.info(f"Reloaded themes. Found: {', '.join(BUILTIN_THEMES.keys())}")
+
+
+# Initial load at startup
+reload_themes()
+
+
+DEFAULT_THEME_NAME = "dark"
+
+
+# ---------------------------------------------------------------------------
+# Theme resolution helpers
+# ---------------------------------------------------------------------------
 
 def list_available_themes() -> List[str]:
     """Return names of all available themes (built-in + custom .tcss files).

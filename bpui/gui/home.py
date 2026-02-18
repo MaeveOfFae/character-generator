@@ -36,8 +36,8 @@ class HomeWidget(QWidget):
         
         # Subtitle
         subtitle = QLabel("Character Asset Generator")
+        subtitle.setObjectName("subtitleLabel")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        subtitle.setStyleSheet("color: #888; font-size: 14px;")
         layout.addWidget(subtitle)
         
         layout.addSpacing(20)
@@ -47,43 +47,36 @@ class HomeWidget(QWidget):
         btn_layout.addStretch()
         
         seedgen_btn = QPushButton("🎲 Seed Generator")
-        seedgen_btn.setFixedSize(200, 50)
         seedgen_btn.setStyleSheet("font-size: 14px; font-weight: bold;")
         seedgen_btn.clicked.connect(lambda: self.main_window.show_seed_generator())
         btn_layout.addWidget(seedgen_btn)
         
         compile_btn = QPushButton("🌱 New Compilation")
-        compile_btn.setFixedSize(200, 50)
         compile_btn.setStyleSheet("font-size: 14px; font-weight: bold;")
         compile_btn.clicked.connect(lambda: self.main_window.show_compile())
         btn_layout.addWidget(compile_btn)
         
         batch_btn = QPushButton("📦 Batch Compilation")
-        batch_btn.setFixedSize(200, 50)
         batch_btn.setStyleSheet("font-size: 14px; font-weight: bold;")
         batch_btn.clicked.connect(lambda: self.main_window.show_batch())
         btn_layout.addWidget(batch_btn)
         
         offspring_btn = QPushButton("👶 Offspring Generator")
-        offspring_btn.setFixedSize(200, 50)
         offspring_btn.setStyleSheet("font-size: 14px; font-weight: bold;")
         offspring_btn.clicked.connect(lambda: self.main_window.show_offspring())
         btn_layout.addWidget(offspring_btn)
         
         similarity_btn = QPushButton("🔍 Similarity Analyzer")
-        similarity_btn.setFixedSize(200, 50)
         similarity_btn.setStyleSheet("font-size: 14px; font-weight: bold;")
         similarity_btn.clicked.connect(lambda: self.main_window.show_similarity())
         btn_layout.addWidget(similarity_btn)
 
         lineage_btn = QPushButton("🌳 Family Tree")
-        lineage_btn.setFixedSize(200, 50)
         lineage_btn.setStyleSheet("font-size: 14px; font-weight: bold;")
         lineage_btn.clicked.connect(lambda: self.main_window.show_lineage())
         btn_layout.addWidget(lineage_btn)
 
         validate_btn = QPushButton("✓ Validate Directory")
-        validate_btn.setFixedSize(200, 50)
         validate_btn.setStyleSheet("font-size: 14px; font-weight: bold;")
         validate_btn.clicked.connect(lambda: self.main_window.show_validate())
         btn_layout.addWidget(validate_btn)
@@ -133,24 +126,7 @@ class HomeWidget(QWidget):
         layout.addLayout(filter_layout)
         
         self.drafts_list = QListWidget()
-        self.drafts_list.setStyleSheet("""
-            QListWidget {
-                background-color: #2a2a2a;
-                border: 2px solid #444;
-                border-radius: 5px;
-                font-size: 13px;
-            }
-            QListWidget::item {
-                padding: 10px;
-                border-bottom: 1px solid #333;
-            }
-            QListWidget::item:hover {
-                background-color: #3a3a3a;
-            }
-            QListWidget::item:selected {
-                background-color: #4a6a8a;
-            }
-        """)
+        self.drafts_list.setObjectName("draftsList")
         self.drafts_list.itemDoubleClicked.connect(self.open_draft)
         layout.addWidget(self.drafts_list, 1)
         
@@ -158,29 +134,24 @@ class HomeWidget(QWidget):
         bottom_layout = QHBoxLayout()
         
         settings_btn = QPushButton("⚙️ Settings")
-        settings_btn.setFixedWidth(120)
         settings_btn.clicked.connect(self.show_settings)
         bottom_layout.addWidget(settings_btn)
         
         templates_btn = QPushButton("🎨 Templates")
-        templates_btn.setFixedWidth(120)
         templates_btn.clicked.connect(lambda: self.main_window.show_template_manager())
         bottom_layout.addWidget(templates_btn)
         
         bottom_layout.addStretch()
         
         delete_btn = QPushButton("🗑️ Delete Draft")
-        delete_btn.setFixedWidth(130)
         delete_btn.clicked.connect(self.delete_draft)
         bottom_layout.addWidget(delete_btn)
         
         rename_btn = QPushButton("✏️ Rename Draft")
-        rename_btn.setFixedWidth(130)
         rename_btn.clicked.connect(self.rename_draft)
         bottom_layout.addWidget(rename_btn)
         
         quit_btn = QPushButton("❌ Quit")
-        quit_btn.setFixedWidth(100)
         quit_btn.clicked.connect(self.main_window.close)
         bottom_layout.addWidget(quit_btn)
         
