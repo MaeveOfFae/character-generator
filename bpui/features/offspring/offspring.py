@@ -479,9 +479,9 @@ class OffspringThread(QThread):
     async def _run_async(self):
         """Async implementation of offspring generation."""
         try:
-            from ..llm.factory import create_engine
-            from ..prompting import build_offspring_prompt, build_asset_prompt
-            from ..parse_blocks import extract_single_asset, extract_character_name
+            from ...llm.factory import create_engine
+            from ...core.prompting import build_offspring_prompt, build_asset_prompt
+            from ...core.parse_blocks import extract_single_asset, extract_character_name
             from bpui.utils.file_io.pack_io import create_draft_dir
             from bpui.utils.metadata.metadata import DraftMetadata
             from bpui.utils.topological_sort import topological_sort

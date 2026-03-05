@@ -33,7 +33,7 @@ class SeedGenWorker(QThread):
     
     async def _generate(self):
         """Generate seeds."""
-        from ..llm.factory import create_engine
+        from ...llm.factory import create_engine
 
         # Build prompt based on mode
         if self.surprise_mode:
@@ -57,7 +57,7 @@ Examples (don't copy these):
 
 Now generate 12 new seeds:"""
         else:
-            from ..prompting import build_seedgen_prompt
+            from ...core.prompting import build_seedgen_prompt
             system_prompt, user_prompt = build_seedgen_prompt(self.genre_lines or "")
 
         # Create engine using factory
