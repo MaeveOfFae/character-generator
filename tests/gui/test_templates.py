@@ -257,14 +257,3 @@ class TestTemplateIntegration:
         assert (assets_dir / "system_prompt.md").exists()
         assert (assets_dir / "character_sheet.md").exists()
         assert (assets_dir / "a1111.md").exists()
-    
-    def test_example_music_only_template_exists(self):
-        """Test example_music_only template exists."""
-        template_path = Path("blueprints/templates/example_music_only/template.toml")
-        assert template_path.exists()
-        
-        assets_dir = Path("blueprints/templates/example_music_only/assets")
-        assert assets_dir.exists()
-        assert (assets_dir / "system_prompt.md").exists()
-        assert (assets_dir / "character_sheet.md").exists()
-        assert (assets_dir / "suno.md").exists()

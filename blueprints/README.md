@@ -9,7 +9,6 @@ blueprints/
 ├── system/          # System-level and orchestrator blueprints
 ├── templates/       # Template-specific blueprints
 │   ├── example_image_only/
-│   ├── example_music_only/
 │   └── example_minimal/
 └── examples/        # Example and alternative blueprints
 ```
@@ -29,12 +28,6 @@ Each template directory contains the blueprints specific to that template.
 ### example_image_only
 For generating character visuals with A1111/SDXL prompts:
 - a1111.md - Stable Diffusion image prompt blueprint
-- character_sheet.md - Structured character data
-- post_history.md - Conversation context and relationship state
-
-### example_music_only
-For generating character theme songs with Suno:
-- suno.md - Suno music generation prompt blueprint
 - character_sheet.md - Structured character data
 - post_history.md - Conversation context and relationship state
 

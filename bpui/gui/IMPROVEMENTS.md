@@ -90,7 +90,6 @@ blueprints/
 ├── system/          # 🔧 System Blueprints
 ├── templates/       # 📦 Template Blueprints
 │   ├── example_image_only/
-│   ├── example_music_only/
 │   └── example_minimal/
 └── examples/        # 💡 Example Blueprints
 ```

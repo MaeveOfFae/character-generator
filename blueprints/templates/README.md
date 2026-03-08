@@ -27,12 +27,6 @@ Template focused on image generation assets:
 - character_sheet
 - post_history
 
-### example_music_only
-Template focused on music generation assets:
-- suno_prompt
-- character_sheet
-- post_history
-
 ## Custom Templates
 
 Users can create custom templates by:

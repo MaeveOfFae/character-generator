@@ -33,6 +33,8 @@ pnpm dev:mobile
 
 ### Option 3: Desktop App (Tauri)
 
+> **Note:** Desktop app is in development. Currently a placeholder.
+
 ```bash
 # Requires Rust installation first
 pnpm tauri:dev
@@ -226,16 +228,12 @@ character-generator/
 │       │   ├── a1111.md
 │       │   ├── character_sheet.md
 │       │   └── post_history.md
-│       ├── example_minimal/       # Minimal template (default)
-│       │   ├── character_sheet.md
-│       │   ├── intro_page.md
-│       │   ├── intro_scene.md
-│       │   ├── post_history.md
-│       │   └── system_prompt.md
-│       └── example_music_only/   # Music generation template
+│       └── example_minimal/       # Minimal template (default)
 │           ├── character_sheet.md
+│           ├── intro_page.md
+│           ├── intro_scene.md
 │           ├── post_history.md
-│           └── suno.md
+│           └── system_prompt.md
 ├── bpui/                   # Python package
 │   ├── cli.py                  # CLI entry point
 │   ├── config.py               # Configuration

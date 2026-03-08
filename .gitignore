@@ -9,7 +9,6 @@
 # Chub presets (user-specific)
 /chub preset/
 /chub-preset/
-docs/*
 
 # Python
 __pycache__/
@@ -47,7 +46,6 @@ env/
 
 # AI Assistant Configuration (not needed to use bpui)
 .clinerules/
-rules/
 
 # Testing
 .pytest_cache/
@@ -75,7 +73,6 @@ docs/architecture/_build/
 docs/features/_build/
 docs/development/_build/
 docs/installation/_build/
-\ndocs/archive/
 
 # Node.js / TypeScript
 node_modules/
