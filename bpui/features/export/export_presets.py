@@ -187,19 +187,21 @@ def format_output(data: dict[str, Any], preset: ExportPreset, output_dir: Path, 
     if preset.format == "text":
         # Create directory with separate text files
         output_path.mkdir(parents=True, exist_ok=True)
-        
+
         for key, value in data.items():
-            # Determine file extension
-            ext = ".txt"
-            if key.endswith(".md"):
-                ext = ""
+            # Determine file extension - only add if key doesn't already have one
+            if "." in key:
+                # Key already has an extension, use as-is
+                filename = key
             elif key == "intro_page" or "page" in key:
-                ext = ".md"
-            
-            file_path = output_path / f"{key}{ext}"
+                filename = f"{key}.md"
+            else:
+                filename = f"{key}.txt"
+
+            file_path = output_path / filename
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(str(value))
-        
+
         return output_path
     
     elif preset.format == "json":

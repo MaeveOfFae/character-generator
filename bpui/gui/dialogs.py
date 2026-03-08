@@ -238,7 +238,7 @@ class ExportDialog(QDialog):
     
     def do_export(self):
         """Perform the export."""
-        from ..export import export_with_preset
+        from bpui.features.export.export import export_with_preset
         
         character_name = self.name_input.text().strip()
         if not character_name:

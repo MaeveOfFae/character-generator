@@ -393,44 +393,53 @@ class HomeWidget(QWidget):
     def rename_draft(self):
         """Rename selected draft."""
         from PySide6.QtWidgets import QMessageBox, QInputDialog
-        
+        import re
+
         current = self.drafts_list.currentItem()
         if not current:
             QMessageBox.warning(self, "No Selection", "Please select a draft to rename")
             return
-        
+
         draft_dir = current.data(Qt.ItemDataRole.UserRole)
         if not draft_dir:
             return
-        
+
         new_name, ok = QInputDialog.getText(
             self,
             "Rename Draft",
             f"Enter new name for '{draft_dir.name}':",
             text=draft_dir.name
         )
-        
+
         if not ok or not new_name:
             return
-        
+
         # Sanitize new name
-        import re
         new_name = re.sub(r'[^\w\s\-]', '_', new_name)
         new_name = re.sub(r'[\s]+', '_', new_name)
-        
+
+        # Validate sanitized name
+        if not new_name or new_name == '_':
+            QMessageBox.warning(self, "Invalid Name", "Please enter a valid name (letters, numbers, hyphens, underscores)")
+            return
+
+        # Check max length
+        if len(new_name) > 200:
+            QMessageBox.warning(self, "Name Too Long", "Draft name must be 200 characters or less")
+            return
+
         new_dir = draft_dir.parent / new_name
-        
+
         if new_dir.exists():
             QMessageBox.warning(self, "Name Conflict", f"A draft named '{new_name}' already exists")
             return
-        
+
         try:
             draft_dir.rename(new_dir)
             self.refresh()
             self.main_window.status_bar.showMessage(f"✓ Renamed to {new_name}", 3000)
         except Exception as e:
             QMessageBox.critical(self, "Rename Error", f"Failed to rename draft: {e}")
-            self.main_window.status_bar.showMessage(f"Error loading draft: {e}", 5000)
     
     def show_settings(self):
         """Show settings dialog."""

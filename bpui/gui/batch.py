@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QFont
 import asyncio
+import threading
 
 
 class BatchWorker(QThread):
@@ -15,33 +16,49 @@ class BatchWorker(QThread):
     progress = Signal(int, int, str)  # current, total, status_message
     seed_complete = Signal(str, bool, str)  # seed, success, message
     finished = Signal(bool, str)  # success, summary
-    
+
     def __init__(self, seeds, mode, config, template):
         super().__init__()
         self.seeds = seeds
         self.mode = mode
         self.config = config
         self.template = template
-        self._running = True
-    
+        self._cancelled = False
+        self._lock = threading.Lock()
+        self._completed = 0
+        self._failed = 0
+
+    def cancel(self):
+        """Request cancellation of the batch."""
+        self._cancelled = True
+
+    def is_cancelled(self):
+        """Check if cancellation was requested."""
+        return self._cancelled
+
+    def _increment_completed(self, failed=False):
+        """Thread-safe counter increment."""
+        with self._lock:
+            self._completed += 1
+            if failed:
+                self._failed += 1
+            return self._completed, self._failed
+
     def run(self):
         """Run batch compilation."""
         try:
             asyncio.run(self._run_async())
         except Exception as e:
             self.finished.emit(False, f"Fatal error: {e}")
-    
+
     async def _run_async(self):
         """Async batch compilation with parallel execution using sequential generation."""
-        import asyncio
         from bpui.core.config import Config
         from ..llm.factory import create_engine
         from bpui.utils.file_io.pack_io import create_draft_dir
         from bpui.utils.topological_sort import topological_sort
 
         total = len(self.seeds)
-        completed = 0
-        failed = 0
 
         # Create LLM engine using factory
         try:
@@ -53,11 +70,11 @@ class BatchWorker(QThread):
         except (ImportError, ValueError, RuntimeError) as e:
             self.finished.emit(False, f"Failed to initialize LLM: {e}")
             return
-        
+
         if not self.template:
             self.finished.emit(False, "No template provided for batch compilation.")
             return
-            
+
         try:
             asset_order = topological_sort(self.template.assets)
         except ValueError as e:
@@ -68,43 +85,54 @@ class BatchWorker(QThread):
         max_concurrent = getattr(self.config, 'batch_max_concurrent', 3)
         rate_limit = getattr(self.config, 'batch_rate_limit_delay', 1.0)
         semaphore = asyncio.Semaphore(max_concurrent)
-        
+
         async def compile_one(seed, index):
             """Compile one seed using sequential generation."""
-            nonlocal completed, failed
-            
+
             async with semaphore:
+                # Check for cancellation before starting
+                if self._cancelled:
+                    return
+
                 await asyncio.sleep(rate_limit)
-                
+
+                # Check again after delay
+                if self._cancelled:
+                    return
+
                 try:
                     # Import sequential generation components
                     from ..prompting import build_asset_prompt
                     from ..parse_blocks import extract_single_asset, extract_character_name
-                    
+
                     # Generate each asset sequentially
                     assets = {}
                     character_name = None
-                    
+
                     for asset_name in asset_order:
+                        # Check for cancellation during generation
+                        if self._cancelled:
+                            return
+
                         # Build prompt with prior assets as context
                         system_prompt, user_prompt = build_asset_prompt(
                             asset_name, seed, self.mode, assets
                         )
-                        
+
                         # Generate this asset
                         output = await engine.generate(system_prompt, user_prompt)
-                        
+
                         # Parse this asset
                         asset_content = extract_single_asset(output, asset_name)
                         assets[asset_name] = asset_content
-                        
+
                         # Extract character name from character_sheet once available
                         if asset_name == "character_sheet" and not character_name:
                             character_name = extract_character_name(asset_content)
-                    
+
                     if not character_name:
                         character_name = f"character_{index:03d}"
-                    
+
                     # Save
                     draft_dir = create_draft_dir(
                         assets,
@@ -113,27 +141,25 @@ class BatchWorker(QThread):
                         mode=self.mode,
                         model=self.config.model
                     )
-                    
-                    completed += 1
+
+                    completed, failed = self._increment_completed(failed=False)
                     self.seed_complete.emit(seed, True, f"Saved to {draft_dir.name}")
                     self.progress.emit(completed, total, f"Completed {completed}/{total} ({failed} failed)")
-                
+
                 except Exception as e:
-                    completed += 1
-                    failed += 1
+                    completed, failed = self._increment_completed(failed=True)
                     self.seed_complete.emit(seed, False, str(e))
                     self.progress.emit(completed, total, f"Completed {completed}/{total} ({failed} failed)")
-        
+
         # Run all seeds
         tasks = [compile_one(seed, i+1) for i, seed in enumerate(self.seeds)]
         await asyncio.gather(*tasks, return_exceptions=True)
-        
-        summary = f"Batch complete: {completed-failed}/{total} succeeded, {failed} failed"
-        self.finished.emit(failed == 0, summary)
-    
-    def stop(self):
-        """Stop the worker."""
-        self._running = False
+
+        if self._cancelled:
+            summary = f"Batch cancelled: {self._completed - self._failed}/{total} succeeded, {self._failed} failed"
+        else:
+            summary = f"Batch complete: {self._completed - self._failed}/{total} succeeded, {self._failed} failed"
+        self.finished.emit(self._failed == 0 and not self._cancelled, summary)
 
 
 class BatchScreen(QWidget):
@@ -346,9 +372,9 @@ class BatchScreen(QWidget):
                 "Cancel batch compilation? In-progress generations will complete.",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
             )
-            
+
             if reply == QMessageBox.StandardButton.Yes:
-                self.worker.stop()
+                self.worker.cancel()
                 self.status_label.setText("Cancelling...")
                 self.cancel_btn.setEnabled(False)
     

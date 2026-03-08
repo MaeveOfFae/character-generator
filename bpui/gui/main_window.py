@@ -3,7 +3,7 @@
 from PySide6.QtWidgets import (
     QMainWindow, QStackedWidget, QStatusBar, QSplitter
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSettings
 
 from .home import HomeWidget
 from .compile import CompileWidget
@@ -22,45 +22,46 @@ from .agent_context import (
 
 class MainWindow(QMainWindow):
     """Main application window."""
-    
+
     def __init__(self, config):
         super().__init__()
         self.config = config
         self.theme_manager = ThemeManager(config)
-        
+        self.settings = QSettings("BlueprintUI", "BlueprintUI")
+
         self.setWindowTitle("Blueprint UI")
-        self.setGeometry(100, 100, 1800, 900)
-        
+
+        # Restore window geometry or use defaults
+        self._restore_geometry()
+
         # Apply theme to entire window
         self.theme_manager.apply_theme(self)
-        
+
         # Context manager
         self.context_manager = AgentContextManager(self)
-        
+
         # Main splitter for layout
         self.main_splitter = QSplitter(Qt.Orientation.Horizontal)
         self.setCentralWidget(self.main_splitter)
-        
+
         # Stacked widget for screens
         self.stack = QStackedWidget()
         self.main_splitter.addWidget(self.stack)
-        
+
         # Agent chatbox sidebar
         self.agent_chatbox = AgentChatbox(self.config, self)
         self.main_splitter.addWidget(self.agent_chatbox)
-        
-        # Set splitter sizes (70% main content, 30% chatbox)
-        self.main_splitter.setSizes([1260, 540])
-        self.main_splitter.setStretchFactor(0, 7)
-        self.main_splitter.setStretchFactor(1, 3)
-        
+
+        # Restore splitter state or use defaults
+        self._restore_splitter()
+
         # Create screens
         from bpui.features.seed_generator.seed_generator import SeedGeneratorScreen
         from bpui.utils.file_io.validate import ValidateScreen
         from .template_manager import TemplateManagerScreen
         from bpui.features.offspring.offspring import OffspringWidget
         from bpui.features.similarity.similarity import SimilarityWidget
-        
+
         self.home = HomeWidget(self.config, self)
         self.compile = CompileWidget(self.config, self)
         self.batch = BatchScreen(self.config)
@@ -81,22 +82,47 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.offspring)
         self.stack.addWidget(self.similarity)
         self.stack.addWidget(self.lineage)
-        
+
         # Register context providers (after screens are created)
         self.context_manager.register_provider("home", HomeScreenContextProvider(self.home))
         self.context_manager.register_provider("compile", CompileScreenContextProvider(self.compile))
-        
+
         # Status bar
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("Ready")
-        
+
         # Connect signals
         self.batch.back_requested.connect(self.show_home)
         self.lineage.back_requested.connect(self.show_home)
-        
+
         # Start on home screen
         self.show_home()
+
+    def _restore_geometry(self):
+        """Restore window geometry from settings or use defaults."""
+        geometry = self.settings.value("geometry")
+        if geometry:
+            self.restoreGeometry(geometry)
+        else:
+            self.setGeometry(100, 100, 1400, 800)
+
+    def _restore_splitter(self):
+        """Restore splitter state from settings or use defaults."""
+        splitter_state = self.settings.value("splitterState")
+        if splitter_state:
+            self.main_splitter.restoreState(splitter_state)
+        else:
+            # Set splitter sizes (70% main content, 30% chatbox)
+            self.main_splitter.setSizes([980, 420])
+        self.main_splitter.setStretchFactor(0, 7)
+        self.main_splitter.setStretchFactor(1, 3)
+
+    def closeEvent(self, event):
+        """Save window state on close."""
+        self.settings.setValue("geometry", self.saveGeometry())
+        self.settings.setValue("splitterState", self.main_splitter.saveState())
+        super().closeEvent(event)
     
     def show_home(self):
         """Show home screen."""
@@ -159,14 +185,18 @@ class MainWindow(QMainWindow):
     def show_review(self, draft_dir, assets):
         """Show review screen."""
         review = ReviewWidget(self.config, self, draft_dir, assets)
-        
-        # Remove old review widgets
+
+        # Remove old review widgets (collect first to avoid modifying during iteration)
+        old_reviews = []
         for i in range(self.stack.count()):
             widget = self.stack.widget(i)
-            if isinstance(widget, ReviewWidget) and widget != review:
-                self.stack.removeWidget(widget)
-                widget.deleteLater()
-        
+            if isinstance(widget, ReviewWidget):
+                old_reviews.append(widget)
+
+        for widget in old_reviews:
+            self.stack.removeWidget(widget)
+            widget.deleteLater()
+
         self.stack.addWidget(review)
         self.stack.setCurrentWidget(review)
         

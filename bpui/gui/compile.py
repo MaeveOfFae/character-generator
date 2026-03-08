@@ -12,31 +12,45 @@ import asyncio
 
 class CompileWorker(QThread):
     """Worker thread for compilation."""
-    
+
     output = Signal(str)
     finished = Signal(dict, Path)
     error = Signal(str)
-    
+
     def __init__(self, config, seed, mode, template=None):
         super().__init__()
         self.config = config
         self.seed = seed
         self.mode = mode
         self.template = template  # Template object or None for default
-    
+        self._cancelled = False
+
+    def cancel(self):
+        """Request cancellation of the compilation."""
+        self._cancelled = True
+
+    def is_cancelled(self):
+        """Check if cancellation was requested."""
+        return self._cancelled
+
     def run(self):
         """Run compilation."""
+        loop = None
         try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             result = loop.run_until_complete(self._compile())
-            loop.close()
-            
-            if result:
+
+            if result and not self._cancelled:
                 assets, draft_dir = result
                 self.finished.emit(assets, draft_dir)
+            elif self._cancelled:
+                self.error.emit("Compilation cancelled")
         except Exception as e:
             self.error.emit(str(e))
+        finally:
+            if loop:
+                loop.close()
     
     async def _compile(self):
         """Perform compilation using sequential generation (like TUI)."""
@@ -63,11 +77,11 @@ class CompileWorker(QThread):
             )
         except (ImportError, ValueError) as e:
             raise RuntimeError(f"Failed to create engine: {e}")
-        
+
         # Determine asset order from template
         if not self.template:
             raise RuntimeError("No template selected for compilation.")
-        
+
         try:
             asset_order = topological_sort(self.template.assets)
         except ValueError as e:
@@ -78,10 +92,15 @@ class CompileWorker(QThread):
         # Generate each asset sequentially
         assets = {}
         character_name = None
-        
+
         for asset_name in asset_order:
+            # Check for cancellation before each asset
+            if self._cancelled:
+                self.output.emit("\n⏹️ Compilation cancelled\n")
+                return None
+
             self.output.emit(f"→ Generating {asset_name}...\n")
-            
+
             # Get blueprint content
             blueprint_content = manager.get_blueprint_content(self.template, asset_name)
             if not blueprint_content:
@@ -91,32 +110,35 @@ class CompileWorker(QThread):
             system_prompt, user_prompt = build_asset_prompt(
                 asset_name, self.seed, self.mode, assets, blueprint_content=blueprint_content
             )
-            
+
             # Generate this asset
             raw_output = ""
             async for chunk in engine.generate_stream(system_prompt, user_prompt):
+                if self._cancelled:
+                    self.output.emit("\n⏹️ Compilation cancelled\n")
+                    return None
                 raw_output += chunk
                 self.output.emit(chunk)
-            
+
             # Parse this asset
             try:
                 asset_content = extract_single_asset(raw_output, asset_name)
                 assets[asset_name] = asset_content
                 self.output.emit(f"\n✓ {asset_name} complete ({len(asset_content)} chars)\n\n")
-                
+
                 # Extract character name from character_sheet once available
                 if asset_name == "character_sheet" and not character_name:
                     character_name = extract_character_name(asset_content)
                     if character_name:
                         self.output.emit(f"Character: {character_name}\n\n")
-            
+
             except Exception as e:
                 self.output.emit(f"\n✗ Failed to parse {asset_name}: {e}\n")
                 raise
-        
+
         if not character_name:
             character_name = "unnamed_character"
-        
+
         # Save draft with metadata
         self.output.emit("\nSaving draft...\n")
         draft_dir = create_draft_dir(
@@ -127,9 +149,9 @@ class CompileWorker(QThread):
             model=self.config.model,
             template=self.template
         )
-        
+
         self.output.emit(f"\n✓ Saved to: {draft_dir}\n")
-        
+
         return assets, draft_dir
 
 
@@ -379,8 +401,12 @@ class CompileWidget(QWidget):
     def cancel_compile(self):
         """Cancel compilation."""
         if self.worker and self.worker.isRunning():
-            self.worker.terminate()
-            self.worker.wait()
+            self.worker.cancel()
+            # Don't wait indefinitely - give it a moment to finish gracefully
+            if not self.worker.wait(2000):
+                # If it doesn't finish in 2 seconds, terminate as last resort
+                self.worker.terminate()
+                self.worker.wait()
             self.append_output("\n\n⏹️ Compilation cancelled\n")
             self.compile_btn.setEnabled(True)
             self.cancel_btn.setEnabled(False)

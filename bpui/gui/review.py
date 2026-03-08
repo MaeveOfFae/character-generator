@@ -97,7 +97,14 @@ class ReviewWidget(QWidget):
         """Create tabbed text editors based on available assets."""
         self.tab_widget = QTabWidget()
         self.tab_widget.setDocumentMode(True)
-        
+
+        # Get theme colors for editor styling
+        app_colors = self.main_window.theme_manager.theme_colors.get(
+            "app", {"background": "#2a2a2a", "border": "#444"}
+        )
+        editor_bg = app_colors.get("background", "#2a2a2a")
+        editor_border = app_colors.get("border", "#444")
+
         # Dynamic tab names for common assets
         tab_names = {
             "system_prompt": "System Prompt",
@@ -112,7 +119,7 @@ class ReviewWidget(QWidget):
             "backstory": "Backstory",
             "world": "World",
         }
-        
+
         # Create tabs for each asset that exists
         for asset_key in self.assets.keys():
             # Get display name or use asset key as fallback
@@ -120,23 +127,23 @@ class ReviewWidget(QWidget):
             # Ensure tab_name is never None
             if tab_name is None:
                 tab_name = asset_key.replace("_", " ").title()
-            
+
             editor = QPlainTextEdit()
             editor.setReadOnly(True)
             editor.setFont(QFont("Courier New", 11))
-            editor.setStyleSheet("""
-                QPlainTextEdit {
-                    background-color: #2a2a2a;
-                    border: 1px solid #444;
-                }
+            editor.setStyleSheet(f"""
+                QPlainTextEdit {{
+                    background-color: {editor_bg};
+                    border: 1px solid {editor_border};
+                }}
             """)
-            
+
             self.text_editors[asset_key] = editor
             self.tab_widget.addTab(editor, tab_name)
-            
+
             # Create and attach syntax highlighter
             self.create_highlighter(editor)
-        
+
         layout.addWidget(self.tab_widget, 1)
     
     def create_action_bar(self, layout):
@@ -201,7 +208,10 @@ class ReviewWidget(QWidget):
         QShortcut(QKeySequence("Ctrl+S"), self, self.save_changes)
         QShortcut(QKeySequence("Q"), self, self.main_window.show_home)
         QShortcut(QKeySequence("Escape"), self, self.main_window.show_home)
-        QShortcut(QKeySequence("Tab"), self, self.next_tab)    
+        # Use Ctrl+Tab for next tab to avoid conflict with focus navigation
+        QShortcut(QKeySequence("Ctrl+Tab"), self, self.next_tab)
+        # Also support Ctrl+PageDown for consistency with common tab navigation
+        QShortcut(QKeySequence("Ctrl+PgDown"), self, self.next_tab)    
     def connect_change_tracking(self):
         """Connect signals to track unsaved changes."""
         for editor in self.text_editors.values():

@@ -132,7 +132,7 @@ def export_with_preset(
 
     try:
         from .export_presets import load_preset, apply_preset, format_output, validate_preset
-        from .pack_io import load_draft
+        from bpui.utils.file_io.pack_io import load_draft
 
         # Load preset
         preset_path = repo_root / "presets" / f"{preset_name}.toml"
