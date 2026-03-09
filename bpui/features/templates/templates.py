@@ -153,7 +153,7 @@ class TemplateManager:
         if not self.official_dir.exists():
             return None
         
-        # Define the default 7 assets with hierarchy
+        # Define the default card assets with hierarchy.
         # Note: These reference the shared blueprints from templates/example_minimal
         assets = [
             AssetDefinition(
@@ -198,19 +198,12 @@ class TemplateManager:
                 description="Stable Diffusion image generation prompt",
                 blueprint_file="examples/a1111_sdxl_comfyui.md"
             ),
-            AssetDefinition(
-                name="suno",
-                required=True,
-                depends_on=["character_sheet"],
-                description="Suno song generation prompt",
-                blueprint_file="suno.md"
-            ),
         ]
         
         return Template(
-            name="Official RPBotGenerator",
+            name="V2/V3 Card",
             version="3.1",
-            description="Official 7-asset template for RPBotGenerator",
+            description="Official V2/V3 card template without Suno assets",
             assets=assets,
             path=self.official_dir / "templates" / "example_minimal"
         )

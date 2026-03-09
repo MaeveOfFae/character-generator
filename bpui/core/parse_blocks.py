@@ -134,7 +134,7 @@ def parse_blueprint_output(text: str, template: Optional['Template'] = None) -> 
         if not template:
             from bpui.features.templates.templates import TemplateManager
             manager = TemplateManager()
-            template = manager.get_template("Official RPBotGenerator")
+            template = manager.get_template("V2/V3 Card")
         
         if template:
             from bpui.utils.topological_sort import topological_sort

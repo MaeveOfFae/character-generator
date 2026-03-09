@@ -183,6 +183,7 @@ class ExportDialog(QDialog):
         self.draft_dir = draft_dir
         self.assets = assets
         self.config = config
+        self.presets = []
         
         self.setWindowTitle("Export Character")
         self.setMinimumWidth(450)
@@ -204,12 +205,7 @@ class ExportDialog(QDialog):
         
         # Preset selector
         self.preset_combo = QComboBox()
-        self.preset_combo.addItems([
-            "raw (no formatting)",
-            "chubai (Character Hub AI)",
-            "risuai (RisuAI)",
-            "tavernai (TavernAI)"
-        ])
+        self._load_presets()
         form.addRow("Export Preset:", self.preset_combo)
         
         layout.addLayout(form)
@@ -235,6 +231,23 @@ class ExportDialog(QDialog):
         btn_layout.addWidget(export_btn)
         
         layout.addLayout(btn_layout)
+
+    def _load_presets(self):
+        """Load presets into the combo box using stable item data."""
+        from bpui.features.export.export_presets import list_presets, load_preset
+
+        self.preset_combo.clear()
+        self.presets = list_presets(Path("presets"))
+
+        if not self.presets:
+            self.preset_combo.addItem("raw", "raw")
+            return
+
+        for _, preset_path in self.presets:
+            preset = load_preset(preset_path)
+            display_name = preset.name if preset else preset_path.stem
+            description = f" ({preset.description})" if preset and preset.description else ""
+            self.preset_combo.addItem(f"{display_name}{description}", preset_path.stem)
     
     def do_export(self):
         """Perform the export."""
@@ -247,8 +260,7 @@ class ExportDialog(QDialog):
             return
         
         # Get preset name
-        preset_text = self.preset_combo.currentText()
-        preset_name = preset_text.split(" ")[0]  # Extract "raw", "chubai", etc.
+        preset_name = self.preset_combo.currentData() or "raw"
         
         self.status_label.setText("⏳ Exporting...")
         self.status_label.setStyleSheet("color: #888;")

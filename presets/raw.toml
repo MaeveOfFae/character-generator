@@ -2,9 +2,9 @@
 # Exports each asset as a separate text file
 
 [preset]
-name = "Raw Text Files"
+name = "Current Draft Layout"
 format = "text"
-description = "Export each asset as a separate text file (default format)"
+description = "Export the draft's current text and markdown files exactly as they exist on disk"
 
 [[fields]]
 asset = "system_prompt"

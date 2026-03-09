@@ -7,6 +7,7 @@ from bpui.gui.blueprint_editor import BlueprintEditor
 from bpui.gui.template_wizard import TemplateWizard, AssetDef
 from bpui.gui.asset_designer import AssetDesignerDialog
 from bpui.gui.dependency_dialog import DependencyDialog
+from bpui.gui.dialogs import ExportDialog
 
 
 @pytest.fixture(scope="module")
@@ -118,6 +119,39 @@ class TestTemplateWizard:
     
     def test_generate_toml(self, qapp):
         """Test TOML generation."""
+
+
+class TestExportDialog:
+    """Tests for export preset selection."""
+
+    def test_export_dialog_uses_preset_stem_as_combo_data(self, qapp, tmp_path, monkeypatch):
+        draft_dir = tmp_path / "draft"
+        draft_dir.mkdir()
+
+        preset_file = tmp_path / "current_layout.toml"
+        preset_file.write_text(
+            """
+[preset]
+name = "Current Draft Layout"
+format = "text"
+description = "Exports current draft files"
+
+[[fields]]
+asset = "system_prompt"
+target = "system_prompt.txt"
+            """.strip(),
+            encoding="utf-8",
+        )
+
+        monkeypatch.setattr(
+            "bpui.features.export.export_presets.list_presets",
+            lambda presets_dir=None: [("Current Draft Layout", preset_file)],
+        )
+
+        config = type("Config", (), {"model": "test/model"})()
+        dialog = ExportDialog(None, draft_dir, {"character_sheet": "name: Test"}, config)
+
+        assert dialog.preset_combo.currentData() == "current_layout"
         wizard = TemplateWizard()
         wizard.template_name = "My Template"
         wizard.template_version = "1.0.0"

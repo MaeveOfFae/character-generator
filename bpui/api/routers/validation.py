@@ -36,7 +36,7 @@ def _run_validation(target_path: Path) -> ValidationResponse:
     template = _load_template_for_draft(target_path, metadata.to_dict() if metadata else None)
     template_name = metadata.template_name if metadata else None
 
-    if template_name and template_name != "Official RPBotGenerator":
+    if template_name and template_name != "V2/V3 Card":
         if not template:
             return ValidationResponse(
                 path=str(target_path),

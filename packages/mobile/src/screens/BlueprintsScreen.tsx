@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import type { Blueprint } from '@char-gen/shared';
 import { api } from '../config/api';
+import type { HomeStackNavigationProp } from '../types/navigation';
 
 type Section = {
   title: string;
@@ -10,6 +12,7 @@ type Section = {
 };
 
 export default function BlueprintsScreen() {
+  const navigation = useNavigation<HomeStackNavigationProp<'Blueprints'>>();
   const [query, setQuery] = useState('');
   const [expandedPath, setExpandedPath] = useState<string | null>(null);
 
@@ -121,6 +124,12 @@ export default function BlueprintsScreen() {
                     {expanded ? (
                       <View style={styles.previewCard}>
                         <Text style={styles.previewText}>{preview}</Text>
+                        <TouchableOpacity
+                          style={styles.editButton}
+                          onPress={() => navigation.navigate('BlueprintEditor', { path: blueprint.path })}
+                        >
+                          <Text style={styles.editButtonText}>Open Editor</Text>
+                        </TouchableOpacity>
                       </View>
                     ) : null}
                   </TouchableOpacity>
@@ -268,6 +277,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     fontFamily: 'monospace',
+  },
+  editButton: {
+    marginTop: 12,
+    alignSelf: 'flex-start',
+    backgroundColor: '#7c3aed',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  editButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
   },
   statusText: {
     color: '#9ca3af',

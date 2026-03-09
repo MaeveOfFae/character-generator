@@ -14,10 +14,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ContentMode, type GenerationComplete } from '@char-gen/shared';
 import { api } from '../config/api';
 import { SparklesIcon, DocumentTextIcon } from '../components/Icons';
+import type { GenerateRouteProp, RootTabNavigationProp } from '../types/navigation';
 
 export default function GenerateScreen() {
-  const navigation = useNavigation();
-  const route = useRoute();
+  const navigation = useNavigation<RootTabNavigationProp<'Generate'>>();
+  const route = useRoute<GenerateRouteProp>();
   const queryClient = useQueryClient();
   const [seed, setSeed] = useState('');
   const [mode, setMode] = useState<ContentMode>('SFW');
@@ -33,7 +34,7 @@ export default function GenerateScreen() {
   });
 
   useEffect(() => {
-    const incomingSeed = (route.params as { seed?: string } | undefined)?.seed;
+    const incomingSeed = route.params?.seed;
     if (incomingSeed && incomingSeed !== seed) {
       setSeed(incomingSeed);
     }
@@ -200,12 +201,12 @@ export default function GenerateScreen() {
             style={styles.viewButton}
             onPress={() => {
               if (result?.draft_id) {
-                (navigation as any).navigate('Drafts', {
+                navigation.navigate('Drafts', {
                   screen: 'DraftDetail',
                   params: { draftId: result.draft_id }
                 });
               } else {
-                (navigation as any).navigate('Drafts');
+                navigation.navigate('Drafts');
               }
             }}
           >

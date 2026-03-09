@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import type { LineageNode } from '@char-gen/shared';
 import { api } from '../config/api';
+import type { HomeStackNavigationProp } from '../types/navigation';
 
 function LineageRow({
   node,
@@ -39,7 +40,7 @@ function LineageRow({
 }
 
 export default function LineageScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<HomeStackNavigationProp<'Lineage'>>();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [generationFilter, setGenerationFilter] = useState<string>('all');
   const [maxDepth, setMaxDepth] = useState(6);
@@ -54,6 +55,8 @@ export default function LineageScreen() {
   const nodeMap = useMemo(() => new Map((data?.nodes ?? []).map((node) => [node.id, node])), [data?.nodes]);
 
   const selectedNode = selectedId ? nodeMap.get(selectedId) ?? null : data?.nodes[0] ?? null;
+  const canCompareParents = Boolean(selectedNode && selectedNode.parent_ids.length >= 2);
+  const canGenerateFromParents = Boolean(selectedNode && selectedNode.parent_ids.length >= 2);
 
   const flatFilteredNodes = useMemo(() => {
     const nodes = data?.nodes ?? [];
@@ -264,7 +267,7 @@ export default function LineageScreen() {
               <TouchableOpacity
                 style={styles.primaryAction}
                 onPress={() =>
-                  (navigation as any).navigate('Drafts', {
+                  navigation.navigate('Drafts', {
                     screen: 'DraftDetail',
                     params: { draftId: selectedNode.review_id },
                   })
@@ -272,7 +275,30 @@ export default function LineageScreen() {
               >
                 <Text style={styles.primaryActionText}>View Draft</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryAction} onPress={() => (navigation as any).navigate('Offspring')}>
+              {canCompareParents ? (
+                <TouchableOpacity
+                  style={styles.secondaryAction}
+                  onPress={() =>
+                    navigation.navigate('Compare', {
+                      character1: selectedNode.parent_ids[0],
+                      character2: selectedNode.parent_ids[1],
+                    })
+                  }
+                >
+                  <Text style={styles.secondaryActionText}>Compare Parents</Text>
+                </TouchableOpacity>
+              ) : null}
+              <TouchableOpacity
+                style={styles.secondaryAction}
+                onPress={() =>
+                  canGenerateFromParents
+                    ? navigation.navigate('Offspring', {
+                        parent1: selectedNode.parent_ids[0],
+                        parent2: selectedNode.parent_ids[1],
+                      })
+                    : navigation.navigate('Offspring')
+                }
+              >
                 <Text style={styles.secondaryActionText}>Generate Offspring</Text>
               </TouchableOpacity>
             </View>
@@ -527,11 +553,13 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
     marginTop: 4,
   },
   primaryAction: {
-    flex: 1,
+    flexGrow: 1,
+    minWidth: '30%',
     backgroundColor: '#7c3aed',
     borderRadius: 8,
     paddingVertical: 12,
@@ -543,7 +571,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   secondaryAction: {
-    flex: 1,
+    flexGrow: 1,
+    minWidth: '30%',
     backgroundColor: '#27272a',
     borderWidth: 1,
     borderColor: '#3f3f46',

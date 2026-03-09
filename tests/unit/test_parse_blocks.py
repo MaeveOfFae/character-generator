@@ -66,37 +66,38 @@ class TestExtractCodeblocks:
 class TestParseRBlueprintOutput:
     """Tests for parse_blueprint_output function."""
     
-    def test_parse_seven_blocks(self):
-        """Test parsing exactly 7 asset blocks."""
-        output = "\n".join([f"```\nasset{i}\n```" for i in range(7)])
+    def test_parse_six_blocks(self):
+        """Test parsing exactly 6 asset blocks for the default template."""
+        output = "\n".join([f"```\nasset{i}\n```" for i in range(6)])
         assets = parse_blueprint_output(output)
         
-        assert len(assets) == 7
-        assert all(name in assets for name in ASSET_ORDER)
+        expected_order = ASSET_ORDER[:-1]
+        assert len(assets) == 6
+        assert all(name in assets for name in expected_order)
         assert assets["system_prompt"] == "asset0"
-        assert assets["suno"] == "asset6"
+        assert assets["a1111"] == "asset5"
     
     def test_parse_with_adjustment_note(self):
         """Test parsing with adjustment note as first block."""
         output = "```\nAdjustment Note: Seed augmented\n```\n"
-        output += "\n".join([f"```\nasset{i}\n```" for i in range(7)])
+        output += "\n".join([f"```\nasset{i}\n```" for i in range(6)])
         
         assets = parse_blueprint_output(output)
-        assert len(assets) == 7
+        assert len(assets) == 6
         assert "system_prompt" in assets
     
     def test_parse_wrong_count_too_few(self):
         """Test error when too few blocks."""
         output = "\n".join([f"```\nasset{i}\n```" for i in range(5)])
         
-        with pytest.raises(ParseError, match="Expected 7 asset blocks, found 5"):
+        with pytest.raises(ParseError, match="Expected 6 asset blocks, found 5"):
             parse_blueprint_output(output)
     
     def test_parse_wrong_count_too_many(self):
         """Test error when too many blocks."""
         output = "\n".join([f"```\nasset{i}\n```" for i in range(10)])
         
-        with pytest.raises(ParseError, match="Expected 7 asset blocks, found 10"):
+        with pytest.raises(ParseError, match="Expected 6 asset blocks, found 10"):
             parse_blueprint_output(output)
     
     def test_parse_no_blocks(self):
@@ -108,15 +109,17 @@ class TestParseRBlueprintOutput:
     
     def test_parse_maps_to_correct_names(self):
         """Test that blocks map to correct asset names in order."""
-        output = "\n".join([f"```\n{name}_content\n```" for name in ASSET_ORDER])
+        default_order = ASSET_ORDER[:-1]
+        output = "\n".join([f"```\n{name}_content\n```" for name in default_order])
         assets = parse_blueprint_output(output)
         
-        for name in ASSET_ORDER:
+        for name in default_order:
             assert assets[name] == f"{name}_content"
 
     def test_parse_fails_on_placeholder_content(self):
         """Parse should reject unresolved placeholder output."""
-        blocks = [f"```\n{name}_content\n```" for name in ASSET_ORDER]
+        default_order = ASSET_ORDER[:-1]
+        blocks = [f"```\n{name}_content\n```" for name in default_order]
         blocks[4] = "```\nWelcome to {PLACEHOLDER}\n```"
         output = "\n".join(blocks)
 
@@ -125,7 +128,8 @@ class TestParseRBlueprintOutput:
 
     def test_parse_fails_on_user_authorship_violation(self):
         """Parse should reject narration of {{user}} actions/thoughts."""
-        blocks = [f"```\n{name}_content\n```" for name in ASSET_ORDER]
+        default_order = ASSET_ORDER[:-1]
+        blocks = [f"```\n{name}_content\n```" for name in default_order]
         blocks[3] = "```\n{{user}} nods and agrees immediately.\n```"
         output = "\n".join(blocks)
 

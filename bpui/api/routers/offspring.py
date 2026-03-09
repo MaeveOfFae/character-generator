@@ -54,7 +54,7 @@ async def generate_offspring(request: OffspringRequest):
 
             # Get template
             template_manager = TemplateManager()
-            template_obj = template_manager.get_template(request.template or "Official RPBotGenerator")
+            template_obj = template_manager.get_template(request.template or "V2/V3 Card")
             if not template_obj:
                 raise ValueError(f"Template not found: {request.template}")
 

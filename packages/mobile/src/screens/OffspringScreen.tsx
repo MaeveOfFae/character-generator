@@ -1,13 +1,15 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ContentMode } from '@char-gen/shared';
 import { api } from '../config/api';
 import { BabyIcon, UsersIcon } from '../components/Icons';
+import type { HomeStackNavigationProp, OffspringRouteProp } from '../types/navigation';
 
 export default function OffspringScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<HomeStackNavigationProp<'Lineage'>>();
+  const route = useRoute<OffspringRouteProp>();
   const queryClient = useQueryClient();
   const [parent1, setParent1] = useState<string>('');
   const [parent2, setParent2] = useState<string>('');
@@ -26,6 +28,21 @@ export default function OffspringScreen() {
     const draft = draftsData?.drafts.find((d) => d.review_id === id);
     return draft?.character_name || id;
   };
+
+  useEffect(() => {
+    const params = route.params;
+    if (!draftsData?.drafts || !params) {
+      return;
+    }
+
+    if (params.parent1 && draftsData.drafts.some((draft) => draft.review_id === params.parent1) && params.parent1 !== parent1) {
+      setParent1(params.parent1);
+    }
+
+    if (params.parent2 && draftsData.drafts.some((draft) => draft.review_id === params.parent2) && params.parent2 !== parent2) {
+      setParent2(params.parent2);
+    }
+  }, [draftsData?.drafts, parent1, parent2, route.params]);
 
   const handleGenerate = async () => {
     if (!parent1 || !parent2) {
@@ -227,13 +244,13 @@ export default function OffspringScreen() {
             onPress={() => {
               if (result?.draftId) {
                 // Navigate to Drafts tab, then to the draft detail
-                (navigation as any).navigate('Drafts', {
+                navigation.navigate('Drafts', {
                   screen: 'DraftDetail',
                   params: { draftId: result.draftId }
                 });
               } else {
                 // Fallback: just go to drafts list
-                (navigation as any).navigate('Drafts');
+                navigation.navigate('Drafts');
               }
             }}
           >

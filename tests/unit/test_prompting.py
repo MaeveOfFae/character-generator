@@ -10,6 +10,7 @@ from bpui.core.prompting import (
     build_asset_prompt,
     build_seedgen_prompt,
 )
+from bpui.features.templates.templates import AssetDefinition, Template
 
 
 class TestLoadRules:
@@ -85,6 +86,9 @@ class TestLoadBlueprint:
         content = load_blueprint("rpbotgenerator", repo_root)
         
         assert "RPBotGenerator Orchestrator" in content
+        assert "V2/V3 Card" in content
+        assert "Suno Music Prompt" not in content
+        assert "No deprecated assets, including `suno`, are emitted" in content
         assert "SEED" in content
     
     def test_load_nonexistent_blueprint(self, tmp_path):
@@ -174,6 +178,44 @@ class TestBuildOrchestratorPrompt:
         )
         
         assert "Mode: Platform-Safe" in user
+
+    def test_build_uses_v2_v3_default_assets(self):
+        """Test that the default orchestrator prompt reflects the V2/V3 card asset set."""
+        repo_root = Path(__file__).parent.parent.parent
+        system, user = build_orchestrator_prompt(
+            "A sharp-tongued occult broker",
+            repo_root=repo_root
+        )
+
+        assert "V2/V3 Card" in system
+        assert "A1111 Image Prompt" in system
+        assert "Suno Music Prompt" not in system
+        assert "SEED: A sharp-tongued occult broker" in user
+
+    def test_build_with_template_override_lists_override_assets(self, tmp_path):
+        """Test that template overrides are appended and supersede the default asset list."""
+        repo_root = Path(__file__).parent.parent.parent
+        template = Template(
+            name="Mini Card",
+            version="1.0.0",
+            description="Minimal override for prompt assembly",
+            assets=[
+                AssetDefinition(name="system_prompt", depends_on=[]),
+                AssetDefinition(name="character_sheet", depends_on=["system_prompt"]),
+                AssetDefinition(name="intro_page", depends_on=["character_sheet"]),
+            ],
+            path=tmp_path / "mini_card"
+        )
+
+        system, _ = build_orchestrator_prompt(
+            "A biomechanical archivist",
+            repo_root=repo_root,
+            template=template
+        )
+
+        assert "## TEMPLATE OVERRIDE" in system
+        assert "Using custom template: Mini Card" in system
+        assert "Generate these assets in order: system_prompt, character_sheet, intro_page" in system
 
 
 class TestBuildAssetPrompt:

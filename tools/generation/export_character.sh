@@ -34,24 +34,25 @@ mkdir -p "$OUTPUT_DIR"
 
 if [ "$#" -eq 2 ] || [ "$#" -eq 3 ]; then
     SOURCE_DIR="$2"
-    for f in system_prompt.txt post_history.txt character_sheet.txt intro_scene.txt a1111_prompt.txt suno_prompt.txt intro_page.md; do
-        if [ ! -f "${SOURCE_DIR}/${f}" ]; then
-            echo "Error: Missing ${SOURCE_DIR}/${f}"
-            exit 1
+    if [ ! -d "$SOURCE_DIR" ]; then
+        echo "Error: Source directory not found: $SOURCE_DIR"
+        exit 1
+    fi
+
+    EXPORTED_FILES=()
+    for source_file in "$SOURCE_DIR"/*.txt "$SOURCE_DIR"/*.md; do
+        if [ ! -f "$source_file" ]; then
+            continue
         fi
+
+        filename="$(basename "$source_file")"
+        cp "$source_file" "$OUTPUT_DIR/$filename"
+        EXPORTED_FILES+=("$filename")
     done
 
-    cp "${SOURCE_DIR}/system_prompt.txt" "$OUTPUT_DIR/system_prompt.txt"
-    cp "${SOURCE_DIR}/post_history.txt" "$OUTPUT_DIR/post_history.txt"
-    cp "${SOURCE_DIR}/character_sheet.txt" "$OUTPUT_DIR/character_sheet.txt"
-    cp "${SOURCE_DIR}/intro_scene.txt" "$OUTPUT_DIR/intro_scene.txt"
-    cp "${SOURCE_DIR}/intro_page.md" "$OUTPUT_DIR/intro_page.md"
-    cp "${SOURCE_DIR}/a1111_prompt.txt" "$OUTPUT_DIR/a1111_prompt.txt"
-    cp "${SOURCE_DIR}/suno_prompt.txt" "$OUTPUT_DIR/suno_prompt.txt"
-
-    # Optional alternate prompt (SDXL-first / ComfyUI)
-    if [ -f "${SOURCE_DIR}/a1111_sdxl_prompt.txt" ]; then
-        cp "${SOURCE_DIR}/a1111_sdxl_prompt.txt" "$OUTPUT_DIR/a1111_sdxl_prompt.txt"
+    if [ "${#EXPORTED_FILES[@]}" -eq 0 ]; then
+        echo "Error: No .txt or .md asset files found in $SOURCE_DIR"
+        exit 1
     fi
 else
     SYSTEM_PROMPT="$2"
@@ -72,14 +73,16 @@ else
 fi
 
 echo "✓ Character '${CHARACTER_NAME}' exported to ${OUTPUT_DIR}/"
-echo "  - system_prompt.txt"
-echo "  - post_history.txt"
-echo "  - character_sheet.txt"
-echo "  - intro_scene.txt"
-echo "  - intro_page.md"
-echo "  - a1111_prompt.txt"
-echo "  - suno_prompt.txt"
-
-if [ -f "$OUTPUT_DIR/a1111_sdxl_prompt.txt" ]; then
-    echo "  - a1111_sdxl_prompt.txt"
+if [ "$#" -eq 2 ] || [ "$#" -eq 3 ]; then
+    for exported_file in "${EXPORTED_FILES[@]}"; do
+        echo "  - $exported_file"
+    done
+else
+    echo "  - system_prompt.txt"
+    echo "  - post_history.txt"
+    echo "  - character_sheet.txt"
+    echo "  - intro_scene.txt"
+    echo "  - intro_page.md"
+    echo "  - a1111_prompt.txt"
+    echo "  - suno_prompt.txt"
 fi
