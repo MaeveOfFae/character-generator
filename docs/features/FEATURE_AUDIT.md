@@ -40,31 +40,31 @@ This is a **comprehensive feature audit** of the character-generator project, do
 ### 1. Character Compilation ✅ IMPLEMENTED
 **Status:** Fully Implemented | **Location:** `bpui/compile.py`, `bpui/prompting.py`
 
-| Feature | Implementation | Details |
-|----------|---------------|----------|
-| Single Seed Compilation | ✅ | Compile 7 assets from one seed |
-| Asset Ordering | ✅ | Enforced dependency chain |
-| Content Modes | ✅ | SFW, NSFW, Platform-Safe |
-| Model Selection | ✅ | Any LiteLLM/OpenAI-compatible model |
-| Temperature Control | ✅ | Configurable via config/CLI |
-| Token Limits | ✅ | Configurable max_tokens |
-| Streaming Output | ✅ | Real-time generation display |
-| Error Handling | ✅ | Graceful failure with recovery |
-| Seed Validation | ✅ | Pre-compilation checks |
+- Single Seed Compilation: ✅ Compile the active template asset set from one seed
+- Asset Ordering: ✅ Enforced dependency chain
+- Template Overrides: ✅ Custom templates can change asset count, order, and filenames
+- Content Modes: ✅ SFW, NSFW, Platform-Safe
+- Model Selection: ✅ Any LiteLLM/OpenAI-compatible model
+- Temperature Control: ✅ Configurable via config/CLI
+- Token Limits: ✅ Configurable max_tokens
+- Streaming Output: ✅ Real-time generation display
+- Error Handling: ✅ Graceful failure with recovery
+- Seed Validation: ✅ Pre-compilation checks
 
-**Supported Assets:**
+**Default V2/V3 Card Assets:**
 1. `system_prompt.txt` - Character system prompt (≤300 tokens)
 2. `post_history.txt` - Post-history behavior layer (≤300 tokens)
 3. `character_sheet.txt` - Structured character data
 4. `intro_scene.txt` - Second-person intro scene with open loop
 5. `intro_page.md` - Markdown intro page
 6. `a1111_prompt.txt` - AUTOMATIC1111 image prompt
-7. `suno_prompt.txt` - Suno V5 song prompt
+
+Custom templates may define different asset sets and filename mappings.
 
 **Key Functions:**
 - `build_orchestrator_prompt()` - Main compilation prompt
 - `build_asset_prompt()` - Individual asset prompts
-- `parse_blueprint_output()` - Parse 7-codeblock output
+- `parse_blueprint_output()` - Parse template-ordered codeblock output
 - `compile_seed()` - Main compilation workflow
 
 ---

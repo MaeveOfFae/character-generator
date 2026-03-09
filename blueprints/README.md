@@ -1,72 +1,78 @@
 # Blueprint Directory Organization
 
-This directory contains blueprints organized by their purpose and usage.
+This directory contains the orchestrator blueprint, shared asset blueprints, template-specific blueprints, and examples.
 
 ## Directory Structure
 
-```
+```text
 blueprints/
-├── system/          # System-level and orchestrator blueprints
-├── templates/       # Template-specific blueprints
+├── rpbotgenerator.md          # Main orchestrator blueprint
+├── system_prompt.md           # Shared system prompt blueprint
+├── post_history.md            # Shared post-history blueprint
+├── character_sheet.md         # Shared character sheet blueprint
+├── intro_scene.md             # Shared intro scene blueprint
+├── intro_page.md              # Shared intro page blueprint
+├── a1111.md                   # Shared A1111 blueprint
+├── templates/                 # Template-specific blueprint directories
 │   ├── example_image_only/
 │   └── example_minimal/
-└── examples/        # Example and alternative blueprints
+└── examples/                  # Alternate/example blueprints
 ```
 
-## System Blueprints (`system/`)
+## Core Blueprints
 
-These are core system blueprints that define infrastructure and orchestrator logic.
+- **rpbotgenerator.md** - Main orchestrator. Defaults to the official V2/V3 Card asset set and supports template overrides.
+- **system_prompt.md** - Shared system prompt blueprint.
+- **post_history.md** - Shared relationship-state blueprint.
+- **character_sheet.md** - Shared structured character blueprint.
+- **intro_scene.md** - Shared interaction opener blueprint.
+- **intro_page.md** - Shared Markdown intro page blueprint.
+- **a1111.md** - Shared Stable Diffusion/A1111 prompt blueprint.
 
-- **system_prompt.md** - Core system prompt definition for character behavioral logic
-- **rpbotgenerator.md** - Main orchestrator for generating complete character suites
-- **offspring_generator.md** - Special orchestrator for synthesizing characters from two parents
+## Template Blueprints
 
-## Template Blueprints (`templates/`)
-
-Each template directory contains the blueprints specific to that template.
-
-### example_image_only
-For generating character visuals with A1111/SDXL prompts:
-- a1111.md - Stable Diffusion image prompt blueprint
-- character_sheet.md - Structured character data
-- post_history.md - Conversation context and relationship state
+Each template directory contains a `template.toml` manifest plus any local blueprint files it needs.
 
 ### example_minimal
-For simple character generation with narrative elements:
-- intro_scene.md - First interaction scenario
-- intro_page.md - Visual character introduction page (Markdown)
-- character_sheet.md - Structured character data
-- post_history.md - Conversation context and relationship state
 
-**Note:** All templates reference system blueprints for common assets like `system_prompt.md`.
+This directory backs the official V2/V3 Card default template. Its asset set is:
 
-## Example Blueprints (`examples/`)
+- system_prompt
+- post_history
+- character_sheet
+- intro_scene
+- intro_page
+- a1111
 
-Alternative and example blueprints that can be used as references or for specialized purposes.
+### example_image_only
 
-- **a1111_sdxl_comfyui.md** - SDXL-first modular prompt blueprint compatible with AUTOMATIC1111 and ComfyUI
+Template focused on image-generation workflows:
+
+- a1111
+- character_sheet
+- post_history
+
+## Example Blueprints
+
+Alternative/reference blueprints for specialized use cases:
+
+- **a1111_sdxl_comfyui.md** - SDXL-first modular prompt blueprint compatible with AUTOMATIC1111 and ComfyUI.
 
 ## Blueprint Resolution
 
-The template manager resolves blueprint files in the following order:
+The template manager resolves blueprint files in this order:
 
-1. Template's `assets/` directory
-2. Relative path resolution (e.g., `../../system/system_prompt.md`)
-3. Template-specific blueprint directories (`blueprints/templates/*/`)
-4. System directory (`blueprints/system/`)
-5. Examples directory (`blueprints/examples/`)
-6. Direct path from blueprints root (`blueprints/`)
+1. Template-local blueprint paths declared in `template.toml`
+2. Relative path resolution from the template directory
+3. Shared blueprint files under `blueprints/`
+4. Example blueprints under `blueprints/examples/`
 
 ## Adding New Blueprints
 
 When creating new blueprints:
 
-1. Place system/orchestrator blueprints in `blueprints/system/`
-2. Place template-specific blueprints in `blueprints/templates/{template_name}/`
-3. Place alternative/example blueprints in `blueprints/examples/`
-4. Update template configuration files to reference the correct blueprint paths
-5. Use relative paths (e.g., `../../system/system_prompt.md`) to reference system blueprints
-
-## Shared Blueprints
-
-Some blueprints are shared across multiple templates (character_sheet.md, post_history.md). These are copied to each template directory to ensure template isolation and allow for future customization per template.
+1. Put shared blueprints at the top level of `blueprints/` when they are reusable across templates.
+2. Put template-specific blueprints in `blueprints/templates/{template_name}/`.
+3. Define template assets and dependency order in `template.toml`.
+4. Reference shared files with relative paths when appropriate.
+5. Keep blueprint formats asset-specific instead of normalizing them.

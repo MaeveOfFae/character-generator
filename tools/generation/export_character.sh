@@ -7,11 +7,13 @@
 #      ./export_character.sh "character_name" "source_dir" "llm_model"
 #   2) From inline text (legacy):
 #      ./export_character.sh "character_name" "system_prompt" "post_history" "character_sheet" "intro_scene" "intro_page" "a1111_prompt" "suno_prompt"
+#
+# Note: The current V2/V3 Card default flow uses the file-based export path above.
 
 if [ "$#" -ne 2 ] && [ "$#" -ne 3 ] && [ "$#" -ne 8 ]; then
     echo "Error: Invalid arguments"
     echo "Usage (recommended): $0 character_name source_dir [llm_model]"
-    echo "Usage (legacy):      $0 character_name system_prompt post_history character_sheet intro_scene intro_page a1111_prompt suno_prompt"
+    echo "Usage (legacy only): $0 character_name system_prompt post_history character_sheet intro_scene intro_page a1111_prompt suno_prompt"
     exit 1
 fi
 
