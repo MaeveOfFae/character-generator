@@ -36,6 +36,12 @@ import type {
   ExportPresetSummary,
 } from '../types';
 
+export interface DownloadResponse {
+  blob: Blob;
+  filename: string | null;
+  contentType: string | null;
+}
+
 export class CharacterGeneratorAPI {
   private baseUrl: string;
 
@@ -61,6 +67,48 @@ export class CharacterGeneratorAPI {
     }
 
     return response.json() as Promise<T>;
+  }
+
+  private parseFilename(contentDisposition: string | null): string | null {
+    if (!contentDisposition) {
+      return null;
+    }
+
+    const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utf8Match?.[1]) {
+      try {
+        return decodeURIComponent(utf8Match[1]);
+      } catch {
+        return utf8Match[1];
+      }
+    }
+
+    const quotedMatch = contentDisposition.match(/filename="([^"]+)"/i);
+    if (quotedMatch?.[1]) {
+      return quotedMatch[1];
+    }
+
+    const plainMatch = contentDisposition.match(/filename=([^;]+)/i);
+    return plainMatch?.[1]?.trim() ?? null;
+  }
+
+  private async requestDownload(
+    path: string,
+    options: RequestInit = {},
+    fallbackError: string
+  ): Promise<DownloadResponse> {
+    const response = await fetch(`${this.baseUrl}${path}`, options);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText })) as { detail?: string };
+      throw new APIError(response.status, errorData.detail || fallbackError);
+    }
+
+    return {
+      blob: await response.blob(),
+      filename: this.parseFilename(response.headers.get('Content-Disposition')),
+      contentType: response.headers.get('Content-Type'),
+    };
   }
 
   // ===========================================================================
@@ -149,12 +197,12 @@ export class CharacterGeneratorAPI {
     });
   }
 
-  async exportTemplate(name: string): Promise<Blob> {
-    const response = await fetch(`${this.baseUrl}/templates/${encodeURIComponent(name)}/export`);
-    if (!response.ok) {
-      throw new APIError(response.status, 'Template export failed');
-    }
-    return response.blob();
+  async exportTemplate(name: string): Promise<DownloadResponse> {
+    return this.requestDownload(
+      `/templates/${encodeURIComponent(name)}/export`,
+      {},
+      'Template export failed'
+    );
   }
 
   async importTemplate(file: File): Promise<Template> {
@@ -305,18 +353,16 @@ export class CharacterGeneratorAPI {
   // Export
   // ===========================================================================
 
-  async exportDraft(request: ExportRequest): Promise<Blob> {
-    const response = await fetch(`${this.baseUrl}/export`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request),
-    });
-
-    if (!response.ok) {
-      throw new APIError(response.status, 'Export failed');
-    }
-
-    return response.blob();
+  async exportDraft(request: ExportRequest): Promise<DownloadResponse> {
+    return this.requestDownload(
+      '/export',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      },
+      'Export failed'
+    );
   }
 
   async getExportPresets(): Promise<ExportPresetSummary[]> {
