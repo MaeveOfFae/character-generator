@@ -43,7 +43,6 @@ env/
 *.swo
 *~
 .DS_Store
-packages/
 
 # AI Assistant Configuration (not needed to use bpui)
 .clinerules/
@@ -82,6 +81,8 @@ node_modules/
 *.tsbuildinfo
 packages/*/dist/
 packages/web/.vite/
+packages/desktop/src-tauri/target/
+packages/desktop/src-tauri/gen/
 
 # Logs
 npm-debug.log*
