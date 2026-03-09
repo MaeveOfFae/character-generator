@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert, StyleSheet } from 'react-native';
+import { useRoute } from '@react-navigation/native';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { type ContentMode } from '@char-gen/shared';
 import { api } from '../config/api';
 import { UsersIcon } from '../components/Icons';
+import type { CompareRouteProp } from '../types/navigation';
 
 export default function SimilarityScreen() {
+  const route = useRoute<CompareRouteProp>();
   const [char1, setChar1] = useState<string>('');
   const [char2, setChar2] = useState<string>('');
   const [mode, setMode] = useState<ContentMode>('SFW');
@@ -36,6 +39,21 @@ export default function SimilarityScreen() {
     const draft = draftsData?.drafts.find((d) => d.review_id === id);
     return draft?.character_name || id;
   };
+
+  useEffect(() => {
+    const params = route.params;
+    if (!draftsData?.drafts || !params) {
+      return;
+    }
+
+    if (params.character1 && draftsData.drafts.some((draft) => draft.review_id === params.character1) && params.character1 !== char1) {
+      setChar1(params.character1);
+    }
+
+    if (params.character2 && draftsData.drafts.some((draft) => draft.review_id === params.character2) && params.character2 !== char2) {
+      setChar2(params.character2);
+    }
+  }, [char1, char2, draftsData?.drafts, route.params]);
 
   const handleCompare = () => {
     if (!char1 || !char2) {

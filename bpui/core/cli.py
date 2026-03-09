@@ -257,7 +257,7 @@ async def run_compile(args):
 
     # Load template
     manager = TemplateManager()
-    template_name = getattr(args, "template", None) or "Official RPBotGenerator"
+    template_name = getattr(args, "template", None) or "V2/V3 Card"
     template = manager.get_template(template_name)
     if not template:
         logger.error(f"Template '{template_name}' not found.")

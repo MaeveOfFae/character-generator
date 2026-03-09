@@ -1172,9 +1172,8 @@ class SaveFileDialog(Screen):
         status.add_class("success")
     
     async def _save_all_assets(self, output_path: Path) -> None:
-        """Save all assets as a zip archive."""
+        """Save the current draft layout as a zip archive."""
         import zipfile
-        import io
         from datetime import datetime
         
         # Determine output file path
@@ -1188,13 +1187,12 @@ class SaveFileDialog(Screen):
         
         # Create zip file
         with zipfile.ZipFile(output_file, "w", zipfile.ZIP_DEFLATED) as zf:
-            from ..parse_blocks import ASSET_FILENAMES
-            
-            for asset_name, content in self.parent_screen.assets.items():
-                if isinstance(asset_name, str):
-                    filename = ASSET_FILENAMES.get(asset_name)
-                    if filename and content:
-                        zf.writestr(filename, content)
+            for file_path in sorted(self.parent_screen.draft_dir.iterdir()):
+                if not file_path.is_file() or file_path.name.startswith("."):
+                    continue
+                if file_path.suffix not in {".txt", ".md"}:
+                    continue
+                zf.write(file_path, arcname=file_path.name)
         
         # Update parent status
         status = self.parent_screen.query_one("#status", Static)

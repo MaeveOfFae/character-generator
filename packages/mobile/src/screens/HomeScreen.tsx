@@ -3,9 +3,10 @@ import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../config/api';
 import { SparklesIcon, FolderIcon, StarIcon, DocumentTextIcon, GitCompareIcon } from '../components/Icons';
+import type { HomeScreenNavigationProp } from '../types/navigation';
 
 export default function HomeScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<HomeScreenNavigationProp>();
 
   const { data: statsData } = useQuery({
     queryKey: ['drafts', 'stats'],
@@ -23,7 +24,7 @@ export default function HomeScreen() {
       <View style={styles.actionsGrid}>
         <TouchableOpacity
           style={styles.actionCard}
-          onPress={() => (navigation as any).navigate('Generate')}
+          onPress={() => navigation.navigate('Generate')}
         >
           <SparklesIcon color="#7c3aed" size={32} />
           <Text style={styles.actionTitle}>Generate</Text>
@@ -32,7 +33,7 @@ export default function HomeScreen() {
 
         <TouchableOpacity
           style={styles.actionCard}
-          onPress={() => (navigation as any).navigate('Drafts')}
+          onPress={() => navigation.navigate('Drafts')}
         >
           <FolderIcon color="#7c3aed" size={32} />
           <Text style={styles.actionTitle}>Drafts</Text>
@@ -45,7 +46,7 @@ export default function HomeScreen() {
         <View style={styles.actionsGrid}>
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => (navigation as any).navigate('SeedGenerator')}
+            onPress={() => navigation.navigate('SeedGenerator')}
           >
             <SparklesIcon color="#7c3aed" size={32} />
             <Text style={styles.actionTitle}>Seed Generator</Text>
@@ -54,7 +55,7 @@ export default function HomeScreen() {
 
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => (navigation as any).navigate('Validation')}
+            onPress={() => navigation.navigate('Validation')}
           >
             <DocumentTextIcon color="#7c3aed" size={32} />
             <Text style={styles.actionTitle}>Validation</Text>
@@ -64,7 +65,7 @@ export default function HomeScreen() {
         <View style={styles.actionsGrid}>
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => (navigation as any).navigate('Lineage')}
+            onPress={() => navigation.navigate('Lineage')}
           >
             <GitCompareIcon color="#7c3aed" size={32} />
             <Text style={styles.actionTitle}>Lineage</Text>
@@ -73,12 +74,24 @@ export default function HomeScreen() {
 
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => (navigation as any).navigate('Blueprints')}
+            onPress={() => navigation.navigate('Blueprints')}
           >
             <DocumentTextIcon color="#7c3aed" size={32} />
             <Text style={styles.actionTitle}>Blueprints</Text>
             <Text style={styles.actionDesc}>Browse prompt blueprints and template files</Text>
           </TouchableOpacity>
+        </View>
+        <View style={styles.actionsGrid}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('BatchGenerate')}
+          >
+            <FolderIcon color="#7c3aed" size={32} />
+            <Text style={styles.actionTitle}>Batch Generate</Text>
+            <Text style={styles.actionDesc}>Run multiple seeds with current batch settings</Text>
+          </TouchableOpacity>
+
+          <View style={styles.actionCardPlaceholder} />
         </View>
       </View>
 
@@ -111,7 +124,7 @@ export default function HomeScreen() {
             <TouchableOpacity
               key={draft.review_id}
               style={styles.recentItem}
-              onPress={() => (navigation as any).navigate('Drafts', {
+              onPress={() => navigation.navigate('Drafts', {
                 screen: 'DraftDetail',
                 params: { draftId: draft.review_id }
               })}
@@ -168,6 +181,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#2f2f2f',
+  },
+  actionCardPlaceholder: {
+    flex: 1,
   },
   actionTitle: {
     fontSize: 16,

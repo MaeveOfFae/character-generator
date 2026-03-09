@@ -5,12 +5,13 @@ import { useQuery } from '@tanstack/react-query';
 import { type DraftMetadata, type ContentMode } from '@char-gen/shared';
 import { api } from '../config/api';
 import { StarIcon, FolderIcon, MagnifyingGlassIcon, FunnelIcon } from '../components/Icons';
+import type { DraftsStackNavigationProp } from '../types/navigation';
 
 type SortOption = 'created' | 'modified' | 'name';
 type FilterMode = 'all' | 'favorites';
 
 export default function DraftsScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<DraftsStackNavigationProp<'DraftsList'>>();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('created');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -66,7 +67,7 @@ export default function DraftsScreen() {
   const renderDraft = ({ item }: { item: DraftMetadata }) => (
     <TouchableOpacity
       style={styles.draftItem}
-      onPress={() => (navigation as any).navigate('DraftDetail', { draftId: item.review_id })}
+      onPress={() => navigation.navigate('DraftDetail', { draftId: item.review_id })}
     >
       <View style={styles.draftInfo}>
         <View style={styles.draftHeader}>

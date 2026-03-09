@@ -14,6 +14,26 @@ from ..schemas.export import ExportRequest, ExportResponse, ExportPresetSchema, 
 
 router = APIRouter()
 
+
+def _resolve_export_entry_name(target: str) -> str:
+    """Resolve an exported file name without duplicating existing extensions."""
+    if Path(target).suffix:
+        return target
+
+    if target == "intro_page" or "page" in target:
+        return f"{target}.md"
+
+    return f"{target}.txt"
+
+
+def _iter_exportable_draft_files(draft_path: Path) -> list[Path]:
+    """Return top-level text/markdown asset files from a draft directory."""
+    return sorted(
+        path
+        for path in draft_path.iterdir()
+        if path.is_file() and path.suffix in {".txt", ".md"} and not path.name.startswith(".")
+    )
+
 def _load_assets(draft_path: Path) -> dict[str, str]:
     """Load all assets from a draft directory."""
     template = _load_template_for_draft(draft_path)
@@ -111,7 +131,36 @@ async def export_draft(request: ExportRequest):
         character_name = metadata.get("character_name", draft_path.name)
 
         # Load preset
-        _, preset = _resolve_preset(request.preset)
+        preset_path, preset = _resolve_preset(request.preset)
+
+        if preset_path.stem == "raw":
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+                for file_path in _iter_exportable_draft_files(draft_path):
+                    zf.writestr(file_path.name, file_path.read_text(encoding='utf-8'))
+
+                if request.include_metadata:
+                    zf.writestr(
+                        "_metadata.json",
+                        json.dumps(
+                            {
+                                "source_path": str(draft_path),
+                                "exported_at": metadata.get("modified") or metadata.get("created"),
+                                "template": metadata.get("template_name"),
+                                "mode": metadata.get("mode"),
+                            },
+                            indent=2,
+                        ),
+                    )
+
+            zip_buffer.seek(0)
+            return StreamingResponse(
+                zip_buffer,
+                media_type="application/zip",
+                headers={
+                    "Content-Disposition": f'attachment; filename="{character_name}.zip"'
+                }
+            )
 
         # Apply preset
         export_data = apply_preset(assets, preset, character_name)
@@ -157,8 +206,7 @@ async def export_draft(request: ExportRequest):
                 for key, value in export_data.items():
                     if key == "_metadata":
                         continue
-                    ext = ".md" if key in ["intro_page"] else ".txt"
-                    zf.writestr(f"{key}{ext}", str(value))
+                    zf.writestr(_resolve_export_entry_name(key), str(value))
 
                 if request.include_metadata and "_metadata" in export_data:
                     zf.writestr("_metadata.json", json.dumps(export_data["_metadata"], indent=2))

@@ -167,7 +167,10 @@ def apply_preset(assets: dict[str, str], preset: ExportPreset, character_name: s
     
     # Apply field mappings
     for mapping in preset.fields:
-        content = assets.get(mapping.asset, "")
+        if mapping.asset not in assets:
+            continue
+
+        content = assets[mapping.asset]
         
         # Skip if optional and missing
         if not content and mapping.optional:
@@ -215,6 +218,12 @@ def format_output(data: dict[str, Any], preset: ExportPreset, output_dir: Path, 
     
     if preset.format == "text":
         # Create directory with separate text files
+        if output_path.exists():
+            if output_path.is_dir():
+                import shutil
+                shutil.rmtree(output_path)
+            else:
+                output_path.unlink()
         output_path.mkdir(parents=True, exist_ok=True)
 
         for key, value in data.items():

@@ -5,12 +5,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
 import { api } from '../config/api';
 import { StarIcon, ArrowLeftIcon, TrashIcon, DocumentTextIcon, ChatBubbleIcon, ClipboardDocumentIcon, PencilIcon } from '../components/Icons';
+import type { DraftDetailRouteProp, DraftsStackNavigationProp } from '../types/navigation';
 
 export default function DraftDetailScreen() {
-  const navigation = useNavigation();
-  const route = useRoute();
+  const navigation = useNavigation<DraftsStackNavigationProp<'DraftDetail'>>();
+  const route = useRoute<DraftDetailRouteProp>();
   const queryClient = useQueryClient();
-  const { draftId } = route.params as { draftId: string };
+  const { draftId } = route.params;
 
   // Metadata editing state
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -105,7 +106,7 @@ export default function DraftDetailScreen() {
   };
 
   const handleRefine = (assetName?: string) => {
-    (navigation as any).navigate('Chat', { draftId, asset: assetName });
+    navigation.navigate('Chat', { draftId, asset: assetName });
   };
 
   const handleOpenEditModal = () => {

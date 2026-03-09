@@ -4,7 +4,7 @@ Export presets define how character assets are formatted and combined for differ
 
 ## Built-in Presets
 
-- **raw.toml**: Default format with separate text files (current behavior)
+- **raw.toml**: Current draft layout, exported exactly as the draft exists on disk
 - **chubai.toml**: Chub AI JSON format
 - **risuai.toml**: RisuAI JSON format
 - **tavernai.toml**: TavernAI/SillyTavern character card format

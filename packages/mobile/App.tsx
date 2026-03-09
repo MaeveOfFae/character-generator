@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import type { DraftsStackParamList, HomeStackParamList, RootTabParamList } from './src/types/navigation';
 import { HomeIcon, SparklesIcon, FolderIcon, Cog6ToothIcon, DocumentTextIcon, GitCompareIcon, BabyIcon } from './src/components/Icons';
 
 import HomeScreen from './src/screens/HomeScreen';
@@ -19,9 +20,12 @@ import SeedGeneratorScreen from './src/screens/SeedGeneratorScreen';
 import ValidationScreen from './src/screens/ValidationScreen';
 import LineageScreen from './src/screens/LineageScreen';
 import BlueprintsScreen from './src/screens/BlueprintsScreen';
+import BatchGenerateScreen from './src/screens/BatchGenerateScreen';
+import BlueprintEditorScreen from './src/screens/BlueprintEditorScreen';
 
-const Tab = createBottomTabNavigator();
-const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator<RootTabParamList>();
+const HomeStackNavigator = createNativeStackNavigator<HomeStackParamList>();
+const DraftsStackNavigator = createNativeStackNavigator<DraftsStackParamList>();
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,23 +38,25 @@ const queryClient = new QueryClient({
 
 function HomeStack() {
   return (
-    <Stack.Navigator>
-      <Stack.Screen name="HomeRoot" component={HomeScreen} options={{ title: 'Home' }} />
-      <Stack.Screen name="SeedGenerator" component={SeedGeneratorScreen} options={{ title: 'Seed Generator' }} />
-      <Stack.Screen name="Validation" component={ValidationScreen} options={{ title: 'Validation' }} />
-      <Stack.Screen name="Lineage" component={LineageScreen} options={{ title: 'Lineage' }} />
-      <Stack.Screen name="Blueprints" component={BlueprintsScreen} options={{ title: 'Blueprints' }} />
-    </Stack.Navigator>
+    <HomeStackNavigator.Navigator>
+      <HomeStackNavigator.Screen name="HomeRoot" component={HomeScreen} options={{ title: 'Home' }} />
+      <HomeStackNavigator.Screen name="SeedGenerator" component={SeedGeneratorScreen} options={{ title: 'Seed Generator' }} />
+      <HomeStackNavigator.Screen name="Validation" component={ValidationScreen} options={{ title: 'Validation' }} />
+      <HomeStackNavigator.Screen name="Lineage" component={LineageScreen} options={{ title: 'Lineage' }} />
+      <HomeStackNavigator.Screen name="Blueprints" component={BlueprintsScreen} options={{ title: 'Blueprints' }} />
+      <HomeStackNavigator.Screen name="BlueprintEditor" component={BlueprintEditorScreen} options={{ title: 'Edit Blueprint' }} />
+      <HomeStackNavigator.Screen name="BatchGenerate" component={BatchGenerateScreen} options={{ title: 'Batch Generation' }} />
+    </HomeStackNavigator.Navigator>
   );
 }
 
 function DraftsStack() {
   return (
-    <Stack.Navigator>
-      <Stack.Screen name="DraftsList" component={DraftsScreen} options={{ title: 'Drafts' }} />
-      <Stack.Screen name="DraftDetail" component={DraftDetailScreen} options={{ title: 'Character' }} />
-      <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Refine Character' }} />
-    </Stack.Navigator>
+    <DraftsStackNavigator.Navigator>
+      <DraftsStackNavigator.Screen name="DraftsList" component={DraftsScreen} options={{ title: 'Drafts' }} />
+      <DraftsStackNavigator.Screen name="DraftDetail" component={DraftDetailScreen} options={{ title: 'Character' }} />
+      <DraftsStackNavigator.Screen name="Chat" component={ChatScreen} options={{ title: 'Refine Character' }} />
+    </DraftsStackNavigator.Navigator>
   );
 }
 

@@ -44,7 +44,7 @@ class TestParserTemplateSupport:
     """Tests for parser template support."""
     
     def test_parse_with_default_template(self):
-        """Test parsing with default 7-asset template."""
+        """Test parsing with the default 6-asset template."""
         output = """
 ```
 Asset 1 content
@@ -69,16 +69,12 @@ Asset 5 content
 ```
 Asset 6 content
 ```
-
-```
-Asset 7 content
-```
 """
         
         assets = parse_blueprint_output(output)
-        assert len(assets) == 7
+        assert len(assets) == 6
         assert "system_prompt" in assets
-        assert "suno" in assets
+        assert "a1111" in assets
     
     def test_parse_with_custom_template(self, minimal_template):
         """Test parsing with custom 3-asset template."""
@@ -233,16 +229,16 @@ class TestTemplateManager:
         # Check official template
         official = next((t for t in templates if t.is_official), None)
         assert official is not None
-        assert official.name == "Official RPBotGenerator"
-        assert len(official.assets) == 7
+        assert official.name == "V2/V3 Card"
+        assert len(official.assets) == 6
     
     def test_get_template_by_name(self):
         """Test getting template by name."""
         manager = TemplateManager()
-        template = manager.get_template("Official RPBotGenerator")
+        template = manager.get_template("V2/V3 Card")
         
         assert template is not None
-        assert template.name == "Official RPBotGenerator"
+        assert template.name == "V2/V3 Card"
     
     def test_validate_valid_template(self, valid_template_with_files):
         """Test validating a valid template."""

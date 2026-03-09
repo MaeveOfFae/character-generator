@@ -16,12 +16,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ChatMessage } from '@char-gen/shared';
 import { api } from '../config/api';
 import { ArrowLeftIcon, ChatBubbleIcon, PaperAirplaneIcon } from '../components/Icons';
+import type { ChatRouteProp, DraftsStackNavigationProp } from '../types/navigation';
 
 export default function ChatScreen() {
-  const navigation = useNavigation();
-  const route = useRoute();
+  const navigation = useNavigation<DraftsStackNavigationProp<'Chat'>>();
+  const route = useRoute<ChatRouteProp>();
   const queryClient = useQueryClient();
-  const { draftId, asset } = route.params as { draftId: string; asset?: string };
+  const { draftId, asset } = route.params;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);

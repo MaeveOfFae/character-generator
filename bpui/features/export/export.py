@@ -1,12 +1,71 @@
-"""Export wrapper for tools/export_character.sh."""
+"""Export wrapper for the shell-based character export script."""
 
 import os
 import subprocess
+import shutil
 from pathlib import Path
 from typing import Dict, Optional, Any
 
 
 EXPORT_TIMEOUT = int(os.getenv("BPUI_EXPORT_TIMEOUT", "30"))
+
+
+def _iter_exportable_draft_files(source_dir: Path) -> list[Path]:
+    """Return top-level text/markdown asset files from a draft directory."""
+    if not source_dir.exists() or not source_dir.is_dir():
+        return []
+
+    return sorted(
+        path
+        for path in source_dir.iterdir()
+        if path.is_file() and path.suffix in {".txt", ".md"} and not path.name.startswith(".")
+    )
+
+
+def _export_raw_draft_layout(
+    character_name: str,
+    source_dir: Path,
+    model: Optional[str],
+    repo_root: Path,
+) -> Dict[str, Any]:
+    """Export the draft's current on-disk text/markdown layout as-is."""
+    export_files = _iter_exportable_draft_files(source_dir)
+    if not export_files:
+        return {
+            "success": False,
+            "output": "",
+            "errors": f"No exportable .txt or .md files found in {source_dir}",
+            "exit_code": 1,
+            "output_dir": None,
+        }
+
+    sanitize = lambda value: "_".join(
+        "".join(ch.lower() if ch.isalnum() else "_" for ch in value).split("_")
+    )
+    output_name = sanitize(character_name or "character") or "character"
+    if model:
+        model_name = sanitize(model)
+        if model_name:
+            output_name = f"{output_name}({model_name})"
+
+    output_dir = repo_root / "output" / output_name
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    for file_path in export_files:
+        shutil.copy2(file_path, output_dir / file_path.name)
+
+    output_lines = [f"✓ Exported to {output_dir} using current draft layout"]
+    output_lines.extend(f"  - {file_path.name}" for file_path in export_files)
+
+    return {
+        "success": True,
+        "output": "\n".join(output_lines),
+        "errors": "",
+        "exit_code": 0,
+        "output_dir": output_dir,
+    }
 
 
 def export_character(
@@ -46,13 +105,26 @@ def export_character(
             repo_root=repo_root
         )
 
-    # Otherwise use traditional export script
-    export_script = repo_root / "tools" / "export_character.sh"
-    if not export_script.exists():
+    # Otherwise use traditional export script.
+    # Prefer the current location under tools/generation, but keep the legacy
+    # root-level tools path as a fallback for older local checkouts and tests.
+    export_script = None
+    for candidate in (
+        repo_root / "tools" / "generation" / "export_character.sh",
+        repo_root / "tools" / "export_character.sh",
+    ):
+        if candidate.exists():
+            export_script = candidate
+            break
+
+    if export_script is None:
         return {
             "success": False,
             "output": "",
-            "errors": f"Export script not found: {export_script}",
+            "errors": (
+                "Export script not found: "
+                f"{repo_root / 'tools' / 'generation' / 'export_character.sh'}"
+            ),
             "exit_code": 1,
             "output_dir": None,
         }
@@ -166,6 +238,14 @@ def export_with_preset(
                 "exit_code": 1,
                 "output_dir": None,
             }
+
+        if preset_path.stem == "raw":
+            return _export_raw_draft_layout(
+                character_name=character_name,
+                source_dir=source_dir,
+                model=model,
+                repo_root=repo_root,
+            )
 
         # Load assets
         assets = load_draft(source_dir)
