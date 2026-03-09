@@ -1,263 +1,119 @@
-# Blueprint UI Implementation Summary
+# Implementation Overview
 
-## What Was Built
+This document describes the current high-level architecture of the project rather than the historical rollout sequence.
 
-A complete terminal TUI application (`bpui`) that provides a portable, repo-local interface for the RPBotGenerator character compilation system.
+## System Shape
 
-## Core Features Delivered
+Character Generator is split into five main layers:
 
-### 1. Dual LLM Support ("Any LLM")
+1. `blueprints/`: official orchestrator, shared asset blueprints, and template manifests
+2. `bpui/`: Python backend and core generation logic
+3. `packages/shared/`: shared TypeScript types and API client
+4. `packages/web` and `packages/mobile`: frontend clients
+5. `packages/desktop`: Tauri desktop shell around the web client
 
-- **OpenRouter/OpenAI-compatible adapter**: Unified REST API for OpenRouter and local endpoints (Ollama, LM Studio, etc.)
-- **Native adapters**: Optional direct SDK engines for OpenAI and Google
-- Streaming support for real-time output feedback
+## Runtime Model
 
-### 2. Terminal UI (Textual-based)
+### Backend
 
-Six interactive screens:
+`bpui.api.main:app` is the FastAPI application used by the web app, desktop shell, and mobile workspace.
 
-- **Home**: Main menu with all actions
-- **Settings**: Configure engine, model, API keys, test connections
-- **Seed Generator**: Generate seed lists from genre/theme inputs
-- **Compile**: Generate character suites from seeds with streaming output
-- **Review**: Browse generated assets in tabs, validate, and export
-- **Drafts**: Browse previously generated drafts
-- **Validate**: Validate any directory against blueprint requirements
+Key responsibilities:
 
-### 3. Strict Output Parser
+- configuration and model access
+- draft CRUD
+- generation and batch generation
+- export presets and download responses
+- similarity, offspring, lineage, and validation endpoints
 
-- Extracts exactly 7 fenced codeblocks in required order
-- Supports optional "Adjustment Note" first block
-- Maps blocks to filenames per export contract
-- Extracts character name from character_sheet for auto-naming
+### Python-Native Interfaces
 
-### 4. Draft Management
+The Python layer also exposes:
 
-- Auto-saves to `drafts/<timestamp>_<sanitized_name>/`
-- Browse, load, and re-validate/export drafts
-- Preserves exact export contract filenames
+- `bpui` CLI commands through `bpui.core.cli`
+- Textual TUI screens under `bpui.tui`
+- a legacy PySide6 GUI under `bpui.gui`
 
-### 5. Validation & Export Integration
+These still matter for local workflows, but the modern product-facing UI is the web app plus the Tauri desktop wrapper.
 
-- Wraps existing `tools/validate_pack.py` script
-- Wraps existing `tools/export_character.sh` script
-- Shows output in formatted log panels
+## Generation Flow
 
-### 6. CLI Companion
+At a high level:
 
-Subcommands for scripting:
+1. A user selects a template and provides a seed.
+2. The backend resolves the template's assets and dependency graph.
+3. Prompts are built from the shared orchestrator or asset-specific blueprint text.
+4. The configured LLM adapter generates content.
+5. Output is parsed into template-defined assets.
+6. The resulting draft is written to `drafts/<timestamp>_<name>/` with `.metadata.json`.
+7. Review, validation, export, lineage, and similarity features operate on that saved draft.
 
-- `bpui` - Launch GUI (default)
-- `bpui tui` - Launch TUI
-- `bpui compile` - Compile from seed
-- `bpui seed-gen` - Generate seeds from file
-- `bpui validate` - Validate directory
-- `bpui export` - Export character
+## Template System
 
-### 7. Configuration Management
+The template system is no longer a fixed seven-asset contract.
 
-- Repo-local `.bpui.toml` config file
-- Settings: engine, model, api_key_env, base_url, temperature, max_tokens
-- Gitignored by default
+Current behavior:
 
-### 8. API Documentation
+- the official built-in template is `V2/V3 Card`
+- the official shared asset chain is `system_prompt`, `post_history`, `character_sheet`, `intro_scene`, `intro_page`, `a1111`
+- template manifests define assets, dependencies, and optional template-local blueprint files
+- custom templates are discovered from `~/.config/bpui/templates/custom/`
 
-- Auto-generated HTML docs via pdoc3
-- Generate with `make docs`
-- View locally with `make docs-serve`
-- Output location: `docs/api/bpui/`
+This means parsing, validation, and export all need to remain template-aware.
 
-## File Structure Created
+## Drafts and Export
 
+Drafts are directories containing top-level `.txt` and `.md` assets plus metadata.
+
+Important implementation details:
+
+- draft identification should use the review/draft directory ID, not the seed string
+- raw export zips the actual top-level asset files present in the draft
+- preset export maps only assets that exist for that draft's template
+- desktop export uses a native Tauri save dialog rather than browser-only download behavior
+
+## Search and Metadata
+
+Draft indexing lives in `bpui.utils.metadata.draft_index` and stores data in `drafts/.index.db`.
+
+The index supports:
+
+- search across names, seeds, tags, and notes
+- filtering by mode and favorite status
+- rebuilds from disk using `bpui rebuild-index`
+
+## Shared Frontend Contract
+
+Frontend API shapes belong in `packages/shared`.
+
+When backend contracts change:
+
+1. update the backend response/request model
+2. update the shared TypeScript client and types
+3. rebuild `@char-gen/shared`
+4. validate web and desktop clients against the new contract
+
+## Validation Targets
+
+Useful checks during development:
+
+```bash
+pytest -m "not slow"
+pytest --no-cov tests/unit/test_cli.py
+pnpm --filter @char-gen/shared build
+pnpm --filter @char-gen/web exec tsc --noEmit
+pnpm --filter @char-gen/web build
+cd packages/desktop/src-tauri && cargo check
 ```
-bpui/
-  __init__.py
-  config.py              # TOML config management
-  llm/
-    __init__.py
-    base.py              # Abstract LLM interface
-    openai_compat_engine.py  # OpenAI-compatible adapter
-  prompting.py           # Blueprint loading & prompt construction
-  parse_blocks.py        # Strict 7-codeblock parser
-  pack_io.py             # Draft directory management
-  validate.py            # Validator wrapper
-  export.py              # Export script wrapper
-  tui/
-    __init__.py
-    app.py               # Main Textual app
-    home.py              # Home screen
-    settings.py          # Settings screen
-    seed_generator.py    # Seed generator screen
-    compile.py           # Compilation screen
-    review.py            # Asset review screen
-    drafts.py            # Draft browser
-    validate_screen.py   # Validation screen
-  cli.py                 # CLI entry point
-  README.md              # Full documentation
 
-pyproject.toml           # Package definition
-test_bpui.py             # Installation test script
-run_bpui.sh              # Convenience launcher
-INSTALL.md               # Installation & quick start guide
-.gitignore               # Updated with /drafts, .bpui.toml, etc.
-```
+## Documentation Scope
 
-## Key Design Decisions
+This file is intentionally high level. For current usage and commands, prefer:
 
-### Parsing Strategy
-
-- **Strict fenced-codeblock extraction**: Regex pattern `\`\`\`(?:[a-z]*\n)?(.*?)\`\`\``
-- **7-block requirement**: System prompt, post history, character sheet, intro scene, intro page, A1111, Suno
-- **Optional adjustment note**: First block matching `^Adjustment Note: .+$`
-- **Character name extraction**: Parse `name: ...` from character_sheet, sanitize to `a-z0-9_`
-
-### Architecture Patterns
-
-- **Adapter pattern** for LLM engines (base interface + concrete implementations)
-- **Async/await throughout** for streaming and non-blocking I/O
-- **Composition over inheritance** in TUI screens (each screen is self-contained)
-- **Config as dependency injection** (passed to screens, not global)
-
-### UX Decisions
-
-- **Content mode**: Auto by default (let orchestrator infer), with explicit override dropdown
-- **Streaming preferred**: Real-time feedback during generation
-- **Auto-validation**: Review screen validates on mount
-- **Timestamped drafts**: Prevents name collisions, chronological sorting
-
-### Error Handling
-
-- All LLM calls wrapped in try/except with user-facing error messages
-- Validation/export failures show stdout/stderr in formatted logs
-- Connection test in Settings for diagnostic feedback
-
-## Dependencies
-
-### Core (required)
-
-- `textual>=0.47.0` - TUI framework
-- `rich>=13.7.0` - Rich text rendering
-- `tomli-w>=1.0.0` - TOML writing
-- `tomli>=2.0.1` - TOML reading (Python <3.11)
-- `httpx>=0.26.0` - Async HTTP client
-
-### Optional
-
-- `openai>=1.0.0` - Native OpenAI SDK support
-- `google-generativeai>=0.3.0` - Native Google SDK support
-
-## Installation Flow
-
-1. User clones/downloads repo
-2. Run `pip install -e .`
-3. Run `python test_bpui.py` to verify
-4. Launch with `bpui` or `./run_bpui.sh`
-5. Configure via Settings screen or edit `.bpui.toml`
-
-## Integration Points
-
-### With Existing Repo
-
-- **Blueprints**: Loads from `blueprints/` folder (`rpbotgenerator.md`) and `tools/` folder (`seed-gen.md`)
-- **Validator**: Calls `tools/validate_pack.py` via subprocess
-- **Export**: Calls `tools/export_character.sh` via subprocess
-- **Fixtures**: Compatible with existing `fixtures/sample_pack/` structure
-
-### Output Compatibility
-
-- **Drafts**: Match export contract filenames exactly
-- **Exports**: Uses same sanitization logic as `tools/export_character.sh`
-- **Validation**: Passes/fails based on existing validator rules
-
-## Testing Verification
-
-`test_bpui.py` verifies:
-
-- All modules import successfully
-- Config loads from defaults or `.bpui.toml`
-- Codeblock extraction works
-- 7-block parsing works
-- Character name extraction (via regex test)
-
-## Documentation Delivered
-
-1. **bpui/README.md**: Full module documentation, architecture, usage examples
-2. **INSTALL.md**: Step-by-step installation, provider setups, troubleshooting
-3. **test_bpui.py**: Executable installation verification
-4. **Updated main README.md**: Added "Quick Start" section with TUI option
-
-## Known Limitations & Future Enhancements
-
-### Current Limitations
-
-- ✅ ~~No in-TUI editing of assets~~ **RESOLVED in Phase 2** - Full edit mode with save/dirty tracking
-- No draft deletion from TUI (can be added to Drafts screen)
-- No batch compilation (one seed at a time)
-- No progress bars for long operations (Textual limitation with async streaming)
-
-### Future Enhancement Ideas
-
-- ✅ ~~Asset editing in Review screen~~ **COMPLETE** - Edit mode toggle, auto-save, navigation protection
-- Batch compilation queue
-- Draft comparison view (side-by-side diff)
-- Export preview before writing
-- Custom blueprint paths (currently expects repo root)
-- Settings profiles (multiple configs)
-- Generation history with re-run capability
-- Draft deletion from Drafts screen
-- Undo/redo for asset edits
-- Asset-specific syntax highlighting
-
-## Security Considerations
-
-- API keys stored in environment variables (never in config file)
-- `.bpui.toml` gitignored by default
-- No credential logging or display in TUI
-- Subprocess calls use explicit paths to repo scripts (no shell injection risk)
-
-## Performance Notes
-
-- Streaming reduces perceived latency
-- Async HTTP client (httpx) for non-blocking network I/O
-- Textual's reactive UI prevents blocking during generation
-- Validation/export subprocess calls have 30s timeout
-
-## Maintenance Notes
-
-### Adding a New Screen
-
-1. Create `bpui/tui/new_screen.py` inheriting from `Screen`
-2. Define CSS, compose() method, and button handlers
-3. Import and push_screen() from relevant navigation point
-
-### Adding a New LLM Adapter
-
-1. Create `bpui/llm/new_engine.py` inheriting from `LLMEngine`
-2. Implement `generate()`, `generate_stream()`, `test_connection()`
-3. Add to Settings screen Select widget options
-4. Update config.py to handle new engine type
-
-### Updating Blueprint Format
-
-1. Update `parse_blocks.py` ASSET_ORDER and ASSET_FILENAMES
-2. Update Review screen TabPane labels
-3. Update test_bpui.py parser tests
-4. Update documentation
-
-## Success Criteria Met
-
-✅ Portable, repo-local terminal application
-✅ "Any LLM" support (OpenRouter + OpenAI-compatible)
-✅ Streaming output during generation
-✅ Strict 7-codeblock parser with Adjustment Note support
-✅ Draft management (save, browse, load)
-✅ Validation integration
-✅ Export integration
-✅ Seed generator integration
-✅ CLI companion for scripting
-✅ Settings persistence (.bpui.toml)
-✅ Test connection functionality
-✅ Complete documentation
+- `README.md`
+- `docs/guides/QUICKSTART.md`
+- `docs/installation/INSTALL.md`
+- `bpui/README.md`
 
 ## Running the TUI
 

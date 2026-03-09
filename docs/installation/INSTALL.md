@@ -1,295 +1,138 @@
-# Blueprint UI - Installation & Quick Start
+# Installation
 
-## Installation
+This guide covers the current setup paths for the project.
 
-### 1. Install Python dependencies
+## Requirements
 
-**Quick Start (Recommended - uses provided launcher):**
+- Python 3.10+
+- Node.js 20+
+- `pnpm` 9+
+- Rust/Cargo for the Tauri desktop shell
+- On Linux desktop builds, GTK/WebKitGTK development libraries
+
+Ubuntu/Debian packages for Linux desktop builds:
 
 ```bash
-./run_bpui.sh
-# This auto-creates a venv and installs dependencies
+sudo apt install -y libgtk-3-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev librsvg2-dev pkg-config
 ```
 
-**Manual Installation:**
+## Base Setup
 
 ```bash
-# Create and activate virtual environment
+pnpm install
+
 python3 -m venv .venv
 source .venv/bin/activate
-
-# Install base dependencies
-pip install textual rich tomli-w httpx
-
-# Optional: Install LiteLLM for 100+ providers
-pip install litellm
+pip install -r requirements.txt
+pip install -e .
 ```
 
-### 2. Verify installation
+## Launch Options
+
+### Web App
 
 ```bash
-python test_bpui.py
+# terminal 1
+python -m uvicorn bpui.api.main:app --reload
+
+# terminal 2
+pnpm dev:web
 ```
 
-Expected output:
-
-```
-=== BPUI Installation Test ===
-
-Testing imports...
-✓ bpui
-✓ bpui.config
-✓ bpui.llm.base
-✓ bpui.llm.openai_compat_engine
-✓ bpui.llm.litellm_engine (optional)
-✓ bpui.prompting
-✓ bpui.parse_blocks
-✓ bpui.pack_io
-✓ bpui.validate
-✓ bpui.export
-✓ bpui.tui.app
-
-✓ All core modules imported successfully!
-
-...
-
-✓ All tests passed!
-
-You can now run: bpui
-```
-
-### 3. Launch the GUI (Default)
+### Desktop App
 
 ```bash
-bpui
+./run_desktop.sh
 ```
 
-To launch the terminal UI instead:
+The desktop launcher ensures the Python environment exists, installs Node dependencies if needed, starts `bpui.api.main:app`, and launches the Tauri shell.
+
+### Python Interfaces
 
 ```bash
-bpui tui
+# legacy Qt GUI
+./run_bpui.sh
+
+# Textual TUI
+./run_bpui.sh tui
+
+# CLI
+bpui --help
 ```
 
-## First-time Setup
-
-When you launch `bpui` for the first time:
-
-1. Press **⚙️  Settings** on the home screen
-2. Configure your LLM setup:
-   - **Engine**: Choose `litellm` or `openai_compatible`
-   - **Model**: e.g., `openai/gpt-4` (LiteLLM) or `your-model-name` (OpenAI-compatible)
-   - **API Key Env Variable**: e.g., `OPENAI_API_KEY`
-   - **Base URL** (OpenAI-compatible only): e.g., `http://localhost:11434/v1`
-   - **Temperature**: `0.7` (default)
-   - **Max Tokens**: `4096` (default)
-3. Press **💾 Save**
-4. Press **🔌 Test Connection** to verify
-
-Your settings are saved to `.bpui.toml` in the repo root.
-
-## Quick Start Guide
-
-### Compile a Character
-
-1. Launch `bpui` (GUI default) or `bpui tui` (terminal UI)
-2. Select **🌱 Compile from Seed**
-3. Enter your seed (e.g., "Noir detective with psychic abilities")
-4. Choose content mode: Auto / SFW / NSFW / Platform-Safe
-5. Press **▶️  Compile**
-6. Watch the streaming output
-7. Review the 7 generated assets in tabs
-8. Press **✓ Validate** to check for errors
-9. Press **📦 Export** to export to `output/`
-
-### Generate Seeds (TUI)
-
-1. Launch `bpui`
-2. Select **🎲 Seed Generator**
-3. Enter genre/theme lines (one per line):
-
-   ```
-   Noir detective
-   Cyberpunk mercenary
-   Fantasy sorceress
-   ```
-
-4. Press **✨ Generate Seeds**
-5. Click a seed to jump to compilation
-
-### Browse Drafts (TUI)
-
-1. Launch `bpui`
-2. Select **📁 Open Drafts**
-3. Click a draft to review/validate/export
-
-### Compile a Character (CLI)
+If you want the legacy GUI outside the launcher, install PySide6:
 
 ```bash
-# Basic compilation
-bpui compile --seed "Noir detective with psychic abilities" --mode NSFW
-
-# Custom output directory
-bpui compile --seed "..." --out custom/dir
-
-# Model override
-bpui compile --seed "..." --model openai/gpt-4o
+pip install PySide6
 ```
 
-### Generate Seeds (CLI)
+## Configuration
 
-```bash
-# Create input file
-echo "Noir detective
-Cyberpunk mercenary
-Fantasy sorceress" > genres.txt
+Settings are stored in `.bpui.toml`.
 
-# Generate seeds
-bpui seed-gen --input genres.txt --out "seed-output/noir.txt"
-```
-
-### Validate (CLI)
-
-```bash
-bpui validate drafts/20240203_150000_character_name
-bpui validate output/character_name
-```
-
-### Export (CLI)
-
-```bash
-bpui export "Character Name" drafts/20240203_150000_character_name --model gpt4
-```
-
-## Common Provider Setups
-
-### OpenAI (LiteLLM)
+OpenRouter via the OpenAI-compatible engine:
 
 ```toml
-engine = "litellm"
-model = "openai/gpt-4"
-api_key_env = "OPENAI_API_KEY"
+engine = "openai_compatible"
+model = "openrouter/openai/gpt-4o-mini"
+base_url = "https://openrouter.ai/api/v1"
+temperature = 0.7
+max_tokens = 4096
+
+[api_keys]
+openrouter = "sk-or-v1-..."
 ```
 
-Set environment variable:
-
-```bash
-export OPENAI_API_KEY="sk-..."
-```
-
-### Anthropic Claude (LiteLLM)
-
-```toml
-engine = "litellm"
-model = "anthropic/claude-3-opus-20240229"
-api_key_env = "ANTHROPIC_API_KEY"
-```
-
-Set environment variable:
-
-```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
-```
-
-### Ollama (OpenAI-compatible)
+Local OpenAI-compatible server example:
 
 ```toml
 engine = "openai_compatible"
 model = "llama3.1"
-api_key_env = ""
 base_url = "http://localhost:11434/v1"
 ```
 
-No API key needed for local Ollama.
+## Validation Checks
 
-### Local LLM via LM Studio (OpenAI-compatible)
-
-```toml
-engine = "openai_compatible"
-model = "local-model"
-api_key_env = ""
-base_url = "http://localhost:1234/v1"
+```bash
+pytest -m "not slow"
+pnpm --filter @char-gen/web exec tsc --noEmit
+cd packages/desktop/src-tauri && cargo check
 ```
 
-### DeepSeek (LiteLLM)
+## Common Commands
 
-```toml
-engine = "litellm"
-model = "deepseek/deepseek-chat"
-api_key_env = "DEEPSEEK_API_KEY"
+```bash
+bpui compile --seed "Noir detective with psychic abilities" --mode SFW
+bpui seed-gen --input genres.txt --out seed-output/noir.txt
+bpui validate drafts/20260307_203638_unnamed_character
+bpui export "Character Name" drafts/20260307_203638_unnamed_character --preset raw
 ```
 
 ## Troubleshooting
 
-### "Cannot import 'setuptools.build_backend'" when running pip install
+### Desktop build fails on Linux
 
-This happens when trying to install with `-e .` outside a virtual environment. **Solutions:**
+Install the GTK/WebKitGTK development packages listed above. `run_desktop.sh` checks for them before launch.
 
-1. **Use the launcher script (easiest):**
+### `bpui` launches the legacy GUI but you want the TUI
 
-   ```bash
-   ./run_bpui.sh
-   ```
+Use `bpui tui` or `./run_bpui.sh tui`.
 
-2. **Or manually activate the venv:**
+### API connection issues
 
-   ```bash
-   source .venv/bin/activate
-   pip install textual rich tomli-w httpx
-   pip install litellm  # optional
-   ```
+Check that:
 
-3. **Or use the venv Python directly:**
+- the model name matches the provider you configured
+- the relevant key exists in `[api_keys]`
+- `base_url` is correct for local OpenAI-compatible servers
+- the backend responds at `http://localhost:8000/api/health`
 
-   ```bash
-   .venv/bin/python -m pip install textual rich tomli-w httpx litellm
-   ```
+### Narrow pytest runs fail on coverage
 
-### "LiteLLM not installed"
-
-Install the optional dependency:
-
-```bash
-pip install litellm
-```
-
-### "Connection failed"
-
-1. Check API key environment variable is set:
-
-   ```bash
-   echo $OPENAI_API_KEY  # or your provider's var
-   ```
-
-2. For OpenAI-compatible, verify `base_url` is correct
-3. Use Settings → Test Connection in the TUI
-
-### "Parse error: Expected 7 asset blocks"
-
-The LLM didn't output the correct format. Try:
-
-- Increasing `max_tokens`
-- Using a more capable model
-- Simplifying your seed
-
-### "Validation failed"
-
-Check the validation output for:
-
-- Placeholders like `{PLACEHOLDER}`, `((...))`, `{TITLE}`
-- Mode mismatches (SFW/NSFW markers)
-- User-authorship violations (narrating {{user}} actions/thoughts)
+The repo-wide coverage gate still applies. Use `--no-cov` when validating a narrow slice.
 
 ## Next Steps
 
-- Read [bpui/README.md](bpui/README.md) for full documentation
-- Check [main README](../README.md) for blueprint details
-- Review blueprint specifications in `blueprints/` folder
-
-## Support
-
-For issues:
-
-1. Run `python test_bpui.py` to check installation
-2. Check Settings → Test Connection in TUI
-3. Review validation output for specific errors
-4. Check that blueprints exist in repo root (`rpbotgenerator.md`, etc.)
+- [../guides/QUICKSTART.md](../guides/QUICKSTART.md)
+- [../../bpui/README.md](../../bpui/README.md)
+- [../../blueprints/README.md](../../blueprints/README.md)

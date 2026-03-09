@@ -1,78 +1,65 @@
-# Blueprint Directory Organization
+# Blueprints
 
-This directory contains the orchestrator blueprint, shared asset blueprints, template-specific blueprints, and examples.
+This directory contains the official orchestrator, shared asset blueprints, example blueprints, and template manifests used by the template system.
 
-## Directory Structure
+## Layout
 
 ```text
 blueprints/
-├── rpbotgenerator.md          # Main orchestrator blueprint
-├── system_prompt.md           # Shared system prompt blueprint
-├── post_history.md            # Shared post-history blueprint
-├── character_sheet.md         # Shared character sheet blueprint
-├── intro_scene.md             # Shared intro scene blueprint
-├── intro_page.md              # Shared intro page blueprint
+├── rpbotgenerator.md          # Official orchestrator blueprint
+├── system_prompt.md           # Shared system_prompt blueprint
+├── post_history.md            # Shared post_history blueprint
+├── character_sheet.md         # Shared character_sheet blueprint
+├── intro_scene.md             # Shared intro_scene blueprint
+├── intro_page.md              # Shared intro_page blueprint
 ├── a1111.md                   # Shared A1111 blueprint
-├── templates/                 # Template-specific blueprint directories
-│   ├── example_image_only/
-│   └── example_minimal/
-└── examples/                  # Alternate/example blueprints
+├── examples/                  # Alternate/example blueprints
+└── templates/                 # Template manifests and template-local blueprints
 ```
 
-## Core Blueprints
+## Official Default
 
-- **rpbotgenerator.md** - Main orchestrator. Defaults to the official V2/V3 Card asset set and supports template overrides.
-- **system_prompt.md** - Shared system prompt blueprint.
-- **post_history.md** - Shared relationship-state blueprint.
-- **character_sheet.md** - Shared structured character blueprint.
-- **intro_scene.md** - Shared interaction opener blueprint.
-- **intro_page.md** - Shared Markdown intro page blueprint.
-- **a1111.md** - Shared Stable Diffusion/A1111 prompt blueprint.
+The built-in official template exposed by `TemplateManager` is `V2/V3 Card`. Its default asset set is:
 
-## Template Blueprints
+1. `system_prompt`
+2. `post_history`
+3. `character_sheet`
+4. `intro_scene`
+5. `intro_page`
+6. `a1111`
 
-Each template directory contains a `template.toml` manifest plus any local blueprint files it needs.
+`suno` is not part of the current official default.
 
-### example_minimal
+## Template Manifests
 
-This directory backs the official V2/V3 Card default template. Its asset set is:
+Each template directory contains a `template.toml` manifest describing:
 
-- system_prompt
-- post_history
-- character_sheet
-- intro_scene
-- intro_page
-- a1111
+- template name and version
+- asset names
+- dependency order via `depends_on`
+- optional template-local blueprint files
 
-### example_image_only
+The official example template under `templates/example_minimal/` mirrors the current default card flow.
 
-Template focused on image-generation workflows:
+## Resolution Order
 
-- a1111
-- character_sheet
-- post_history
+When a template references blueprint files, resolution happens in this order:
 
-## Example Blueprints
+1. Template-local path declared in `template.toml`
+2. Relative path from the template directory
+3. Shared blueprint under `blueprints/`
+4. Example blueprint under `blueprints/examples/`
 
-Alternative/reference blueprints for specialized use cases:
+## Editing Rules
 
-- **a1111_sdxl_comfyui.md** - SDXL-first modular prompt blueprint compatible with AUTOMATIC1111 and ComfyUI.
+- Keep formats asset-specific; do not normalize different asset outputs into one house style
+- Respect the dependency chain; downstream assets should not introduce facts upstream assets would need
+- Replace placeholders in generated output, but keep placeholder syntax inside blueprint source when the blueprint expects substitution later
+- Treat the orchestrator and template manifests as part of the generation contract
 
-## Blueprint Resolution
+## Adding a Template
 
-The template manager resolves blueprint files in this order:
-
-1. Template-local blueprint paths declared in `template.toml`
-2. Relative path resolution from the template directory
-3. Shared blueprint files under `blueprints/`
-4. Example blueprints under `blueprints/examples/`
-
-## Adding New Blueprints
-
-When creating new blueprints:
-
-1. Put shared blueprints at the top level of `blueprints/` when they are reusable across templates.
-2. Put template-specific blueprints in `blueprints/templates/{template_name}/`.
-3. Define template assets and dependency order in `template.toml`.
-4. Reference shared files with relative paths when appropriate.
-5. Keep blueprint formats asset-specific instead of normalizing them.
+1. Create `blueprints/templates/<template_name>/template.toml`
+2. Declare assets and `depends_on` edges explicitly
+3. Add template-local blueprint files only when the shared blueprint is not suitable
+4. Keep filenames and output formats aligned with the validator and export flow

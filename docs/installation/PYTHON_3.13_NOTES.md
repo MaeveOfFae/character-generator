@@ -1,99 +1,61 @@
 # Python 3.13 Compatibility Notes
 
-## Known Issue: Editable Install Failure
+These notes apply to Python-side setup only. The web and Tauri desktop workflows still depend on the same backend environment, but the most common failure mode on Python 3.13 is still editable install friction.
 
-Python 3.13 has a known issue with pip's build isolation when installing packages in editable mode (`pip install -e .`). This affects the `bpui` package installation.
+## Known Failure Mode
 
-### Error Message
+Some Python 3.13 environments still hit editable-install failures such as:
 
-```
+```text
 pip._vendor.pyproject_hooks._impl.BackendUnavailable: Cannot import 'setuptools.build_backend'
 ```
 
-### Root Cause
+## Recommended Paths
 
-Pip uses build isolation by default, creating a temporary environment to build packages. In Python 3.13, this isolated environment may fail to properly set up setuptools, even if setuptools is installed in the main venv.
+### Preferred
 
-### Workaround Implemented
+Use the repo launchers after creating the venv and installing requirements:
 
-We've implemented a direct CLI entry point that doesn't require editable installation:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install -e .
+```
 
-1. **Direct CLI Script**: `bpui-cli`
-   - Executable Python script that adds the project root to sys.path
-   - Directly imports and runs `bpui.cli.main()`
-   - No installation required
-
-2. **Updated Launcher**: `run_bpui.sh`
-   - Uses the direct CLI script instead of `python -m bpui.cli`
-   - Still creates and manages the venv
-   - Installs only direct dependencies
-
-### How to Use
-
-#### Option 1: Launcher Script (Recommended)
+If that succeeds, use the normal commands:
 
 ```bash
 ./run_bpui.sh
+./run_bpui.sh tui
+./run_desktop.sh
 ```
 
-#### Option 2: Direct CLI
+### Fallback if `pip install -e .` fails
+
+The repo includes a direct script at `scripts/bpui-cli`.
 
 ```bash
 source .venv/bin/activate
-./bpui-cli
+python scripts/bpui-cli --help
+python scripts/bpui-cli tui
+python scripts/bpui-cli compile --seed "..."
 ```
 
-#### Option 3: Via Python
+This bypasses the editable-install entrypoint while still running the current CLI code.
+
+## Notes
+
+- `run_bpui.sh` now runs `python -m bpui.core.cli`
+- the fallback script is useful when packaging/entrypoint installation is the part that breaks
+- the desktop launcher still expects the Python dependencies from `requirements.txt`
+
+## Validation
+
+If you are testing on Python 3.13, these are the most useful checks:
 
 ```bash
-source .venv/bin/activate
-python bpui-cli
-```
-
-### All CLI Commands Work
-
-```bash
-./bpui-cli tui                    # Launch TUI
-./bpui-cli compile --seed "..."   # Compile character
-./bpui-cli validate path/to/pack  # Validate
-./bpui-cli export "Name" path     # Export
-```
-
-### Dependencies Still Required
-
-The following packages must be installed in the venv:
-
-- textual
-- rich
-- httpx
-- tomli-w
-- setuptools
-- wheel
-
-Optional:
-
-- litellm (for 100+ provider support)
-
-### Future Resolution
-
-This issue may be resolved by:
-
-1. Python 3.13 patch updates
-2. Pip updates that fix build isolation
-3. Setuptools updates with better Python 3.13 support
-
-Until then, the `bpui-cli` workaround provides full functionality without any limitations.
-
-### Testing
-
-All tests pass with this workaround:
-
-```bash
-python test_bpui.py
-```
-
-Expected output:
-
-```
-✓ All tests passed!
+pytest -m "not slow"
+python -m uvicorn bpui.api.main:app --reload
+pnpm --filter @char-gen/web exec tsc --noEmit
 ```

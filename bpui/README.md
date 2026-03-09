@@ -1,378 +1,120 @@
-# Blueprint UI (bpui)
+# bpui
 
-A terminal TUI application for compiling RPBotGenerator character assets.
+`bpui` is the Python layer of Character Generator. It provides the FastAPI backend, CLI, Textual TUI, legacy Qt GUI, and the core template, draft, validation, and export logic used by the other app surfaces.
 
-## Features
+## Modules
 
-- **Terminal UI**: Interactive Textual-based interface with keyboard shortcuts
-- **Any LLM Support**: OpenRouter and OpenAI-compatible APIs
-- **Streaming Output**: Real-time generation feedback
-- **Draft Management**: Save, browse, and review generated assets
-- **Asset Editing**: Edit and save changes to generated assets
-- **Batch Operations**: Compile multiple seeds in sequence
-- **Validation**: Integrated validator for generated packs
-- **Export**: Direct integration with export scripts
-- **Seed Generator**: Generate seed lists from genre/theme inputs
-- **CLI Mode**: Scriptable commands for automation
-- **Similarity Analyzer**: Compare characters for commonalities, differences, and relationship potential
-- **Keyboard Shortcuts**: Fast navigation and actions across all screens
+- `bpui.api`: FastAPI application and routers
+- `bpui.core`: CLI, config, parsing, orchestration, and theme helpers
+- `bpui.features`: templates, export, lineage, similarity, offspring, and related feature modules
+- `bpui.tui`: Textual terminal UI
+- `bpui.gui`: legacy PySide6 GUI
+- `bpui.utils`: draft IO, metadata, indexing, logging, and utility helpers
 
-## Keyboard Shortcuts
+## Launching
 
-All screens display available shortcuts in the footer. Press the indicated keys for quick actions:
-
-### Home Screen
-- **Q** - Quit application
-- **1** - Single Compile
-- **2** - Batch Compile
-- **3** - Seed Generator
-- **4** - Browse Drafts
-- **5** - Similarity Analyzer
-- **6** - Validate Pack
-- **7** - Settings
-
-### Compile Screen
-- **Q / Escape** - Back to home
-- **Enter** - Start compilation
-- **Ctrl+C** - Cancel generation
-
-### Batch Compile Screen
-- **Q / Escape** - Back to home
-- **L** - Load seeds file
-- **Enter** - Start batch
-- **Ctrl+C** - Cancel batch
-
-### Review Screen
-- **Q / Escape** - Back to home
-- **E** - Toggle edit mode
-- **Ctrl+S** - Save changes
-- **Tab** - Next asset tab
-- **C** - Toggle chat panel (LLM assistant for refining assets)
-
-### Settings Screen
-- **Q / Escape** - Back to home
-- **T** - Test connection
-- **Enter** - Save settings
-
-### Drafts Screen
-- **Q / Escape** - Back to home
-- **Enter** - Open selected draft
-- **D** - Delete draft (coming soon)
-
-### Seed Generator Screen
-- **Q / Escape** - Back to home
-- **Enter** - Generate seeds
-- **Ctrl+S** - Save output (coming soon)
-
-### Validate Screen
-- **Q / Escape** - Back to home
-- **Enter** - Run validation
-
-### Similarity Analyzer Screen
-- **Q / Escape** - Back to home
-- **Tab** - Navigate between character selects and options
-- **Enter** - Compare selected characters
-- **Space** - Toggle LLM analysis checkbox
-
-## Installation
-
-## Desktop Launcher
-
-If you want the desktop shell instead of the Textual UI, use the root launchers:
+### Recommended surfaces
 
 ```bash
-# Linux / macOS
+# web + backend
+python -m uvicorn bpui.api.main:app --reload
+pnpm dev:web
+
+# desktop shell + backend
 ./run_desktop.sh
-
-# Windows
-run_desktop.bat
 ```
 
-What the desktop launcher does:
-
-- Ensures the Python virtual environment exists
-- Installs Node dependencies if needed
-- Restarts an existing local API instance on port `8000` when it belongs to this app
-- Starts `bpui.api.main:app`
-- Launches the Tauri desktop shell
-
-Linux desktop prerequisites:
+### Python-native surfaces
 
 ```bash
-sudo apt install -y libgtk-3-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev librsvg2-dev pkg-config
-```
-
-### 1. Install dependencies
-
-**Quick Start (Recommended):**
-
-```bash
-# Use the provided launcher script (auto-creates venv)
+# legacy Qt GUI
 ./run_bpui.sh
+
+# Textual TUI
+./run_bpui.sh tui
+
+# CLI
+bpui --help
 ```
 
-**Manual Installation:**
+`run_bpui.sh` creates `.venv` if needed, installs Python dependencies, and runs `python -m bpui.core.cli`.
+
+## Install
 
 ```bash
-# Create/activate virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
-
-# Install base dependencies
-pip install textual rich tomli-w httpx
-
-# Optional provider SDKs
-pip install openai google-generativeai
+pip install -r requirements.txt
+pip install -e .
 ```
 
-### 2. Configure
-
-On first run, configure settings via the TUI or create `.bpui.toml`:
-
-```toml
-engine = "openai_compatible"
-model = "openrouter/openai/gpt-4o-mini"  # or your model
-api_key_env = "OPENROUTER_API_KEY"  # environment variable name
-base_url = "https://openrouter.ai/api/v1"  # only for openai_compatible
-temperature = 0.7
-max_tokens = 4096
-```
-
-### 3. Run
-
-Launch the GUI (default):
+Optional dependency for the legacy GUI:
 
 ```bash
-bpui
+pip install PySide6
 ```
 
-Launch the terminal UI explicitly:
+## Current Defaults
+
+- Official template: `V2/V3 Card`
+- Official asset chain: `system_prompt -> post_history -> character_sheet -> intro_scene -> intro_page -> a1111`
+- Draft root: `drafts/`
+- Custom templates: `~/.config/bpui/templates/custom/`
+- Draft index database: `drafts/.index.db`
+
+## CLI Examples
 
 ```bash
-bpui tui
+bpui compile --seed "Noir detective with psychic abilities" --mode SFW
+bpui batch --input seeds.txt --continue-on-error
+bpui seed-gen --input genres.txt --out seed-output/noir.txt
+bpui validate drafts/20260307_203638_unnamed_character
+bpui export "Character Name" drafts/20260307_203638_unnamed_character --preset raw
+bpui rebuild-index
+bpui similarity draft_a draft_b --use-llm
+bpui lineage
+bpui versions draft_name character_sheet --list
+bpui rehash draft_name --variation twist
 ```
 
-## Usage
+Use `bpui --help` for the full command set.
 
-### TUI Mode (Interactive)
+## Backend Routes
 
-Launch the terminal UI:
+The backend entrypoint is `bpui.api.main:app`.
+
+Primary route groups:
+
+- `/api/config`
+- `/api/models`
+- `/api/templates`
+- `/api/blueprints`
+- `/api/drafts`
+- `/api/generate`
+- `/api/seedgen`
+- `/api/similarity`
+- `/api/offspring`
+- `/api/lineage`
+- `/api/export`
+- `/api/chat`
+- `/api/validate`
+
+## Parser and Template Notes
+
+- Parsing is template-aware rather than hard-wired to a single legacy asset count
+- The built-in official template still resolves to the `V2/V3 Card` asset chain
+- Template-backed drafts can use different filenames from the official shared template
+- Raw export preserves the draft's actual top-level `.txt` and `.md` files
+
+## Development Checks
 
 ```bash
-bpui tui
+pytest -m "not slow"
+pytest --no-cov tests/unit/test_cli.py
+pnpm --filter @char-gen/web exec tsc --noEmit
+cd packages/desktop/src-tauri && cargo check
 ```
 
-**Screens:**
-
-1. **Home**: Main menu with all actions
-2. **Settings**: Configure engine, model, API keys, etc.
-   - Test connection with "Test Connection" button
-3. **Seed Generator**: Generate seed lists from genre/theme lines
-4. **Compile**: Generate character suite from a single seed
-   - Choose content mode (Auto/SFW/NSFW/Platform-Safe)
-   - Streams output in real-time
-   - Auto-saves to `drafts/`
-5. **Batch Compile**: Generate multiple characters from seed file
-   - Load seeds from file (one per line)
-   - Choose content mode for all seeds
-   - Shows progress counter (X/Y completed)
-   - Continues on error with summary at end
-6. **Review**: View and edit all assets from the active template in tabs
-   - Toggle edit mode to modify assets
-   - Save changes back to files
-   - Auto-validates on open
-   - Export to `output/`
-7. **Drafts**: Browse previously generated drafts
-8. **Similarity Analyzer**: Compare two characters
-   - Select two characters from drafts directory
-   - Optional LLM-powered deep analysis
-   - View similarity scores, commonalities, differences
-   - Check redundancy and get rework suggestions
-   - Batch mode to compare all pairs
-   - Clustering to group similar characters
-9. **Validate**: Validate any directory
-
-### CLI Mode (Scriptable)
-
-**Compile a character:**
-
-```bash
-bpui compile --seed "Noir detective with psychic abilities" --mode NSFW
-bpui compile --seed "..." --mode SFW --out custom/dir --model openai/gpt-4
-```
-
-**Batch compile:**
-
-```bash
-bpui batch --input seeds.txt --mode NSFW
-bpui batch --input seeds.txt --continue-on-error --out-dir output_batch/
-```
-
-**Generate seeds:**
-
-```bash
-bpui seed-gen --input genres.txt --out "seed-output/noir.txt"
-```
-
-**Validate a pack:**
-
-```bash
-bpui validate drafts/20240203_150000_character_name
-bpui validate output/character_name
-```
-
-**Export a character:**
-
-```bash
-bpui export "Character Name" drafts/20240203_150000_character_name --model gpt4
-```
-
-**Compare characters (similarity):**
-
-```bash
-# Basic comparison
-bpui similarity "character1" "character2"
-
-# With LLM deep analysis
-bpui similarity "character1" "character2" --use-llm
-
-# Compare all pairs
-bpui similarity drafts --all --use-llm
-
-# Cluster similar characters
-bpui similarity drafts --cluster --threshold 0.75
-
-# JSON output
-bpui similarity "char1" "char2" --format json
-```
-
-## Architecture
-
-### Modules
-
-- **bpui/config.py**: Configuration management (`.bpui.toml`)
-- **bpui/llm/**: LLM adapters
-  - `base.py`: Abstract interface
-  - `openai_compat_engine.py`: OpenAI-compatible REST API
-- **bpui/prompting.py**: Blueprint loading and prompt construction
-- **bpui/similarity.py**: Character similarity analyzer with LLM support
-- **bpui/parse_blocks.py**: Template-aware codeblock parser
-- **bpui/pack_io.py**: Draft directory management
-- **bpui/validate.py**: Validation wrapper (`tools/validate_pack.py`)
-- **bpui/export.py**: Export wrapper (`tools/export_character.sh`)
-- **bpui/tui/**: Textual screens
-  - `app.py`: Main TUI app
-  - `home.py`: Home screen
-  - `settings.py`: Settings screen
-  - `seed_generator.py`: Seed generator screen
-  - `compile.py`: Compilation screen
-  - `review.py`: Asset review screen
-  - `drafts.py`: Draft browser
-  - `similarity.py`: Similarity analyzer screen
-  - `validate_screen.py`: Validation screen
-- **bpui/cli.py**: CLI entry point
-
-### Parser Contract
-
-The parser enforces strict codeblock isolation:
-
-1. Optional first codeblock: `Adjustment Note: ...`
-2. Required asset codeblocks in the active template order
-
-Default V2/V3 Card order:
-
-   1. system_prompt → `system_prompt.txt`
-   2. post_history → `post_history.txt`
-   3. character_sheet → `character_sheet.txt`
-   4. intro_scene → `intro_scene.txt`
-   5. intro_page → `intro_page.md`
-   6. a1111 → `a1111_prompt.txt`
-
-Custom templates can require a different count, order, and filename mapping.
-
-Character name is extracted from `character_sheet` (`name: ...` field).
-
-### LLM Adapters
-
-**OpenAI-compatible** (default):
-
-- Direct REST API calls
-- Requires `base_url` (e.g., `http://localhost:11434/v1` for Ollama)
-- Streaming support
-
-## Output Structure
-
-**Drafts** (`drafts/`):
-
-```
-drafts/
-  20240203_150000_maren_voss/
-    system_prompt.txt
-    post_history.txt
-    character_sheet.txt
-    intro_scene.txt
-    intro_page.md
-    a1111_prompt.txt
-```
-
-Template-backed drafts may instead use the filenames defined by that template.
-
-**Exports** (`output/`):
-
-```
-output/
-  maren_voss(gpt4)/
-    system_prompt.txt
-    post_history.txt
-    character_sheet.txt
-    intro_scene.txt
-    intro_page.md
-    a1111_prompt.txt
-```
-
-Raw export preserves the current draft layout exactly as it exists on disk.
-
-## Development
-
-**Run from source:**
-
-```bash
-python -m bpui.cli
-```
-
-**Test a component:**
-
-```python
-from bpui.config import Config
-from bpui.llm.factory import create_engine
-
-config = Config()
-engine = create_engine(config)
-
-result = await engine.test_connection()
-print(result)
-```
-
-## Troubleshooting
-
-**Connection errors:**
-
-1. Check API key environment variable is set
-2. Use Settings → Test Connection to diagnose
-3. For OpenAI-compatible, verify `base_url` is correct
-
-**Parse errors:**
-
-- Ensure LLM output follows the 7-codeblock format
-- Check for missing fence markers (```)
-- Verify content mode is respected
-
-**Validation failures:**
-
-- Review output in the Review screen
-- Check for placeholders like `{PLACEHOLDER}`, `((...))`, `{TITLE}`
-- Ensure mode consistency (SFW/NSFW markers)
-
-## License
+For a broader project overview, see [../README.md](../README.md).
 
 Same as parent repository.
