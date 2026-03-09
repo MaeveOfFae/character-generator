@@ -152,6 +152,31 @@ export class CharacterGeneratorAPI {
     });
   }
 
+  async exportTheme(name: string): Promise<DownloadResponse> {
+    return this.requestDownload(
+      `/config/themes/${encodeURIComponent(name)}/export`,
+      {},
+      'Theme export failed'
+    );
+  }
+
+  async importTheme(file: File): Promise<ThemePreset> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${this.baseUrl}/config/themes/import`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText })) as { detail?: string };
+      throw new APIError(response.status, errorData.detail || 'Theme import failed');
+    }
+
+    return response.json() as Promise<ThemePreset>;
+  }
+
   async updateTheme(name: string, theme: ThemePresetUpdate): Promise<ThemePreset> {
     return this.request<ThemePreset>(`/config/themes/${encodeURIComponent(name)}`, {
       method: 'PUT',

@@ -5,15 +5,18 @@ import {
   ArrowLeft,
   CheckCircle,
   Copy,
+  Download,
   Loader2,
   Palette,
   Pencil,
   Save,
   Trash2,
+  Upload,
   Wand2,
 } from 'lucide-react';
 import { api, type ThemeColors, type ThemePreset } from '@char-gen/shared';
 import { resolveThemeColors } from '../../theme/theme';
+import { saveDownload } from '../../utils/download';
 
 interface ThemeActionDraft {
   sourceName: string;
@@ -23,6 +26,8 @@ interface ThemeActionDraft {
 }
 
 type ThemeApi = typeof api & {
+  exportTheme: (name: string) => Promise<{ blob: Blob; filename: string | null; contentType: string | null }>;
+  importTheme: (file: File) => Promise<ThemePreset>;
   createTheme: (request: {
     name: string;
     display_name: string;
@@ -43,6 +48,7 @@ const themeApi = api as ThemeApi;
 
 export default function Themes() {
   const queryClient = useQueryClient();
+  const importInputId = 'theme-import-input';
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [newThemeName, setNewThemeName] = useState('');
@@ -184,10 +190,49 @@ export default function Themes() {
     },
   });
 
+  const exportMutation = useMutation({
+    mutationFn: async (theme: ThemePreset) => {
+      const download = await themeApi.exportTheme(theme.name);
+      await saveDownload(download, `${theme.name}.theme.json`);
+      return theme;
+    },
+    onSuccess: (theme) => {
+      setNotice(`Exported ${theme.display_name}.`);
+      setError(null);
+    },
+    onError: (mutationError) => {
+      setError(mutationError instanceof Error ? mutationError.message : 'Failed to export theme');
+      setNotice(null);
+    },
+  });
+
+  const importMutation = useMutation({
+    mutationFn: (file: File) => themeApi.importTheme(file),
+    onSuccess: async (theme) => {
+      await invalidateThemeData();
+      setNotice(`Imported theme preset ${theme.display_name}.`);
+      setError(null);
+    },
+    onError: (mutationError) => {
+      setError(mutationError instanceof Error ? mutationError.message : 'Failed to import theme');
+      setNotice(null);
+    },
+  });
+
   const builtInThemes = themes.filter((theme) => theme.is_builtin);
   const customThemes = themes.filter((theme) => !theme.is_builtin);
 
-  const isBusy = createMutation.isPending || activateMutation.isPending || updateCurrentCustomMutation.isPending || duplicateMutation.isPending || renameMutation.isPending || deleteMutation.isPending;
+  const isBusy = createMutation.isPending || activateMutation.isPending || updateCurrentCustomMutation.isPending || duplicateMutation.isPending || renameMutation.isPending || deleteMutation.isPending || exportMutation.isPending || importMutation.isPending;
+
+  const handleImportChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    importMutation.mutate(file);
+    event.target.value = '';
+  };
 
   if (configLoading || themesLoading) {
     return (
@@ -216,12 +261,28 @@ export default function Themes() {
             Save the current palette as a reusable preset and manage custom themes for web and TUI surfaces.
           </p>
         </div>
-        {activeTheme && (
-          <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm">
-            <div className="font-medium">Active preset</div>
-            <div className="text-muted-foreground">{activeTheme.display_name}</div>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          <label
+            htmlFor={importInputId}
+            className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
+          >
+            <Upload className="h-4 w-4" />
+            Import preset
+          </label>
+          <input
+            id={importInputId}
+            type="file"
+            accept="application/json"
+            onChange={handleImportChange}
+            className="hidden"
+          />
+          {activeTheme && (
+            <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm">
+              <div className="font-medium">Active preset</div>
+              <div className="text-muted-foreground">{activeTheme.display_name}</div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
@@ -373,6 +434,15 @@ export default function Themes() {
                   >
                     <Palette className="h-4 w-4" />
                     Activate
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => exportMutation.mutate(theme)}
+                    disabled={isBusy}
+                    className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
+                  >
+                    <Download className="h-4 w-4" />
+                    Export
                   </button>
                   <button
                     type="button"
