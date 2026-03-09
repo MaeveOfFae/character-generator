@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, Download, FileText, FileJson, FileCode } from 'lucide-react';
 import { api, type ExportPresetSummary } from '@char-gen/shared';
+import { saveDownload } from '../../utils/download';
 
 type ExportPresetOption = ExportPresetSummary & {
   format?: 'text' | 'json' | 'combined';
@@ -18,8 +19,9 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
   const [selectedPreset, setSelectedPreset] = useState<string>('');
   const [includeMetadata, setIncludeMetadata] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const { data: presets, isLoading } = useQuery({
+  const { data: presets, isLoading, error } = useQuery({
     queryKey: ['export-presets'],
     queryFn: () => api.getExportPresets(),
   });
@@ -28,26 +30,25 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
     if (!selectedPreset) return;
 
     setIsExporting(true);
+    setErrorMessage(null);
     try {
-      const blob = await api.exportDraft({
+      const download = await api.exportDraft({
         draft_id: draftId,
         preset: selectedPreset,
         include_metadata: includeMetadata,
       });
 
-      // Create download link
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${characterName.replace(/[^a-z0-9]/gi, '_')}_export.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const result = await saveDownload(
+        download,
+        `${characterName.replace(/[^a-z0-9]/gi, '_')}_export.zip`
+      );
 
-      onClose();
+      if (result.saved) {
+        onClose();
+      }
     } catch (err) {
       console.error('Export failed:', err);
+      setErrorMessage(err instanceof Error ? err.message : 'Export failed');
     } finally {
       setIsExporting(false);
     }
@@ -92,6 +93,8 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
             <label className="text-sm font-medium">Export Preset</label>
             {isLoading ? (
               <p className="text-sm text-muted-foreground">Loading presets...</p>
+            ) : error ? (
+              <p className="text-sm text-destructive">Failed to load presets: {error.message}</p>
             ) : presets && presets.length > 0 ? (
               <div className="space-y-2">
                 {presets.map((preset: ExportPresetOption) => {
@@ -135,6 +138,12 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
               Include metadata (creation date, model, tags)
             </label>
           </div>
+
+          {errorMessage && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {errorMessage}
+            </div>
+          )}
         </div>
 
         {/* Footer */}

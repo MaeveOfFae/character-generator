@@ -4,6 +4,7 @@ import { FileText, Plus, Star, Trash2, ChevronDown, ChevronUp, ShieldCheck, Copy
 import { api } from '@char-gen/shared';
 import type { CreateTemplateRequest, Template } from '@char-gen/shared';
 import { useAssistantScreenContext } from '../common/AssistantContext';
+import { saveDownload } from '../../utils/download';
 
 const TemplateWizard = lazy(() => import('./TemplateWizard'));
 
@@ -96,16 +97,15 @@ export default function Templates() {
 
   const handleExport = async (name: string) => {
     try {
-      const blob = await api.exportTemplate(name);
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = `${name.toLowerCase().replace(/[^a-z0-9]+/gi, '_')}.zip`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      URL.revokeObjectURL(url);
-      setFeedback({ type: 'success', message: `Exported ${name}.` });
+      const download = await api.exportTemplate(name);
+      const result = await saveDownload(
+        download,
+        `${name.toLowerCase().replace(/[^a-z0-9]+/gi, '_')}.zip`
+      );
+
+      if (result.saved) {
+        setFeedback({ type: 'success', message: `Exported ${name}.` });
+      }
     } catch (error) {
       setFeedback({ type: 'error', message: error instanceof Error ? error.message : 'Export failed' });
     }
