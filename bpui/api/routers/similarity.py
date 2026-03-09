@@ -1,6 +1,5 @@
 """Similarity analysis router."""
 
-from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from ..schemas.similarity import (
     SimilarityRequest,
@@ -8,23 +7,9 @@ from ..schemas.similarity import (
     LLMAnalysisSchema,
     MetaAnalysisSchema,
 )
+from .drafts import _find_draft_dir
 
 router = APIRouter()
-
-
-def _find_draft_dir(draft_id: str) -> Path:
-    """Find a draft directory by ID (seed or directory name)."""
-    drafts_dir = Path("drafts")
-    if not drafts_dir.exists():
-        raise HTTPException(status_code=404, detail="Drafts directory not found")
-
-    # Try exact match first
-    for draft_path in drafts_dir.iterdir():
-        if draft_path.is_dir():
-            if draft_id in draft_path.name:
-                return draft_path
-
-    raise HTTPException(status_code=404, detail=f"Draft not found: {draft_id}")
 
 
 @router.post("", response_model=SimilarityResultSchema)

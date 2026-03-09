@@ -10,6 +10,15 @@ import type {
   DraftFilters,
   Template,
   CreateTemplateRequest,
+  DuplicateTemplateRequest,
+  TemplateValidationResult,
+  TemplateBlueprintContentsResponse,
+  UpdateTemplateRequest,
+  SeedGenerationRequest,
+  SeedGenerationResponse,
+  LineageResponse,
+  ValidatePathRequest,
+  ValidationResponse,
   GenerateRequest,
   GenerationProgress,
   GenerationComplete,
@@ -22,6 +31,9 @@ import type {
   ModelsResponse,
   ChatRequest,
   RefineRequest,
+  Blueprint,
+  BlueprintList,
+  ExportPresetSummary,
 } from '../types';
 
 export class CharacterGeneratorAPI {
@@ -100,9 +112,22 @@ export class CharacterGeneratorAPI {
     return this.request<Template>(`/templates/${encodeURIComponent(name)}`);
   }
 
+  async getTemplateBlueprintContents(name: string): Promise<TemplateBlueprintContentsResponse> {
+    return this.request<TemplateBlueprintContentsResponse>(
+      `/templates/${encodeURIComponent(name)}/blueprint-contents`
+    );
+  }
+
   async createTemplate(template: CreateTemplateRequest): Promise<Template> {
     return this.request<Template>('/templates', {
       method: 'POST',
+      body: JSON.stringify(template),
+    });
+  }
+
+  async updateTemplate(name: string, template: UpdateTemplateRequest): Promise<Template> {
+    return this.request<Template>(`/templates/${encodeURIComponent(name)}`, {
+      method: 'PUT',
       body: JSON.stringify(template),
     });
   }
@@ -111,6 +136,64 @@ export class CharacterGeneratorAPI {
     return this.request<void>(`/templates/${encodeURIComponent(name)}`, {
       method: 'DELETE',
     });
+  }
+
+  async validateTemplate(name: string): Promise<TemplateValidationResult> {
+    return this.request<TemplateValidationResult>(`/templates/${encodeURIComponent(name)}/validate`);
+  }
+
+  async duplicateTemplate(name: string, request: DuplicateTemplateRequest): Promise<Template> {
+    return this.request<Template>(`/templates/${encodeURIComponent(name)}/duplicate`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async exportTemplate(name: string): Promise<Blob> {
+    const response = await fetch(`${this.baseUrl}/templates/${encodeURIComponent(name)}/export`);
+    if (!response.ok) {
+      throw new APIError(response.status, 'Template export failed');
+    }
+    return response.blob();
+  }
+
+  async importTemplate(file: File): Promise<Template> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${this.baseUrl}/templates/import`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText })) as { detail?: string };
+      throw new APIError(response.status, errorData.detail || 'Template import failed');
+    }
+
+    return response.json() as Promise<Template>;
+  }
+
+  async generateSeeds(request: SeedGenerationRequest): Promise<SeedGenerationResponse> {
+    return this.request<SeedGenerationResponse>('/seedgen', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async getLineage(): Promise<LineageResponse> {
+    return this.request<LineageResponse>('/lineage');
+  }
+
+  async validatePath(request: ValidatePathRequest): Promise<ValidationResponse> {
+    return this.request<ValidationResponse>('/validate/path', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async validateDraft(draftId: string): Promise<ValidationResponse> {
+    return this.request<ValidationResponse>(`/validate/draft/${encodeURIComponent(draftId)}`);
   }
 
   // ===========================================================================
@@ -236,8 +319,9 @@ export class CharacterGeneratorAPI {
     return response.blob();
   }
 
-  async getExportPresets(): Promise<Record<string, unknown>[]> {
-    return this.request<Record<string, unknown>[]>('/export/presets');
+  async getExportPresets(): Promise<ExportPresetSummary[]> {
+    const response = await this.request<{ presets: ExportPresetSummary[] } | ExportPresetSummary[]>('/export/presets');
+    return Array.isArray(response) ? response : response.presets;
   }
 
   // ===========================================================================
@@ -253,9 +337,28 @@ export class CharacterGeneratorAPI {
 
   refine(request: RefineRequest): GenerationStream {
     return new GenerationStream(
-      `${this.baseUrl}/refine`,
+      `${this.baseUrl}/chat/refine`,
       request
     );
+  }
+
+  // ===========================================================================
+  // Blueprints
+  // ===========================================================================
+
+  async getBlueprints(): Promise<BlueprintList> {
+    return this.request<BlueprintList>('/blueprints');
+  }
+
+  async getBlueprint(path: string): Promise<Blueprint> {
+    return this.request<Blueprint>(`/blueprints/${encodeURIComponent(path)}`);
+  }
+
+  async updateBlueprint(path: string, content: string): Promise<Blueprint> {
+    return this.request<Blueprint>(`/blueprints/${encodeURIComponent(path)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ content }),
+    });
   }
 }
 
@@ -265,9 +368,17 @@ export class CharacterGeneratorAPI {
 
 export type GenerationEventType = 'status' | 'chunk' | 'asset' | 'asset_complete' | 'progress' | 'complete' | 'error' | 'batch_start' | 'batch_complete' | 'batch_error';
 
+export type GenerationEventData =
+  | GenerationProgress
+  | GenerationComplete
+  | { content: string }
+  | { error: string }
+  | { name: string; [key: string]: unknown }
+  | Record<string, unknown>;
+
 export interface GenerationEvent {
   event: GenerationEventType;
-  data: GenerationProgress | { content: string } | GenerationComplete | { error: string };
+  data: GenerationEventData;
 }
 
 export class GenerationStream {
@@ -275,6 +386,8 @@ export class GenerationStream {
   private readers: Set<(event: GenerationEvent) => void> = new Set();
   private onComplete: ((data: GenerationComplete) => void) | null = null;
   private onError: ((error: string) => void) | null = null;
+  private currentEventType: GenerationEventType = 'chunk';
+  private currentDataLines: string[] = [];
 
   constructor(
     private url: string,
@@ -326,7 +439,7 @@ export class GenerationStream {
         buffer = lines.pop() || '';
 
         for (const line of lines) {
-          const event = this.parseSSE(line);
+          const event = this.parseSSELine(line);
           if (event) {
             this.readers.forEach(cb => cb(event));
 
@@ -337,6 +450,17 @@ export class GenerationStream {
               this.onError((event.data as { error: string }).error);
             }
           }
+        }
+      }
+
+      const trailingEvent = this.parseSSELine('');
+      if (trailingEvent) {
+        this.readers.forEach(cb => cb(trailingEvent));
+        if (trailingEvent.event === 'complete' && this.onComplete) {
+          this.onComplete(trailingEvent.data as GenerationComplete);
+        }
+        if (trailingEvent.event === 'error' && this.onError) {
+          this.onError((trailingEvent.data as { error: string }).error);
         }
       }
     } catch (err) {
@@ -350,17 +474,27 @@ export class GenerationStream {
     this.controller?.abort();
   }
 
-  private parseSSE(line: string): GenerationEvent | null {
+  private parseSSELine(line: string): GenerationEvent | null {
     if (line.startsWith('event:')) {
-      return { event: line.slice(6).trim() as GenerationEventType, data: {} as GenerationEvent['data'] };
+      this.currentEventType = line.slice(6).trim() as GenerationEventType;
+      return null;
     }
     if (line.startsWith('data:')) {
+      this.currentDataLines.push(line.slice(5).trim());
+      return null;
+    }
+    if (line.trim() === '' && this.currentDataLines.length > 0) {
       try {
-        return {
-          event: 'chunk',
-          data: JSON.parse(line.slice(5).trim()),
-        } as GenerationEvent;
+        const event = {
+          event: this.currentEventType,
+          data: JSON.parse(this.currentDataLines.join('\n')) as GenerationEventData,
+        } satisfies GenerationEvent;
+        this.currentEventType = 'chunk';
+        this.currentDataLines = [];
+        return event;
       } catch {
+        this.currentEventType = 'chunk';
+        this.currentDataLines = [];
         return null;
       }
     }

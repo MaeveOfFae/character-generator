@@ -7,13 +7,19 @@ import {
   FileText,
   GitCompare,
   Baby,
+  GitBranch,
   Settings,
   Menu,
   X,
   Layers,
+  BookOpen,
+  Dices,
+  ShieldCheck,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/utils/cn';
+import { AssistantContextProvider } from './common/AssistantContext';
+import GlobalAssistant from './common/GlobalAssistant';
 
 interface LayoutProps {
   children: ReactNode;
@@ -22,11 +28,15 @@ interface LayoutProps {
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/generate', label: 'Generate', icon: Sparkles },
+  { path: '/seed-generator', label: 'Seed Generator', icon: Dices },
+  { path: '/validation', label: 'Validation', icon: ShieldCheck },
   { path: '/batch', label: 'Batch', icon: Layers },
   { path: '/drafts', label: 'Drafts', icon: FolderOpen },
   { path: '/templates', label: 'Templates', icon: FileText },
+  { path: '/blueprints', label: 'Blueprints', icon: BookOpen },
   { path: '/similarity', label: 'Compare', icon: GitCompare },
   { path: '/offspring', label: 'Offspring', icon: Baby },
+  { path: '/lineage', label: 'Lineage', icon: GitBranch },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -35,7 +45,8 @@ export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <AssistantContextProvider>
+      <div className="flex h-screen overflow-hidden">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div
@@ -112,6 +123,8 @@ export default function Layout({ children }: LayoutProps) {
         {/* Page content */}
         <div className="p-6">{children}</div>
       </main>
-    </div>
+        <GlobalAssistant />
+      </div>
+    </AssistantContextProvider>
   );
 }

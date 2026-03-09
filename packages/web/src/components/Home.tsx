@@ -1,17 +1,25 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Sparkles, FolderOpen, GitCompare, Baby, ArrowRight } from 'lucide-react';
+import { Sparkles, FolderOpen, GitCompare, Baby, ArrowRight, Dices, GitBranch, ShieldCheck } from 'lucide-react';
 import { api } from '@char-gen/shared';
+import { useAssistantScreenContext } from './common/AssistantContext';
 
 export default function Home() {
   const { data: statsData } = useQuery({
     queryKey: ['drafts', 'stats'],
-    queryFn: () => api.getDrafts({ limit: 0 }),
+    queryFn: () => api.getDrafts({ limit: 1 }),
   });
 
   const { data: templatesData } = useQuery({
     queryKey: ['templates'],
     queryFn: () => api.getTemplates(),
+  });
+
+  useAssistantScreenContext({
+    draft_count: statsData?.stats?.total_drafts ?? 0,
+    favorite_count: statsData?.stats?.favorites ?? 0,
+    template_count: templatesData?.length ?? 0,
+    recent_drafts: (statsData?.drafts ?? []).slice(0, 5).map((draft) => draft.character_name || draft.seed),
   });
 
   return (
@@ -28,7 +36,7 @@ export default function Home() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Link
           to="/generate"
           className="group flex flex-col gap-2 rounded-lg border border-border bg-card p-6 transition-colors hover:border-primary hover:bg-accent"
@@ -39,6 +47,20 @@ export default function Home() {
           </div>
           <p className="text-sm text-muted-foreground">
             Create a new character
+          </p>
+          <ArrowRight className="ml-auto h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
+        </Link>
+
+        <Link
+          to="/seed-generator"
+          className="group flex flex-col gap-2 rounded-lg border border-border bg-card p-6 transition-colors hover:border-primary hover:bg-accent"
+        >
+          <div className="flex items-center gap-3">
+            <Dices className="h-8 w-8 text-primary" />
+            <h2 className="text-xl font-semibold">Seeds</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Brainstorm concepts
           </p>
           <ArrowRight className="ml-auto h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
         </Link>
@@ -84,6 +106,34 @@ export default function Home() {
           </p>
           <ArrowRight className="ml-auto h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
         </Link>
+
+        <Link
+          to="/lineage"
+          className="group flex flex-col gap-2 rounded-lg border border-border bg-card p-6 transition-colors hover:border-primary hover:bg-accent"
+        >
+          <div className="flex items-center gap-3">
+            <GitBranch className="h-8 w-8 text-primary" />
+            <h2 className="text-xl font-semibold">Lineage</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Explore family trees
+          </p>
+          <ArrowRight className="ml-auto h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
+        </Link>
+
+        <Link
+          to="/validation"
+          className="group flex flex-col gap-2 rounded-lg border border-border bg-card p-6 transition-colors hover:border-primary hover:bg-accent"
+        >
+          <div className="flex items-center gap-3">
+            <ShieldCheck className="h-8 w-8 text-primary" />
+            <h2 className="text-xl font-semibold">Validation</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Check generated packs
+          </p>
+          <ArrowRight className="ml-auto h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
+        </Link>
       </div>
 
       {/* Stats */}
@@ -123,8 +173,8 @@ export default function Home() {
           <div className="space-y-2">
             {statsData.drafts.slice(0, 5).map((draft) => (
               <Link
-                key={draft.seed}
-                to={`/drafts/${encodeURIComponent(draft.seed)}`}
+                key={draft.review_id}
+                to={`/drafts/${encodeURIComponent(draft.review_id)}`}
                 className="flex items-center justify-between p-3 rounded-lg hover:bg-accent transition-colors"
               >
                 <div>

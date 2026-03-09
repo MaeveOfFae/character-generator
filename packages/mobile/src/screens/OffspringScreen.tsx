@@ -14,7 +14,7 @@ export default function OffspringScreen() {
   const [mode, setMode] = useState<ContentMode>('SFW');
   const [isGenerating, setIsGenerating] = useState(false);
   const [output, setOutput] = useState('');
-  const [result, setResult] = useState<{ draftPath: string; characterName: string; seed?: string } | null>(null);
+  const [result, setResult] = useState<{ draftId: string; characterName: string } | null>(null);
   const abortRef = useRef<(() => void) | null>(null);
 
   const { data: draftsData, isLoading } = useQuery({
@@ -23,7 +23,7 @@ export default function OffspringScreen() {
   });
 
   const getParentName = (id: string) => {
-    const draft = draftsData?.drafts.find((d) => d.seed === id);
+    const draft = draftsData?.drafts.find((d) => d.review_id === id);
     return draft?.character_name || id;
   };
 
@@ -51,12 +51,11 @@ export default function OffspringScreen() {
           const data = event.data as { content: string };
           setOutput((prev) => prev + data.content);
         }
-        if (event.event === 'complete' && 'draft_path' in event.data) {
-          const data = event.data as { draft_path: string; character_name?: string; seed?: string };
+        if (event.event === 'complete' && 'draft_id' in event.data) {
+          const data = event.data as { draft_id?: string; character_name?: string };
           setResult({
-            draftPath: data.draft_path,
+            draftId: data.draft_id || '',
             characterName: data.character_name || 'Unknown',
-            seed: data.seed,
           });
           // Refresh drafts list
           queryClient.invalidateQueries({ queryKey: ['drafts'] });
@@ -120,14 +119,14 @@ export default function OffspringScreen() {
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.chipContainer}>
-              {drafts.filter(d => d.seed !== parent2).map((draft) => (
+              {drafts.filter(d => d.review_id !== parent2).map((draft) => (
                 <TouchableOpacity
-                  key={draft.seed}
-                  onPress={() => setParent1(draft.seed)}
-                  style={[styles.chip, parent1 === draft.seed && styles.chipActive]}
+                  key={draft.review_id}
+                  onPress={() => setParent1(draft.review_id)}
+                  style={[styles.chip, parent1 === draft.review_id && styles.chipActive]}
                 >
-                  <Text style={[styles.chipText, parent1 === draft.seed && styles.chipTextActive]} numberOfLines={1}>
-                    {draft.character_name || draft.seed}
+                  <Text style={[styles.chipText, parent1 === draft.review_id && styles.chipTextActive]} numberOfLines={1}>
+                    {draft.character_name || draft.review_id}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -153,14 +152,14 @@ export default function OffspringScreen() {
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.chipContainer}>
-              {drafts.filter(d => d.seed !== parent1).map((draft) => (
+              {drafts.filter(d => d.review_id !== parent1).map((draft) => (
                 <TouchableOpacity
-                  key={draft.seed}
-                  onPress={() => setParent2(draft.seed)}
-                  style={[styles.chip, parent2 === draft.seed && styles.chipActive]}
+                  key={draft.review_id}
+                  onPress={() => setParent2(draft.review_id)}
+                  style={[styles.chip, parent2 === draft.review_id && styles.chipActive]}
                 >
-                  <Text style={[styles.chipText, parent2 === draft.seed && styles.chipTextActive]} numberOfLines={1}>
-                    {draft.character_name || draft.seed}
+                  <Text style={[styles.chipText, parent2 === draft.review_id && styles.chipTextActive]} numberOfLines={1}>
+                    {draft.character_name || draft.review_id}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -226,11 +225,11 @@ export default function OffspringScreen() {
           <TouchableOpacity
             style={styles.viewButton}
             onPress={() => {
-              if (result?.seed) {
+              if (result?.draftId) {
                 // Navigate to Drafts tab, then to the draft detail
                 (navigation as any).navigate('Drafts', {
                   screen: 'DraftDetail',
-                  params: { draftId: result.seed }
+                  params: { draftId: result.draftId }
                 });
               } else {
                 // Fallback: just go to drafts list

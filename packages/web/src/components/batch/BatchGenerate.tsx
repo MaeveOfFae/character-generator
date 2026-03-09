@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Play, Pause, Upload, X, CheckCircle, XCircle, Loader2, List } from 'lucide-react';
 import { api, type ContentMode } from '@char-gen/shared';
+import { useAssistantScreenContext } from '../common/AssistantContext';
 
 interface BatchJob {
   seed: string;
@@ -121,6 +122,19 @@ export default function BatchGenerate() {
   const completedCount = jobs.filter(j => j.status === 'complete').length;
   const errorCount = jobs.filter(j => j.status === 'error').length;
   const progress = jobs.length > 0 ? ((completedCount + errorCount) / jobs.length) * 100 : 0;
+
+  useAssistantScreenContext({
+    seed_count: seeds.length,
+    current_seed: currentSeed,
+    mode,
+    template: template || 'default',
+    parallel,
+    max_concurrent: maxConcurrent,
+    is_running: isRunning,
+    progress_percent: Number(progress.toFixed(0)),
+    completed_jobs: completedCount,
+    error_jobs: errorCount,
+  });
 
   return (
     <div className="space-y-6 max-w-4xl">

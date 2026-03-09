@@ -66,7 +66,7 @@ export default function DraftsScreen() {
   const renderDraft = ({ item }: { item: DraftMetadata }) => (
     <TouchableOpacity
       style={styles.draftItem}
-      onPress={() => (navigation as any).navigate('DraftDetail', { draftId: item.seed })}
+      onPress={() => (navigation as any).navigate('DraftDetail', { draftId: item.review_id })}
     >
       <View style={styles.draftInfo}>
         <View style={styles.draftHeader}>
@@ -227,7 +227,7 @@ export default function DraftsScreen() {
       {/* List */}
       <FlatList
         data={filteredDrafts}
-        keyExtractor={(item) => item.seed}
+        keyExtractor={(item) => item.review_id}
         renderItem={renderDraft}
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor="#7c3aed" />}

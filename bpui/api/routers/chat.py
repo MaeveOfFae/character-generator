@@ -1,11 +1,12 @@
 """Chat/refinement router."""
 
 import json
-from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List
+
+from . import drafts as drafts_router
 
 router = APIRouter()
 
@@ -18,9 +19,10 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     """Request for chat-based refinement."""
-    draft_id: str
+    draft_id: Optional[str] = None
     messages: List[ChatMessage]
     context_asset: Optional[str] = None  # Asset to use as context
+    screen_context: Optional[dict] = None
 
 
 class RefineRequest(BaseModel):
@@ -28,29 +30,6 @@ class RefineRequest(BaseModel):
     draft_id: str
     asset: str
     message: str  # User's refinement request
-
-
-def _find_draft_dir(draft_id: str) -> Path:
-    """Find a draft directory by ID."""
-    drafts_dir = Path("drafts")
-    if not drafts_dir.exists():
-        raise HTTPException(status_code=404, detail="Drafts directory not found")
-
-    for draft_path in drafts_dir.iterdir():
-        if draft_path.is_dir() and draft_id in draft_path.name:
-            return draft_path
-
-    raise HTTPException(status_code=404, detail=f"Draft not found: {draft_id}")
-
-
-def _load_assets(draft_path: Path) -> dict[str, str]:
-    """Load all assets from a draft directory."""
-    assets = {}
-    for file_path in draft_path.iterdir():
-        if file_path.is_file() and not file_path.name.startswith('.'):
-            with open(file_path, 'r', encoding='utf-8') as f:
-                assets[file_path.stem] = f.read()
-    return assets
 
 
 @router.post("")
@@ -61,31 +40,41 @@ async def chat(request: ChatRequest):
             from bpui.core.config import load_config
             from bpui.llm.factory import create_engine
 
-            # Find draft and load context
-            draft_path = _find_draft_dir(request.draft_id)
-            assets = _load_assets(draft_path)
-
             # Build context
-            context_parts = ["You are helping refine a character. Here is the current character data:\n"]
+            context_parts = ["You are helping with the Character Generator workflow."]
 
-            if request.context_asset and request.context_asset in assets:
-                context_parts.append(f"\n=== {request.context_asset.upper()} ===\n")
-                context_parts.append(assets[request.context_asset])
-            else:
-                # Include all assets as context
-                for asset_name, content in assets.items():
-                    context_parts.append(f"\n=== {asset_name.upper()} ===\n")
-                    context_parts.append(content[:1000])  # Limit size
+            if request.screen_context:
+                screen_name = request.screen_context.get("screen_name") or "unknown"
+                screen_title = request.screen_context.get("screen_title") or screen_name
+                context_parts.append(f"\nCurrent screen: {screen_title} ({screen_name})")
+                context_parts.append("\nScreen context:")
+                for key, value in request.screen_context.items():
+                    if key in {"screen_name", "screen_title"}:
+                        continue
+                    context_parts.append(f"- {key}: {value}")
+
+            if request.draft_id:
+                draft_path = drafts_router._find_draft_dir(request.draft_id)
+                assets = drafts_router._load_assets(draft_path)
+                context_parts.append("\n\nCurrent character data:\n")
+
+                if request.context_asset and request.context_asset in assets:
+                    context_parts.append(f"\n=== {request.context_asset.upper()} ===\n")
+                    context_parts.append(assets[request.context_asset])
+                else:
+                    for asset_name, content in assets.items():
+                        context_parts.append(f"\n=== {asset_name.upper()} ===\n")
+                        context_parts.append(content[:1000])
 
             system_prompt = "".join(context_parts)
-            system_prompt += "\n\nHelp the user refine this character. Be helpful and creative."
+            system_prompt += "\n\nHelp the user refine or navigate the workflow. Be concrete, brief, and useful."
 
             # Create engine
             config = load_config()
             engine = create_engine(config)
 
-            # Convert messages to engine format
-            messages = [{"role": m.role, "content": m.content} for m in request.messages]
+            messages = [{"role": "system", "content": system_prompt}]
+            messages.extend({"role": m.role, "content": m.content} for m in request.messages)
 
             # Stream response
             full_response = ""
@@ -118,8 +107,8 @@ async def refine_asset(request: RefineRequest):
             from bpui.llm.factory import create_engine
 
             # Find draft and load assets
-            draft_path = _find_draft_dir(request.draft_id)
-            assets = _load_assets(draft_path)
+            draft_path = drafts_router._find_draft_dir(request.draft_id)
+            assets = drafts_router._load_assets(draft_path)
 
             if request.asset not in assets:
                 raise ValueError(f"Asset not found: {request.asset}")
@@ -169,11 +158,9 @@ Only output the updated content, no explanations or markdown."""
 async def apply_refinement(draft_id: str, asset: str, content: str):
     """Apply refined content to an asset."""
     try:
-        draft_path = _find_draft_dir(draft_id)
-
-        # Determine file extension
-        ext = ".md" if asset == "intro_page" else ".txt"
-        asset_file = draft_path / f"{asset}{ext}"
+        draft_path = drafts_router._find_draft_dir(draft_id)
+        metadata = drafts_router._load_metadata(draft_path)
+        asset_file = drafts_router._resolve_asset_path(draft_path, asset, metadata)
 
         if not asset_file.exists():
             raise HTTPException(status_code=404, detail=f"Asset file not found: {asset}")
@@ -187,10 +174,10 @@ async def apply_refinement(draft_id: str, asset: str, content: str):
         from datetime import datetime
         metadata_file = draft_path / ".metadata.json"
         if metadata_file.exists():
-            with open(metadata_file, 'r') as f:
+            with open(metadata_file, 'r', encoding='utf-8') as f:
                 metadata = json.load(f)
             metadata["modified"] = datetime.now().isoformat()
-            with open(metadata_file, 'w') as f:
+            with open(metadata_file, 'w', encoding='utf-8') as f:
                 json.dump(metadata, f, indent=2)
 
         return {"status": "updated", "asset": asset, "length": len(content)}

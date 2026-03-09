@@ -131,16 +131,13 @@ def export_with_preset(
         repo_root = Path.cwd()
 
     try:
-        from .export_presets import load_preset, apply_preset, format_output, validate_preset
+        from .export_presets import apply_preset, format_output, load_preset, resolve_preset_path, validate_preset
         from bpui.utils.file_io.pack_io import load_draft
 
         # Load preset
-        preset_path = repo_root / "presets" / f"{preset_name}.toml"
-        if not preset_path.exists():
-            # Try as direct path
-            preset_path = Path(preset_name)
+        preset_path = resolve_preset_path(preset_name, repo_root / "presets")
         
-        if not preset_path.exists():
+        if not preset_path:
             return {
                 "success": False,
                 "output": "",

@@ -46,6 +46,11 @@ USER_AUTHORSHIP_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ),
 ]
 
+INSTRUCTIONAL_USER_REFERENCE_PATTERN = re.compile(
+    r"(?:never|do not|don't|avoid|without)\s+(?:narrat(?:e|ing)|describ(?:e|ing)|assign(?:ing)?)\s*$",
+    re.IGNORECASE,
+)
+
 
 CHARACTER_SHEET_FILENAME = "character_sheet.txt"
 
@@ -65,8 +70,12 @@ def detect_user_authorship_issues(text: str) -> list[str]:
     """Return user-authorship issue labels for content that narrates {{user}}."""
     issues: list[str] = []
     for label, pattern in USER_AUTHORSHIP_PATTERNS:
-        if pattern.search(text):
+        for match in pattern.finditer(text):
+            context_before = text[max(0, match.start() - 48):match.start()].strip()
+            if INSTRUCTIONAL_USER_REFERENCE_PATTERN.search(context_before):
+                continue
             issues.append(label)
+            break
     return issues
 
 

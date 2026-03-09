@@ -33,7 +33,7 @@ export default function SimilarityScreen() {
   });
 
   const getCharName = (id: string) => {
-    const draft = draftsData?.drafts.find((d) => d.seed === id);
+    const draft = draftsData?.drafts.find((d) => d.review_id === id);
     return draft?.character_name || id;
   };
 
@@ -74,14 +74,14 @@ export default function SimilarityScreen() {
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.chipContainer}>
-              {drafts.filter(d => d.seed !== char2).map((draft) => (
+                {drafts.filter(d => d.review_id !== char2).map((draft) => (
                 <TouchableOpacity
-                  key={draft.seed}
-                  onPress={() => setChar1(draft.seed)}
-                  style={[styles.chip, char1 === draft.seed && styles.chipActive]}
+                    key={draft.review_id}
+                    onPress={() => setChar1(draft.review_id)}
+                    style={[styles.chip, char1 === draft.review_id && styles.chipActive]}
                 >
-                  <Text style={[styles.chipText, char1 === draft.seed && styles.chipTextActive]} numberOfLines={1}>
-                    {draft.character_name || draft.seed}
+                    <Text style={[styles.chipText, char1 === draft.review_id && styles.chipTextActive]} numberOfLines={1}>
+                      {draft.character_name || draft.seed}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -100,14 +100,14 @@ export default function SimilarityScreen() {
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.chipContainer}>
-              {drafts.filter(d => d.seed !== char1).map((draft) => (
+                {drafts.filter(d => d.review_id !== char1).map((draft) => (
                 <TouchableOpacity
-                  key={draft.seed}
-                  onPress={() => setChar2(draft.seed)}
-                  style={[styles.chip, char2 === draft.seed && styles.chipActive]}
+                    key={draft.review_id}
+                    onPress={() => setChar2(draft.review_id)}
+                    style={[styles.chip, char2 === draft.review_id && styles.chipActive]}
                 >
-                  <Text style={[styles.chipText, char2 === draft.seed && styles.chipTextActive]} numberOfLines={1}>
-                    {draft.character_name || draft.seed}
+                    <Text style={[styles.chipText, char2 === draft.review_id && styles.chipTextActive]} numberOfLines={1}>
+                      {draft.character_name || draft.seed}
                   </Text>
                 </TouchableOpacity>
               ))}

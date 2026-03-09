@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { Baby, Loader2, Users, CheckCircle } from 'lucide-react';
 import { api, type ContentMode } from '@char-gen/shared';
+import { useAssistantScreenContext } from '../common/AssistantContext';
 
 export default function Offspring() {
   const [parent1, setParent1] = useState<string>('');
@@ -9,7 +11,7 @@ export default function Offspring() {
   const [mode, setMode] = useState<ContentMode>('SFW');
   const [isGenerating, setIsGenerating] = useState(false);
   const [output, setOutput] = useState('');
-  const [result, setResult] = useState<{ draftPath: string; characterName: string } | null>(null);
+  const [result, setResult] = useState<{ draftId: string; characterName: string } | null>(null);
 
   // Fetch drafts for parent selection
   const { data: draftsData, isLoading } = useQuery({
@@ -18,9 +20,22 @@ export default function Offspring() {
   });
 
   const getParentName = (draftId: string) => {
-    const draft = draftsData?.drafts.find((d) => d.seed === draftId);
+    const draft = draftsData?.drafts.find((d) => d.review_id === draftId);
     return draft?.character_name || draftId;
   };
+
+  useAssistantScreenContext({
+    parent1_id: parent1 || null,
+    parent2_id: parent2 || null,
+    parent1_name: parent1 ? getParentName(parent1) : null,
+    parent2_name: parent2 ? getParentName(parent2) : null,
+    mode,
+    is_generating: isGenerating,
+    has_result: Boolean(result),
+    result_character: result?.characterName ?? null,
+    output_length: output.length,
+    available_drafts: draftsData?.drafts.length ?? 0,
+  });
 
   const handleGenerate = async () => {
     if (!parent1 || !parent2) return;
@@ -41,10 +56,10 @@ export default function Offspring() {
           const data = event.data as { content: string };
           setOutput((prev) => prev + data.content);
         }
-        if (event.event === 'complete' && 'draft_path' in event.data) {
-          const data = event.data as { draft_path: string; character_name?: string };
+        if (event.event === 'complete' && 'draft_id' in event.data) {
+          const data = event.data as { draft_id?: string; character_name?: string };
           setResult({
-            draftPath: data.draft_path,
+            draftId: data.draft_id || '',
             characterName: data.character_name || 'Unknown',
           });
         }
@@ -100,10 +115,10 @@ export default function Offspring() {
           >
             <option value="">Select parent 1...</option>
             {draftsData?.drafts
-              .filter((d) => d.seed !== parent2)
+              .filter((d) => d.review_id !== parent2)
               .map((draft) => (
-                <option key={draft.seed} value={draft.seed}>
-                  {draft.character_name || draft.seed}
+                <option key={draft.review_id} value={draft.review_id}>
+                  {draft.character_name || draft.review_id}
                 </option>
               ))}
           </select>
@@ -127,10 +142,10 @@ export default function Offspring() {
           >
             <option value="">Select parent 2...</option>
             {draftsData?.drafts
-              .filter((d) => d.seed !== parent1)
+              .filter((d) => d.review_id !== parent1)
               .map((draft) => (
-                <option key={draft.seed} value={draft.seed}>
-                  {draft.character_name || draft.seed}
+                <option key={draft.review_id} value={draft.review_id}>
+                  {draft.character_name || draft.review_id}
                 </option>
               ))}
           </select>
@@ -197,12 +212,12 @@ export default function Offspring() {
           <p className="text-sm text-muted-foreground">
             <strong>Parents:</strong> {getParentName(parent1)} + {getParentName(parent2)}
           </p>
-          <a
-            href={`/drafts/${encodeURIComponent(result.draftPath)}`}
+          <Link
+            to={`/drafts/${encodeURIComponent(result.draftId)}`}
             className="mt-4 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             View Character
-          </a>
+          </Link>
         </div>
       )}
 

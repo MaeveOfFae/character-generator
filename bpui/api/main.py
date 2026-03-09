@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import config, models, templates, drafts, generation, similarity, offspring, export, chat
+from .routers import blueprints, chat, config, drafts, export, generation, lineage, models, offspring, seedgen, similarity, templates, validation
 
 # Create FastAPI app
 app = FastAPI(
@@ -33,12 +33,16 @@ app.add_middleware(
 app.include_router(config.router, prefix="/api/config", tags=["Config"])
 app.include_router(models.router, prefix="/api/models", tags=["Models"])
 app.include_router(templates.router, prefix="/api/templates", tags=["Templates"])
+app.include_router(blueprints.router, prefix="/api/blueprints", tags=["Blueprints"])
 app.include_router(drafts.router, prefix="/api/drafts", tags=["Drafts"])
+app.include_router(lineage.router, prefix="/api/lineage", tags=["Lineage"])
 app.include_router(generation.router, prefix="/api/generate", tags=["Generation"])
+app.include_router(seedgen.router, prefix="/api/seedgen", tags=["Seed Generator"])
 app.include_router(similarity.router, prefix="/api/similarity", tags=["Similarity"])
 app.include_router(offspring.router, prefix="/api/offspring", tags=["Offspring"])
 app.include_router(export.router, prefix="/api/export", tags=["Export"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
+app.include_router(validation.router, prefix="/api/validate", tags=["Validation"])
 
 
 @app.get("/")

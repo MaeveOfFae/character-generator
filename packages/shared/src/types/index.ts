@@ -42,6 +42,7 @@ export interface Config {
 // ============================================================================
 
 export interface DraftMetadata {
+  review_id: string;
   seed: string;
   mode?: ContentMode;
   model?: string;
@@ -133,6 +134,44 @@ export interface CreateTemplateRequest {
   version: string;
   description: string;
   assets: AssetDefinition[];
+  blueprint_contents: Record<string, string>;
+}
+
+export interface DuplicateTemplateRequest {
+  name: string;
+  version?: string;
+}
+
+export interface TemplateValidationResult {
+  errors: string[];
+  warnings: string[];
+}
+
+export interface UpdateTemplateRequest extends CreateTemplateRequest {}
+
+export interface TemplateBlueprintContentsResponse {
+  blueprint_contents: Record<string, string>;
+}
+
+export interface SeedGenerationRequest {
+  genre_lines: string;
+  surprise_mode?: boolean;
+}
+
+export interface SeedGenerationResponse {
+  seeds: string[];
+}
+
+export interface ValidatePathRequest {
+  path: string;
+}
+
+export interface ValidationResponse {
+  path: string;
+  output: string;
+  errors: string;
+  exit_code: number;
+  success: boolean;
 }
 
 // ============================================================================
@@ -165,8 +204,44 @@ export interface GenerationProgress {
 
 export interface GenerationComplete {
   draft_path: string;
+  draft_id?: string;
   character_name?: string;
   duration_ms: number;
+}
+
+export interface LineageNode {
+  id: string;
+  review_id: string;
+  draft_name: string;
+  character_name: string;
+  generation: number;
+  is_root: boolean;
+  is_leaf: boolean;
+  offspring_type?: string;
+  mode?: string;
+  model?: string;
+  created?: string;
+  parent_ids: string[];
+  child_ids: string[];
+  parent_names: string[];
+  child_names: string[];
+  sibling_names: string[];
+  num_ancestors: number;
+  num_descendants: number;
+}
+
+export interface LineageStats {
+  total_characters: number;
+  root_characters: number;
+  leaf_characters: number;
+  generations: number;
+}
+
+export interface LineageResponse {
+  nodes: LineageNode[];
+  roots: string[];
+  max_generation: number;
+  stats: LineageStats;
 }
 
 // ============================================================================
@@ -240,6 +315,13 @@ export interface ExportPreset {
   output_pattern: string;
 }
 
+export interface ExportPresetSummary {
+  name: string;
+  path: string;
+  format?: ExportFormat;
+  description?: string;
+}
+
 export interface ExportRequest {
   draft_id: string;
   preset: string;
@@ -296,13 +378,56 @@ export interface ChatMessage {
 }
 
 export interface ChatRequest {
-  draft_id: string;
+  draft_id?: string;
   messages: ChatMessage[];
   context_asset?: string;
+  screen_context?: Record<string, unknown>;
 }
 
 export interface RefineRequest {
   draft_id: string;
   asset: string;
   message: string;
+}
+
+// ============================================================================
+// Blueprint Types
+// ============================================================================
+
+export interface Blueprint {
+  name: string;
+  description: string;
+  invokable: boolean;
+  version: string;
+  content: string;
+  path: string;
+  category: 'core' | 'system' | 'template' | 'example';
+}
+
+export interface BlueprintCategory {
+  name: string;
+  blueprints: Blueprint[];
+}
+
+export interface BlueprintList {
+  core: Blueprint[];
+  system: Blueprint[];
+  templates: Record<string, Blueprint[]>;
+  examples: Blueprint[];
+}
+
+// ============================================================================
+// Template Management Types
+// ============================================================================
+
+export interface AssetDefinitionWizard extends AssetDefinition {
+  blueprint_source?: 'browse' | 'custom' | 'new';
+  custom_blueprint_file?: string;
+}
+
+export interface TemplateWizardData {
+  name: string;
+  version: string;
+  description: string;
+  assets: AssetDefinitionWizard[];
 }

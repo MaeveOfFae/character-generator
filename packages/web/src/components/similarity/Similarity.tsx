@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { GitCompare, Loader2, Users, AlertCircle, CheckCircle } from 'lucide-react';
 import { api, type SimilarityResult } from '@char-gen/shared';
+import { useAssistantScreenContext } from '../common/AssistantContext';
 
 export default function Similarity() {
+  const [searchParams] = useSearchParams();
   const [character1, setCharacter1] = useState<string>('');
   const [character2, setCharacter2] = useState<string>('');
   const [includeLLM, setIncludeLLM] = useState(false);
@@ -15,6 +18,18 @@ export default function Similarity() {
     queryFn: () => api.getDrafts(),
   });
 
+  useEffect(() => {
+    const nextCharacter1 = searchParams.get('character1');
+    const nextCharacter2 = searchParams.get('character2');
+
+    if (nextCharacter1) {
+      setCharacter1(nextCharacter1);
+    }
+    if (nextCharacter2) {
+      setCharacter2(nextCharacter2);
+    }
+  }, [searchParams]);
+
   // Compare mutation
   const compareMutation = useMutation({
     mutationFn: () => api.analyzeSimilarity({
@@ -25,6 +40,18 @@ export default function Similarity() {
     onSuccess: (data) => {
       setResult(data);
     },
+  });
+
+  useAssistantScreenContext({
+    character1_id: character1 || null,
+    character2_id: character2 || null,
+    include_llm: includeLLM,
+    is_comparing: compareMutation.isPending,
+    has_result: Boolean(result),
+    overall_score: result?.overall_score ?? null,
+    compatibility: result?.compatibility ?? null,
+    commonality_count: result?.commonalities.length ?? 0,
+    difference_count: result?.differences.length ?? 0,
   });
 
   const handleCompare = () => {

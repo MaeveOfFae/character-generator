@@ -1,0 +1,4 @@
+[  107905ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:3002/api/export:0
+[  107905ms] [ERROR] Export failed: APIError: Export failed
+    at CharacterGeneratorAPI.exportDraft (http://127.0.0.1:3002/@fs/home/maeveoffae/Documents/character-generator/packages/shared/dist/index.js:229:13)
+    at async handleExport (http://127.0.0.1:3002/src/components/common/ExportModal.tsx:35:20) @ http://127.0.0.1:3002/src/components/common/ExportModal.tsx:49

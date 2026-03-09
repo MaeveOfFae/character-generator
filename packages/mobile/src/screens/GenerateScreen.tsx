@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,18 +9,15 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ContentMode, type GenerationComplete } from '@char-gen/shared';
 import { api } from '../config/api';
 import { SparklesIcon, DocumentTextIcon } from '../components/Icons';
 
-interface GenerationResult extends GenerationComplete {
-  seed?: string;
-}
-
 export default function GenerateScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
   const queryClient = useQueryClient();
   const [seed, setSeed] = useState('');
   const [mode, setMode] = useState<ContentMode>('SFW');
@@ -28,12 +25,19 @@ export default function GenerateScreen() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [output, setOutput] = useState('');
   const [error, setError] = useState('');
-  const [result, setResult] = useState<GenerationResult | null>(null);
+  const [result, setResult] = useState<GenerationComplete | null>(null);
 
   const { data: templates } = useQuery({
     queryKey: ['templates'],
     queryFn: () => api.getTemplates(),
   });
+
+  useEffect(() => {
+    const incomingSeed = (route.params as { seed?: string } | undefined)?.seed;
+    if (incomingSeed && incomingSeed !== seed) {
+      setSeed(incomingSeed);
+    }
+  }, [route.params, seed]);
 
   const handleGenerate = async () => {
     if (!seed.trim()) return;
@@ -57,8 +61,8 @@ export default function GenerateScreen() {
           setOutput((prev) => prev + data.content);
         }
         if (event.event === 'complete') {
-          const data = event.data as GenerationComplete & { seed?: string };
-          setResult({ ...data, seed: data.seed || seed });
+          const data = event.data as GenerationComplete;
+          setResult(data);
           // Refresh drafts list
           queryClient.invalidateQueries({ queryKey: ['drafts'] });
         }
@@ -195,10 +199,10 @@ export default function GenerateScreen() {
           <TouchableOpacity
             style={styles.viewButton}
             onPress={() => {
-              if (result?.seed) {
+              if (result?.draft_id) {
                 (navigation as any).navigate('Drafts', {
                   screen: 'DraftDetail',
-                  params: { draftId: result.seed }
+                  params: { draftId: result.draft_id }
                 });
               } else {
                 (navigation as any).navigate('Drafts');

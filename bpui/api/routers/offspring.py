@@ -1,55 +1,17 @@
 """Offspring generation router."""
 
-import asyncio
 import json
-from datetime import datetime
 from pathlib import Path
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from ..schemas.generation import GenerationComplete
-from ..schemas.config import ContentMode
+from ..schemas.generation import OffspringRequest
+from .drafts import _find_draft_dir
 
 router = APIRouter()
 
 
-def _find_draft_dir(draft_id: str) -> Path:
-    """Find a draft directory by ID."""
-    drafts_dir = Path("drafts")
-    if not drafts_dir.exists():
-        raise HTTPException(status_code=404, detail="Drafts directory not found")
-
-    for draft_path in drafts_dir.iterdir():
-        if draft_path.is_dir() and draft_id in draft_path.name:
-            return draft_path
-
-    raise HTTPException(status_code=404, detail=f"Draft not found: {draft_id}")
-
-
-class OffspringRequest:
-    """Request to generate offspring from two parents."""
-    def __init__(
-        self,
-        parent1_id: str,
-        parent2_id: str,
-        mode: ContentMode = "SFW",
-        template: str | None = None,
-        seed: str | None = None,
-    ):
-        self.parent1_id = parent1_id
-        self.parent2_id = parent2_id
-        self.mode = mode
-        self.template = template
-        self.seed = seed
-
-
 @router.post("")
-async def generate_offspring(
-    parent1_id: str,
-    parent2_id: str,
-    mode: ContentMode = "SFW",
-    template: str | None = None,
-    seed: str | None = None,
-):
+async def generate_offspring(request: OffspringRequest):
     """Generate offspring character from two parents with SSE streaming."""
     async def event_generator():
         try:
@@ -64,8 +26,8 @@ async def generate_offspring(
             yield f"event: status\ndata: {json.dumps({'stage': 'initializing', 'status': 'started'})}\n\n"
 
             # Load parents
-            parent1_path = _find_draft_dir(parent1_id)
-            parent2_path = _find_draft_dir(parent2_id)
+            parent1_path = _find_draft_dir(request.parent1_id)
+            parent2_path = _find_draft_dir(request.parent2_id)
 
             parent1_assets = load_draft(parent1_path)
             parent2_assets = load_draft(parent2_path)
@@ -92,22 +54,22 @@ async def generate_offspring(
 
             # Get template
             template_manager = TemplateManager()
-            template_obj = template_manager.get_template(template or "Official RPBotGenerator")
+            template_obj = template_manager.get_template(request.template or "Official RPBotGenerator")
             if not template_obj:
-                raise ValueError(f"Template not found: {template}")
+                raise ValueError(f"Template not found: {request.template}")
 
             # Step 1: Generate offspring seed
             yield f"event: status\ndata: {json.dumps({'stage': 'seed_generation', 'status': 'in_progress'})}\n\n"
 
-            if seed:
-                offspring_seed = seed
+            if request.seed:
+                offspring_seed = request.seed
             else:
                 system_prompt, user_prompt = build_offspring_prompt(
                     parent1_assets=parent1_assets,
                     parent2_assets=parent2_assets,
                     parent1_name=parent1_name,
                     parent2_name=parent2_name,
-                    mode=mode,
+                    mode=request.mode,
                 )
                 offspring_seed = await engine.generate(system_prompt, user_prompt)
                 offspring_seed = offspring_seed.strip()
@@ -125,7 +87,7 @@ async def generate_offspring(
                 yield f"event: asset\ndata: {json.dumps({'name': asset_name, 'status': 'started', 'progress': i / len(asset_order)})}\n\n"
 
                 system_prompt, user_prompt = build_asset_prompt(
-                    asset_name, offspring_seed, mode, assets
+                    asset_name, offspring_seed, request.mode, assets
                 )
 
                 output = await engine.generate(system_prompt, user_prompt)
@@ -147,21 +109,36 @@ async def generate_offspring(
             parent1_rel = str(parent1_path.relative_to(drafts_root)) if parent1_path.is_relative_to(drafts_root) else parent1_path.name
             parent2_rel = str(parent2_path.relative_to(drafts_root)) if parent2_path.is_relative_to(drafts_root) else parent2_path.name
 
-            metadata = {
-                "seed": offspring_seed[:200],
-                "mode": mode,
-                "model": config.model,
-                "created": datetime.now().isoformat(),
-                "template_name": template or "Official RPBotGenerator",
-                "character_name": character_name,
-                "parent_drafts": [parent1_rel, parent2_rel],
-                "offspring_type": "generated",
-            }
+            draft_path = create_draft_dir(
+                assets,
+                character_name,
+                seed=offspring_seed[:200],
+                mode=request.mode,
+                model=config.model,
+                template=template_obj,
+            )
 
-            draft_path = create_draft_dir(assets, character_name, metadata=metadata)
+            metadata_path = draft_path / ".metadata.json"
+            if metadata_path.exists():
+                with open(metadata_path, "r", encoding="utf-8") as f:
+                    metadata = json.load(f)
+            else:
+                metadata = {}
+
+            metadata.update(
+                {
+                    "template_name": template_obj.name,
+                    "character_name": character_name,
+                    "parent_drafts": [parent1_rel, parent2_rel],
+                    "offspring_type": "generated",
+                }
+            )
+
+            with open(metadata_path, "w", encoding="utf-8") as f:
+                json.dump(metadata, f, indent=2)
 
             yield f"event: status\ndata: {json.dumps({'stage': 'complete', 'status': 'complete'})}\n\n"
-            yield f"event: complete\ndata: {json.dumps({'draft_path': str(draft_path), 'character_name': character_name, 'parents': [parent1_name, parent2_name]})}\n\n"
+            yield f"event: complete\ndata: {json.dumps({'draft_path': str(draft_path), 'draft_id': draft_path.name, 'character_name': character_name, 'parents': [parent1_name, parent2_name]})}\n\n"
 
         except Exception as e:
             yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"

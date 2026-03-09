@@ -86,6 +86,35 @@ def load_preset(preset_path: Path) -> Optional[ExportPreset]:
         return None
 
 
+def resolve_preset_path(preset_identifier: str, presets_dir: Optional[Path] = None) -> Optional[Path]:
+    """Resolve a preset from a direct path, file stem, or display name."""
+    if presets_dir is None:
+        presets_dir = Path("presets")
+
+    direct_path = Path(preset_identifier)
+    if direct_path.exists():
+        return direct_path
+
+    candidate_names = [preset_identifier]
+    if not preset_identifier.endswith(".toml"):
+        candidate_names.append(f"{preset_identifier}.toml")
+
+    for candidate_name in candidate_names:
+        candidate_path = presets_dir / candidate_name
+        if candidate_path.exists():
+            return candidate_path
+
+    normalized_identifier = preset_identifier.casefold()
+    for preset_file in presets_dir.glob("*.toml"):
+        preset = load_preset(preset_file)
+        if not preset:
+            continue
+        if preset.name.casefold() == normalized_identifier or preset_file.stem.casefold() == normalized_identifier:
+            return preset_file
+
+    return None
+
+
 def list_presets(presets_dir: Optional[Path] = None) -> list[tuple[str, Path]]:
     """
     List available export presets.

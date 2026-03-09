@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Star, Download, Trash2, Edit3, Check, X } from 'lucide-react';
+import { ArrowLeft, Star, Download, Trash2, Edit3, Check, X, ShieldCheck } from 'lucide-react';
 import { api } from '@char-gen/shared';
 import ExportModal from '../common/ExportModal';
 import ChatPanel from '../common/ChatPanel';
+import { useAssistantScreenContext } from '../common/AssistantContext';
 
 export default function Review() {
   const { id } = useParams<{ id: string }>();
   const [showExportModal, setShowExportModal] = useState(false);
   const [editingAsset, setEditingAsset] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
+  const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data: draft, isLoading, error } = useQuery({
@@ -45,6 +47,27 @@ export default function Review() {
       setEditingAsset(null);
       setEditContent('');
     },
+  });
+
+  const validateDraft = useMutation({
+    mutationFn: () => api.validateDraft(decodeURIComponent(id || '')),
+    onSuccess: (result) => {
+      setValidationMessage(result.success ? 'Validation passed' : 'Validation failed');
+    },
+    onError: (error: Error) => {
+      setValidationMessage(error.message);
+    },
+  });
+
+  useAssistantScreenContext({
+    draft_id: decodeURIComponent(id || ''),
+    character_name: draft?.metadata.character_name || '',
+    mode: draft?.metadata.mode || '',
+    template_name: draft?.metadata.template_name || '',
+    asset_names: draft ? Object.keys(draft.assets) : [],
+    editing_asset: editingAsset || '',
+    favorite: draft?.metadata.favorite ?? false,
+    has_lineage: Boolean(draft?.metadata.parent_drafts?.length),
   });
 
   const handleEditAsset = (assetName: string) => {
@@ -115,6 +138,13 @@ export default function Review() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => validateDraft.mutate()}
+            className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent"
+          >
+            <ShieldCheck className="h-4 w-4" />
+            Validate
+          </button>
+          <button
             onClick={() => toggleFavorite.mutate()}
             className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent"
           >
@@ -141,6 +171,12 @@ export default function Review() {
           </button>
         </div>
       </div>
+
+      {validationMessage && (
+        <div className="rounded-lg border border-border bg-card p-4 text-sm">
+          {validationMessage}. <Link to="/validation" className="text-primary hover:underline">Open Validation screen</Link>
+        </div>
+      )}
 
       {/* Metadata */}
       <div className="flex flex-wrap gap-2">

@@ -35,3 +35,24 @@ class CreateTemplateRequest(BaseModel):
     version: str = "1.0"
     description: str = ""
     assets: List[AssetDefinitionSchema] = Field(default_factory=list)
+    blueprint_contents: dict[str, str] = Field(default_factory=dict)
+
+
+class DuplicateTemplateRequest(BaseModel):
+    """Request to duplicate a template."""
+
+    name: str = Field(..., min_length=1, max_length=100)
+    version: str = "1.0"
+
+
+class TemplateValidationResult(BaseModel):
+    """Validation result for a template."""
+
+    errors: List[str] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+
+
+class TemplateBlueprintContentsResponse(BaseModel):
+    """Blueprint content mapped by asset name for a template."""
+
+    blueprint_contents: dict[str, str] = Field(default_factory=dict)

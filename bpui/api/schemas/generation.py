@@ -22,6 +22,15 @@ class GenerateBatchRequest(BaseModel):
     max_concurrent: int = Field(default=3, ge=1, le=10)
 
 
+class OffspringRequest(BaseModel):
+    """Request to generate an offspring character from two parents."""
+    parent1_id: str = Field(..., min_length=1)
+    parent2_id: str = Field(..., min_length=1)
+    mode: ContentMode = "SFW"
+    template: Optional[str] = None
+    seed: Optional[str] = None
+
+
 class GenerationProgress(BaseModel):
     """Progress update during generation."""
     stage: Literal["initializing", "orchestrator", "parsing", "saving", "complete", "error"]
@@ -35,5 +44,6 @@ class GenerationProgress(BaseModel):
 class GenerationComplete(BaseModel):
     """Final completion message."""
     draft_path: str
+    draft_id: Optional[str] = None
     character_name: Optional[str] = None
     duration_ms: float

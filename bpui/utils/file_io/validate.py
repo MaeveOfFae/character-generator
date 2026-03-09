@@ -215,37 +215,30 @@ class ValidateScreen(QWidget):
             output.append("=" * 60)
             output.append("")
             
-            if result["valid"]:
+            if result["success"]:
                 output.append("✓ VALIDATION PASSED")
-                output.append("")
-                output.append("All checks passed:")
-                for check in result.get("checks_passed", []):
-                    output.append(f"  ✓ {check}")
             else:
                 output.append("✗ VALIDATION FAILED")
+
+            if result.get("output"):
                 output.append("")
-                
-                if result.get("errors"):
-                    output.append("Errors:")
-                    for error in result["errors"]:
-                        output.append(f"  ✗ {error}")
-                    output.append("")
-                
-                if result.get("warnings"):
-                    output.append("Warnings:")
-                    for warning in result["warnings"]:
-                        output.append(f"  ⚠ {warning}")
+                output.append(result["output"].rstrip())
+
+            if result.get("errors"):
+                output.append("")
+                output.append("Errors:")
+                output.append(result["errors"].rstrip())
             
             output.append("")
             output.append("=" * 60)
             
             self.results_text.setPlainText("\\n".join(output))
             
-            if result["valid"]:
+            if result["success"]:
                 self.status_label.setText("✓ Validation passed")
                 self.status_label.setStyleSheet("color: #4a4;")
             else:
-                self.status_label.setText(f"✗ Validation failed with {len(result.get('errors', []))} errors")
+                self.status_label.setText(f"✗ Validation failed (exit code {result.get('exit_code', 1)})")
                 self.status_label.setStyleSheet("color: #f44;")
         
         except Exception as e:

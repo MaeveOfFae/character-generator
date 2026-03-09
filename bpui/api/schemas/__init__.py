@@ -14,7 +14,13 @@ from .generation import (
     GenerationProgress,
     GenerationComplete,
 )
-from .templates import TemplateSchema, AssetDefinitionSchema, CreateTemplateRequest
+from .templates import (
+    TemplateSchema,
+    AssetDefinitionSchema,
+    CreateTemplateRequest,
+    DuplicateTemplateRequest,
+    TemplateValidationResult,
+)
 
 __all__ = [
     # Config
@@ -37,4 +43,6 @@ __all__ = [
     "TemplateSchema",
     "AssetDefinitionSchema",
     "CreateTemplateRequest",
+    "DuplicateTemplateRequest",
+    "TemplateValidationResult",
 ]

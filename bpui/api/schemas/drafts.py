@@ -7,6 +7,7 @@ from .config import ContentMode
 
 class DraftMetadataSchema(BaseModel):
     """Metadata for a character draft."""
+    review_id: str
     seed: str
     mode: Optional[ContentMode] = None
     model: Optional[str] = None

@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, Download, FileText, FileJson, FileCode } from 'lucide-react';
-import { api } from '@char-gen/shared';
+import { api, type ExportPresetSummary } from '@char-gen/shared';
+
+type ExportPresetOption = ExportPresetSummary & {
+  format?: 'text' | 'json' | 'combined';
+  description?: string;
+};
 
 interface ExportModalProps {
   draftId: string;
@@ -89,17 +94,20 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
               <p className="text-sm text-muted-foreground">Loading presets...</p>
             ) : presets && presets.length > 0 ? (
               <div className="space-y-2">
-                {presets.map((preset: any) => (
+                {presets.map((preset: ExportPresetOption) => {
+                  const presetValue = preset.path || preset.name;
+
+                  return (
                   <button
-                    key={preset.name}
-                    onClick={() => setSelectedPreset(preset.name)}
+                    key={presetValue}
+                    onClick={() => setSelectedPreset(presetValue)}
                     className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-                      selectedPreset === preset.name
+                      selectedPreset === presetValue
                         ? 'border-primary bg-primary/10'
                         : 'border-border hover:bg-accent'
                     }`}
                   >
-                    {getFormatIcon(preset.format)}
+                    {getFormatIcon(preset.format ?? 'text')}
                     <div className="text-left">
                       <div className="font-medium">{preset.name}</div>
                       {preset.description && (
@@ -107,7 +115,8 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
                       )}
                     </div>
                   </button>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">No presets available</p>

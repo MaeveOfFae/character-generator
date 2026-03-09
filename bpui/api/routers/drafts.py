@@ -4,6 +4,9 @@ import json
 from pathlib import Path
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
+
+from bpui.core.parse_blocks import get_asset_filename
+from bpui.utils.file_io.pack_io import load_draft
 from ..schemas.drafts import (
     DraftMetadataSchema,
     DraftDetailResponse,
@@ -40,14 +43,59 @@ def _load_metadata(draft_path: Path) -> Optional[dict]:
     return None
 
 
+def _load_template_for_draft(draft_path: Path, metadata: Optional[dict] = None):
+    """Load the template referenced by a draft's metadata, if any."""
+    meta = metadata if metadata is not None else _load_metadata(draft_path)
+    template_name = (meta or {}).get("template_name")
+    if not template_name:
+        return None
+
+    from bpui.features.templates.templates import TemplateManager
+
+    return TemplateManager().get_template(template_name)
+
+
 def _load_assets(draft_path: Path) -> dict[str, str]:
     """Load all assets from a draft directory."""
-    assets = {}
-    for file_path in draft_path.iterdir():
-        if file_path.is_file() and not file_path.name.startswith('.'):
-            with open(file_path, 'r') as f:
-                assets[file_path.stem] = f.read()
-    return assets
+    template = _load_template_for_draft(draft_path)
+    if template:
+        return load_draft(draft_path, template)
+    return load_draft(draft_path)
+
+
+def _resolve_asset_path(draft_path: Path, asset_name: str, metadata: Optional[dict] = None) -> Path:
+    """Resolve the on-disk path for a draft asset, honoring template filenames."""
+    template = _load_template_for_draft(draft_path, metadata)
+    filename = get_asset_filename(asset_name, template)
+    return draft_path / filename
+
+
+def _draft_matches_id(draft_path: Path, draft_id: str, metadata: Optional[dict] = None) -> bool:
+    """Check whether a draft matches a review ID, seed, or legacy partial path lookup."""
+    if draft_path.name == draft_id:
+        return True
+
+    meta = metadata if metadata is not None else _load_metadata(draft_path)
+    if meta and meta.get('seed') == draft_id:
+        return True
+
+    return draft_id in draft_path.name
+
+
+def _find_draft_dir(draft_id: str) -> Path:
+    """Find a draft directory by stable review ID or legacy identifiers."""
+    drafts_dir = _get_drafts_dir()
+    if not drafts_dir.exists():
+        raise HTTPException(status_code=404, detail="Drafts directory not found")
+
+    for path in drafts_dir.iterdir():
+        if not path.is_dir():
+            continue
+        metadata = _load_metadata(path)
+        if _draft_matches_id(path, draft_id, metadata):
+            return path
+
+    raise HTTPException(status_code=404, detail=f"Draft not found: {draft_id}")
 
 
 @router.get("", response_model=DraftListResponse)
@@ -102,6 +150,7 @@ async def list_drafts(
             stats["by_mode"][metadata['mode']] = stats["by_mode"].get(metadata['mode'], 0) + 1
 
         drafts.append(DraftMetadataSchema(
+            review_id=draft_path.name,
             seed=metadata.get('seed', draft_path.name),
             mode=metadata.get('mode'),
             model=metadata.get('model'),
@@ -130,29 +179,14 @@ async def list_drafts(
 @router.get("/{draft_id}", response_model=DraftDetailResponse)
 async def get_draft(draft_id: str):
     """Get a specific draft with all assets."""
-    drafts_dir = _get_drafts_dir()
-
-    # Find the draft directory
-    draft_path = None
-    for path in drafts_dir.iterdir():
-        if path.is_dir():
-            metadata = _load_metadata(path)
-            if metadata and metadata.get('seed') == draft_id:
-                draft_path = path
-                break
-            # Also check by directory name
-            if draft_id in path.name:
-                draft_path = path
-                break
-
-    if not draft_path:
-        raise HTTPException(status_code=404, detail=f"Draft not found: {draft_id}")
+    draft_path = _find_draft_dir(draft_id)
 
     metadata = _load_metadata(draft_path)
     assets = _load_assets(draft_path)
 
     return DraftDetailResponse(
         metadata=DraftMetadataSchema(
+            review_id=draft_path.name,
             seed=metadata.get('seed', draft_id),
             mode=metadata.get('mode'),
             model=metadata.get('model'),
@@ -175,31 +209,19 @@ async def get_draft(draft_id: str):
 @router.put("/{draft_id}", response_model=DraftDetailResponse)
 async def update_draft(draft_id: str, update: DraftUpdate):
     """Update a draft's metadata or assets."""
-    drafts_dir = _get_drafts_dir()
-
-    # Find the draft directory
-    draft_path = None
-    for path in drafts_dir.iterdir():
-        if path.is_dir():
-            metadata = _load_metadata(path)
-            if metadata and metadata.get('seed') == draft_id:
-                draft_path = path
-                break
-
-    if not draft_path:
-        raise HTTPException(status_code=404, detail=f"Draft not found: {draft_id}")
+    draft_path = _find_draft_dir(draft_id)
+    current_metadata = _load_metadata(draft_path) or {}
 
     # Update metadata
     if update.metadata:
-        metadata = _load_metadata(draft_path) or {}
-        metadata.update(update.metadata)
+        current_metadata.update(update.metadata)
         with open(draft_path / ".metadata.json", 'w') as f:
-            json.dump(metadata, f, indent=2)
+            json.dump(current_metadata, f, indent=2)
 
     # Update assets
     if update.assets:
         for asset_name, content in update.assets.items():
-            asset_file = draft_path / f"{asset_name}.txt"
+            asset_file = _resolve_asset_path(draft_path, asset_name, current_metadata)
             with open(asset_file, 'w') as f:
                 f.write(content)
 
@@ -209,23 +231,8 @@ async def update_draft(draft_id: str, update: DraftUpdate):
 @router.put("/{draft_id}/assets/{asset_name}")
 async def update_asset(draft_id: str, asset_name: str, update: AssetUpdate):
     """Update a single asset in a draft."""
-    drafts_dir = _get_drafts_dir()
-
-    # Find the draft directory
-    draft_path = None
-    for path in drafts_dir.iterdir():
-        if path.is_dir():
-            metadata = _load_metadata(path)
-            if metadata and metadata.get('seed') == draft_id:
-                draft_path = path
-                break
-
-    if not draft_path:
-        raise HTTPException(status_code=404, detail=f"Draft not found: {draft_id}")
-
-    # Determine file extension based on asset name
-    ext = ".md" if asset_name == "intro_page" else ".txt"
-    asset_file = draft_path / f"{asset_name}{ext}"
+    draft_path = _find_draft_dir(draft_id)
+    asset_file = _resolve_asset_path(draft_path, asset_name)
 
     with open(asset_file, 'w') as f:
         f.write(update.content)
@@ -236,19 +243,7 @@ async def update_asset(draft_id: str, asset_name: str, update: AssetUpdate):
 @router.put("/{draft_id}/metadata")
 async def update_metadata(draft_id: str, metadata: dict):
     """Update draft metadata."""
-    drafts_dir = _get_drafts_dir()
-
-    # Find the draft directory
-    draft_path = None
-    for path in drafts_dir.iterdir():
-        if path.is_dir():
-            meta = _load_metadata(path)
-            if meta and meta.get('seed') == draft_id:
-                draft_path = path
-                break
-
-    if not draft_path:
-        raise HTTPException(status_code=404, detail=f"Draft not found: {draft_id}")
+    draft_path = _find_draft_dir(draft_id)
 
     # Load existing and update
     existing = _load_metadata(draft_path) or {}
@@ -265,19 +260,7 @@ async def delete_draft(draft_id: str):
     """Delete a draft."""
     import shutil
 
-    drafts_dir = _get_drafts_dir()
-
-    # Find the draft directory
-    draft_path = None
-    for path in drafts_dir.iterdir():
-        if path.is_dir():
-            metadata = _load_metadata(path)
-            if metadata and metadata.get('seed') == draft_id:
-                draft_path = path
-                break
-
-    if not draft_path:
-        raise HTTPException(status_code=404, detail=f"Draft not found: {draft_id}")
+    draft_path = _find_draft_dir(draft_id)
 
     shutil.rmtree(draft_path)
     return {"status": "deleted", "draft_id": draft_id}

@@ -73,8 +73,8 @@ export default function Drafts() {
         ) : (
           data?.drafts.map((draft) => (
             <Link
-              key={draft.seed}
-              to={`/drafts/${encodeURIComponent(draft.seed)}`}
+              key={draft.review_id}
+              to={`/drafts/${encodeURIComponent(draft.review_id)}`}
               className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent"
             >
               <div className="flex-1 min-w-0">

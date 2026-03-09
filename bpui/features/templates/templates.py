@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import List, Dict, Optional
 from dataclasses import dataclass, field
 import sys
+import shutil
+import tempfile
 
 # Use built-in tomllib for Python 3.11+, fallback to tomli for older versions
 if sys.version_info >= (3, 11):
@@ -196,6 +198,13 @@ class TemplateManager:
                 description="Stable Diffusion image generation prompt",
                 blueprint_file="examples/a1111_sdxl_comfyui.md"
             ),
+            AssetDefinition(
+                name="suno",
+                required=True,
+                depends_on=["character_sheet"],
+                description="Suno song generation prompt",
+                blueprint_file="suno.md"
+            ),
         ]
         
         return Template(
@@ -257,7 +266,9 @@ class TemplateManager:
         self,
         name: str,
         description: str,
-        assets: List[AssetDefinition]
+        assets: List[AssetDefinition],
+        version: str = "1.0.0",
+        blueprint_contents: Optional[Dict[str, str]] = None,
     ) -> Template:
         """Create a new custom template.
         
@@ -269,6 +280,8 @@ class TemplateManager:
         Returns:
             Created Template object
         """
+        self._ensure_blueprint_filenames(assets)
+
         # Sanitize name for directory
         dir_name = name.lower().replace(" ", "_")
         template_dir = self.custom_dir / dir_name
@@ -282,7 +295,7 @@ class TemplateManager:
         manifest_data = {
             "template": {
                 "name": name,
-                "version": "1.0.0",
+                "version": version,
                 "description": description
             },
             "assets": [
@@ -301,13 +314,16 @@ class TemplateManager:
         with open(manifest_path, "wb") as f:
             tomli_w.dump(manifest_data, f)
         
-        return Template(
+        template = Template(
             name=name,
-            version="1.0.0",
+            version=version,
             description=description,
             assets=assets,
             path=template_dir
         )
+
+        self._write_blueprint_contents(template, blueprint_contents or {})
+        return template
     
     def save_template(self, template: Template):
         """Save a template to its path.
@@ -339,6 +355,75 @@ class TemplateManager:
         manifest_path = template.path / "template.toml"
         with open(manifest_path, "wb") as f:
             tomli_w.dump(manifest_data, f)
+
+    def update_template(
+        self,
+        existing_name: str,
+        name: str,
+        version: str,
+        description: str,
+        assets: List[AssetDefinition],
+        blueprint_contents: Optional[Dict[str, str]] = None,
+    ) -> Template:
+        """Update an existing custom template.
+
+        Args:
+            existing_name: Current template name
+            name: Updated template name
+            version: Updated version
+            description: Updated description
+            assets: Updated asset definitions
+
+        Returns:
+            Updated template object
+        """
+        template = self.get_template(existing_name)
+        if not template:
+            raise FileNotFoundError(f"Template not found: {existing_name}")
+        if template.is_official:
+            raise PermissionError("Cannot modify official templates")
+
+        new_dir_name = name.strip().lower().replace(" ", "_")
+        new_path = self.custom_dir / new_dir_name
+
+        if new_path != template.path and new_path.exists():
+            raise FileExistsError(f"Template already exists: {name}")
+
+        if new_path != template.path:
+            shutil.move(str(template.path), str(new_path))
+            template.path = new_path
+
+        self._ensure_blueprint_filenames(assets)
+
+        template.name = name.strip()
+        template.version = version
+        template.description = description
+        template.assets = assets
+        self.save_template(template)
+        self._write_blueprint_contents(template, blueprint_contents or {})
+        return template
+
+    def _ensure_blueprint_filenames(self, assets: List[AssetDefinition]) -> None:
+        """Ensure all assets have a blueprint filename for template-local editing."""
+        for asset in assets:
+            if not asset.blueprint_file:
+                asset.blueprint_file = f"{asset.name}.md"
+
+    def _write_blueprint_contents(self, template: Template, blueprint_contents: Dict[str, str]) -> None:
+        """Write template-local blueprint contents for provided assets."""
+        if not blueprint_contents:
+            return
+
+        assets_dir = template.path / "assets"
+        assets_dir.mkdir(parents=True, exist_ok=True)
+
+        for asset in template.assets:
+            if asset.name not in blueprint_contents or not asset.blueprint_file:
+                continue
+
+            blueprint_path = assets_dir / asset.blueprint_file
+            blueprint_path.parent.mkdir(parents=True, exist_ok=True)
+            blueprint_path.write_text(blueprint_contents[asset.name], encoding="utf-8")
     
     def validate_template(self, template: Template) -> Dict[str, List[str]]:
         """Validate a template for correctness.
@@ -491,6 +576,27 @@ class TemplateManager:
         
         # Reload from new location
         return self._load_template(dest_path)
+
+    def import_template_archive(self, archive_path: Path) -> Optional[Template]:
+        """Import a template from a zip archive.
+
+        Args:
+            archive_path: Path to a template zip archive
+
+        Returns:
+            Imported template or None if invalid
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_root = Path(temp_dir)
+            shutil.unpack_archive(str(archive_path), str(temp_root))
+
+            candidate = temp_root
+            if not (candidate / "template.toml").exists():
+                subdirs = [path for path in temp_root.iterdir() if path.is_dir()]
+                if len(subdirs) == 1 and (subdirs[0] / "template.toml").exists():
+                    candidate = subdirs[0]
+
+            return self.import_template(candidate)
     
     def delete_template(self, template: Template) -> bool:
         """Delete a custom template.
@@ -512,6 +618,58 @@ class TemplateManager:
             return True
         
         return False
+
+    def duplicate_template(self, template: Template, new_name: str, version: str = "1.0.0") -> Template:
+        """Duplicate a template into the custom template directory.
+
+        Args:
+            template: Source template to duplicate
+            new_name: New template name
+            version: Version for a duplicated official template
+
+        Returns:
+            Newly created duplicated template
+        """
+        new_dir_name = new_name.strip().lower().replace(" ", "_")
+        new_dir = self.custom_dir / new_dir_name
+
+        if new_dir.exists():
+            raise FileExistsError(f"Template already exists: {new_name}")
+
+        if template.is_official:
+            assets = [
+                AssetDefinition(
+                    name=asset.name,
+                    required=asset.required,
+                    depends_on=list(asset.depends_on),
+                    description=asset.description,
+                    blueprint_file=asset.blueprint_file,
+                )
+                for asset in template.assets
+            ]
+            return self.create_template(
+                name=new_name.strip(),
+                description=f"Copy of {template.name}",
+                assets=assets,
+                version=version,
+            )
+
+        shutil.copytree(template.path, new_dir)
+
+        toml_path = new_dir / "template.toml"
+        with open(toml_path, "rb") as f:
+            data = tomllib.load(f)
+
+        data.setdefault("template", {})["name"] = new_name.strip()
+        data["template"].setdefault("version", template.version)
+
+        with open(toml_path, "wb") as f:
+            tomli_w.dump(data, f)
+
+        duplicated = self._load_template(new_dir)
+        if not duplicated:
+            raise ValueError(f"Failed to load duplicated template: {new_name}")
+        return duplicated
     
     def get_blueprint_content(self, template: Template, asset_name: str) -> Optional[str]:
         """Get blueprint content for a specific asset.
@@ -576,3 +734,12 @@ class TemplateManager:
                 return examples_path.read_text(encoding='utf-8')
         
         return None
+
+    def get_template_blueprint_contents(self, template: Template) -> Dict[str, str]:
+        """Get blueprint contents for all assets in a template."""
+        contents: Dict[str, str] = {}
+        for asset in template.assets:
+            content = self.get_blueprint_content(template, asset.name)
+            if content is not None:
+                contents[asset.name] = content
+        return contents

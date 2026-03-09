@@ -2,14 +2,14 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../config/api';
-import { SparklesIcon, FolderIcon, StarIcon } from '../components/Icons';
+import { SparklesIcon, FolderIcon, StarIcon, DocumentTextIcon } from '../components/Icons';
 
 export default function HomeScreen() {
   const navigation = useNavigation();
 
   const { data: statsData } = useQuery({
     queryKey: ['drafts', 'stats'],
-    queryFn: () => api.getDrafts({ limit: 0 }),
+    queryFn: () => api.getDrafts(),
   });
 
   return (
@@ -40,6 +40,29 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.toolsContainer}>
+        <Text style={styles.sectionTitle}>Tools</Text>
+        <View style={styles.actionsGrid}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => (navigation as any).navigate('SeedGenerator')}
+          >
+            <SparklesIcon color="#7c3aed" size={32} />
+            <Text style={styles.actionTitle}>Seed Generator</Text>
+            <Text style={styles.actionDesc}>Generate concepts from genre lines</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => (navigation as any).navigate('Validation')}
+          >
+            <DocumentTextIcon color="#7c3aed" size={32} />
+            <Text style={styles.actionTitle}>Validation</Text>
+            <Text style={styles.actionDesc}>Run pack checks on drafts or paths</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* Stats */}
       <View style={styles.statsContainer}>
         <Text style={styles.sectionTitle}>Quick Stats</Text>
@@ -67,11 +90,11 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>Recent Characters</Text>
           {statsData.drafts.slice(0, 5).map((draft) => (
             <TouchableOpacity
-              key={draft.seed}
+              key={draft.review_id}
               style={styles.recentItem}
               onPress={() => (navigation as any).navigate('Drafts', {
                 screen: 'DraftDetail',
-                params: { draftId: draft.seed }
+                params: { draftId: draft.review_id }
               })}
             >
               <View style={styles.recentInfo}>
@@ -114,6 +137,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginBottom: 24,
+  },
+  toolsContainer: {
+    marginBottom: 8,
   },
   actionCard: {
     flex: 1,
