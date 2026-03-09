@@ -1,4 +1,4 @@
-"""Drafts browser screen for Blueprint UI."""
+"""Drafts browser screen for Character Generator."""
 
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical, Horizontal

@@ -1,4 +1,4 @@
-"""Blueprint UI - Main TUI application."""
+"""Character Generator - main TUI application."""
 
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer
@@ -13,7 +13,7 @@ from bpui.core.config import Config
 
 
 class BlueprintUI(App):
-    """Blueprint UI Terminal Application."""
+    """Character Generator terminal application."""
 
     BINDINGS = [
         ("q", "quit", "Quit"),
@@ -28,8 +28,8 @@ class BlueprintUI(App):
         super().__init__()
         self.config = Config(config_path)
         self.theme_manager = TUIThemeManager(self.config)
-        self.title = "Blueprint UI - RPBotGenerator"
-        self.sub_title = "Character Compilation System"
+        self.title = "Character Generator"
+        self.sub_title = "Terminal UI"
         
         # Load initial CSS
         self._reload_theme_css()

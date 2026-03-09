@@ -50,12 +50,12 @@ export default function ValidationScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Validation</Text>
       <Text style={styles.subtitle}>
-        Run the pack validator against a workspace path or one of your saved drafts.
+        Run the validator against a workspace path or one of your saved drafts.
       </Text>
 
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Validate Directory</Text>
-        <Text style={styles.helperText}>Use a workspace-relative path like drafts/... or output/...</Text>
+        <Text style={styles.helperText}>Use a workspace-relative path like drafts/... or another generated directory.</Text>
         <TextInput
           style={styles.input}
           value={path}

@@ -32,7 +32,7 @@ def setup_dark_theme(app: QApplication):
 def run_gui_app():
     """Run the Qt6 GUI application."""
     app = QApplication(sys.argv)
-    app.setApplicationName("Blueprint UI")
+    app.setApplicationName("Character Generator")
     
     setup_dark_theme(app)
     

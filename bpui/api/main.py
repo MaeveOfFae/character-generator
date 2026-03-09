@@ -14,7 +14,7 @@ from .routers import blueprints, chat, config, drafts, export, generation, linea
 # Create FastAPI app
 app = FastAPI(
     title="Character Generator API",
-    description="API for RPBotGenerator character compilation system",
+    description="API for template-aware character generation, draft management, validation, and export",
     version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",

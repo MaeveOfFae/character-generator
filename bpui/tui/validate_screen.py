@@ -1,4 +1,4 @@
-"""Validate directory screen for Blueprint UI."""
+"""Validate directory screen for Character Generator."""
 
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical
@@ -28,7 +28,7 @@ class ValidateScreen(Screen):
             yield Label("Directory Path:", classes="field-label")
             yield Input(
                 value="",
-                placeholder="e.g., output/character_name or drafts/...",
+                placeholder="e.g., drafts/... or another generated directory",
                 id="directory",
             )
 

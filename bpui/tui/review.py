@@ -1,4 +1,4 @@
-"""Review and save screen for Blueprint UI."""
+"""Review and save screen for Character Generator."""
 
 from __future__ import annotations
 

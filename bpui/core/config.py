@@ -1,4 +1,4 @@
-"""Configuration management for Blueprint UI."""
+"""Configuration management for Character Generator."""
 
 import os
 import sys
@@ -39,7 +39,7 @@ DEFAULT_CONFIG = {
 
 
 class Config:
-    """Blueprint UI configuration."""
+    """Character Generator configuration."""
 
     def __init__(self, config_path: Optional[Path] = None):
         """Initialize config from file or defaults."""

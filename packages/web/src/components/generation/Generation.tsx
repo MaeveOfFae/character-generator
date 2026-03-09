@@ -72,7 +72,7 @@ export default function Generation() {
       <div>
         <h1 className="text-3xl font-bold">Generate Character</h1>
         <p className="text-muted-foreground">
-          Enter a seed concept to generate a complete character profile
+          Enter a seed concept to generate a template-aware character draft
         </p>
         <Link to="/seed-generator" className="mt-2 inline-block text-sm text-primary hover:underline">
           Need inspiration? Open Seed Generator

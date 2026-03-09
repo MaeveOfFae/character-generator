@@ -1,4 +1,4 @@
-"""Main window for Qt6 GUI."""
+"""Main window for the legacy Qt GUI."""
 
 from PySide6.QtWidgets import (
     QMainWindow, QStackedWidget, QStatusBar, QSplitter
@@ -27,9 +27,9 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.config = config
         self.theme_manager = ThemeManager(config)
-        self.settings = QSettings("BlueprintUI", "BlueprintUI")
+        self.settings = QSettings("CharacterGenerator", "CharacterGenerator")
 
-        self.setWindowTitle("Blueprint UI")
+        self.setWindowTitle("Character Generator")
 
         # Restore window geometry or use defaults
         self._restore_geometry()

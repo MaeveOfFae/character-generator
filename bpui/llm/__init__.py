@@ -1,1 +1,1 @@
-"""LLM adapters for Blueprint UI."""
+"""LLM adapters for Character Generator."""

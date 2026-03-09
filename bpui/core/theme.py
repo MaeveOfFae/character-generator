@@ -1,4 +1,4 @@
-"""Unified theme system for Blueprint UI (GUI + TUI).
+"""Unified theme system for Character Generator (GUI + TUI).
 
 This module defines the shared theme infrastructure used by both the Qt6 GUI
 and the Textual TUI. Theme definitions live here; each frontend has its own

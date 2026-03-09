@@ -105,7 +105,7 @@ class ValidateScreen(QWidget):
         input_layout.addWidget(input_label)
         
         self.dir_input = QLineEdit()
-        self.dir_input.setPlaceholderText("e.g., output/character_name or drafts/20240101_120000_...")
+        self.dir_input.setPlaceholderText("e.g., drafts/20240101_120000_... or another generated directory")
         input_layout.addWidget(self.dir_input)
         
         browse_btn = QPushButton("📁 Browse")

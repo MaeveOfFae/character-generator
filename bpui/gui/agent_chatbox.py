@@ -392,7 +392,7 @@ class PersonalityEditorDialog(QDialog):
         else:
             # Default template
             self.system_prompt_input.setPlainText(
-                "You are an AI assistant for the Blueprint UI character generator.\n\n"
+                "You are an AI assistant for the Character Generator app.\n\n"
                 "Your role is to:\n"
                 "- [Add specific role 1]\n"
                 "- [Add specific role 2]\n"

@@ -1,4 +1,4 @@
-"""Seed generator screen for Blueprint UI."""
+"""Seed generator screen for Character Generator."""
 
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical, VerticalScroll

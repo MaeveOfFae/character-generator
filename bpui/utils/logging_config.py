@@ -1,4 +1,4 @@
-"""Logging configuration for Blueprint UI."""
+"""Logging configuration for Character Generator."""
 
 import logging
 import logging.handlers

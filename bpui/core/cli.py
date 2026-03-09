@@ -1,4 +1,4 @@
-"""CLI entry point for Blueprint UI."""
+"""CLI entry point for Character Generator."""
 
 import sys
 import argparse
@@ -10,7 +10,7 @@ import logging
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
-        description="Blueprint UI - RPBotGenerator Character Compiler"
+        description="Character Generator CLI"
     )
     
     # Global logging options
@@ -25,18 +25,18 @@ def main():
     
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
 
-    # TUI command (default)
-    subparsers.add_parser("tui", help="Launch terminal UI (default)")
+    # TUI command
+    subparsers.add_parser("tui", help="Launch the terminal UI")
 
     # Compile command
-    compile_parser = subparsers.add_parser("compile", help="Compile character from seed")
+    compile_parser = subparsers.add_parser("compile", help="Generate a draft from a seed")
     compile_parser.add_argument("--seed", required=True, help="Character seed")
     compile_parser.add_argument(
         "--mode",
         choices=["SFW", "NSFW", "Platform-Safe"],
         help="Content mode (default: auto)",
     )
-    compile_parser.add_argument("--template", help="Name of template to use (default: Official Aksho)")
+    compile_parser.add_argument("--template", help="Name of template to use (default: V2/V3 Card)")
     compile_parser.add_argument("--out", help="Output directory (default: drafts/)")
     compile_parser.add_argument("--model", help="Model override")
 
@@ -61,14 +61,14 @@ def main():
     index_parser.add_argument("--drafts-dir", type=Path, help="Drafts directory (default: ./drafts)")
 
     # Batch command
-    batch_parser = subparsers.add_parser("batch", help="Batch compile from seed file")
+    batch_parser = subparsers.add_parser("batch", help="Batch generate drafts from a seed file")
     batch_parser.add_argument("--input", help="File with seeds (one per line)")
     batch_parser.add_argument(
         "--mode",
         choices=["SFW", "NSFW", "Platform-Safe"],
         help="Content mode for all seeds (default: auto)",
     )
-    batch_parser.add_argument("--template", help="Name of template to use (default: Official Aksho)")
+    batch_parser.add_argument("--template", help="Name of template to use (default: V2/V3 Card)")
     batch_parser.add_argument("--out-dir", help="Output directory (default: drafts/)")
     batch_parser.add_argument("--model", help="Model override")
     batch_parser.add_argument("--continue-on-error", action="store_true", help="Continue if a seed fails")
@@ -85,7 +85,7 @@ def main():
         choices=["SFW", "NSFW", "Platform-Safe"],
         help="Content mode (default: auto)",
     )
-    offspring_parser.add_argument("--template", help="Name of template to use (default: Official Aksho)")
+    offspring_parser.add_argument("--template", help="Name of template to use (default: V2/V3 Card)")
     offspring_parser.add_argument("--out", help="Output directory (default: drafts/)")
     offspring_parser.add_argument("--model", help="Model override")
     
@@ -146,7 +146,7 @@ def main():
         choices=["SFW", "NSFW", "Platform-Safe"],
         help="Content mode (default: auto or preserve original)"
     )
-    rehash_parser.add_argument("--template", help="Name of template to use for regeneration (default: Official Aksho)")
+    rehash_parser.add_argument("--template", help="Name of template to use for regeneration (default: V2/V3 Card)")
     rehash_parser.add_argument("--out", help="Output directory (default: drafts/)")
     rehash_parser.add_argument("--model", help="Model override")
     rehash_parser.add_argument("--seed-only", action="store_true", help="Only output the new seed, don't regenerate")
@@ -173,9 +173,9 @@ def main():
     
     logger = logging.getLogger(__name__)
 
-    # Default to GUI if no command
+    # Default to the legacy GUI if no command was provided
     if not args.command:
-        logger.debug("No command specified, launching GUI")
+        logger.debug("No command specified, launching legacy GUI")
         run_gui()
     elif args.command == "tui":
         logger.debug("Launching TUI")
@@ -228,8 +228,8 @@ def run_gui():
         try:
             import PySide6  # noqa: F401
         except ModuleNotFoundError:
-            logger.error("PySide6 not installed. Install with: pip install PySide6")
-            logger.error("Or use TUI mode: bpui tui")
+            logger.error("PySide6 is not installed. Install it with: pip install PySide6")
+            logger.error("Or use the terminal UI instead: bpui tui")
             sys.exit(1)
 
         from bpui.gui.app import run_gui_app
@@ -471,7 +471,7 @@ async def run_batch(args):
     
     # Load template
     manager = TemplateManager()
-    template_name = args.template or "Official Aksho"
+    template_name = args.template or "V2/V3 Card"
     template = manager.get_template(template_name)
     if not template:
         logger.error(f"Template '{template_name}' not found.")
@@ -904,7 +904,7 @@ async def run_offspring(args):
 
     # Load template
     manager = TemplateManager()
-    template_name = args.template or "Official Aksho"
+    template_name = args.template or "V2/V3 Card"
     template = manager.get_template(template_name)
     if not template:
         logger.error(f"Template '{template_name}' not found.")
@@ -1684,7 +1684,7 @@ async def run_rehash(args):
 
     # Load template
     manager = TemplateManager()
-    template_name = args.template or "Official Aksho"
+    template_name = args.template or "V2/V3 Card"
     template = manager.get_template(template_name)
     if not template:
         logger.error(f"Template '{template_name}' not found.")

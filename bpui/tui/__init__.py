@@ -1,1 +1,1 @@
-"""Textual TUI screens for Blueprint UI."""
+"""Textual TUI screens for Character Generator."""

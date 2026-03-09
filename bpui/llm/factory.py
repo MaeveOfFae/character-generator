@@ -209,7 +209,7 @@ def create_engine(
             else:
                 raise ValueError(
                     f"Anthropic models require OpenRouter. "
-                    f"Set OpenRouter key with: bpui config set api_keys.openrouter YOUR_API_KEY"
+                    f"Configure [api_keys].openrouter in .bpui.toml or export OPENROUTER_API_KEY"
                 )
         elif provider in ("zai", "moonshot") and provider_key:
             # These providers have OpenAI-compatible APIs
@@ -226,8 +226,8 @@ def create_engine(
             # No valid API key found
             raise ValueError(
                 f"No API key configured for {provider}. "
-                f"Set it with: bpui config set api_keys.{provider} YOUR_API_KEY "
-                f"(or use OpenRouter: bpui config set api_keys.openrouter YOUR_API_KEY)"
+                f"Add [api_keys].{provider} to .bpui.toml "
+                f"(or use OpenRouter via [api_keys].openrouter / OPENROUTER_API_KEY)"
             )
 
         return OpenAICompatEngine(
@@ -282,7 +282,7 @@ def _create_google_engine(
     if not api_key:
         raise ValueError(
             f"No API key configured for Google. "
-            f"Set it with: bpui config set api_keys.google YOUR_API_KEY"
+            f"Add [api_keys].google to .bpui.toml or export GOOGLE_API_KEY"
         )
 
     # Get provider-specific config
@@ -339,7 +339,7 @@ def _create_openai_engine(
     if not api_key:
         raise ValueError(
             f"No API key configured for OpenAI. "
-            f"Set it with: bpui config set api_keys.openai YOUR_API_KEY"
+            f"Add [api_keys].openai to .bpui.toml or export OPENAI_API_KEY"
         )
 
     # Get provider-specific config

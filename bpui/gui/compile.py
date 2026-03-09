@@ -183,9 +183,9 @@ class CompileWidget(QWidget):
                     label += " ★"
                 self.template_combo.addItem(label, template.name)
             
-            # Select "Official Aksho" template by default
+            # Select the built-in official template by default
             for i, template in enumerate(self.templates):
-                if template.name == "Official Aksho":
+                if template.name == "V2/V3 Card":
                     self.template_combo.setCurrentIndex(i)
                     break
         
@@ -199,7 +199,7 @@ class CompileWidget(QWidget):
         layout.setSpacing(10)
         
         # Title
-        title = QLabel("🌱 Compile from Seed")
+        title = QLabel("🌱 Generate from Seed")
         title_font = QFont("Arial", 18, QFont.Weight.Bold)
         title.setFont(title_font)
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)

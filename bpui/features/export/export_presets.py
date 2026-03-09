@@ -1,4 +1,4 @@
-"""Export preset management for Blueprint UI."""
+"""Export preset management for Character Generator."""
 
 import json
 import logging

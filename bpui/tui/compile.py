@@ -1,4 +1,4 @@
-"""Compile screen for Blueprint UI."""
+"""Generation screen for Character Generator."""
 
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical, VerticalScroll
@@ -28,7 +28,7 @@ class CompileScreen(Screen):
     def compose(self) -> ComposeResult:
         """Compose compile screen."""
         with Container(id="compile-container"):
-            yield Static("🌱 Compile from Seed", classes="title")
+            yield Static("🌱 Generate from Seed", classes="title")
 
             yield Label("Seed:", classes="field-label")
             yield Input(
@@ -60,7 +60,7 @@ class CompileScreen(Screen):
             )
 
             with Vertical(classes="button-row"):
-                yield Button("▶️  [Enter] Compile", id="compile", variant="primary")
+                yield Button("▶️  [Enter] Generate", id="compile", variant="primary")
                 yield Button("⬅️  [Q] Back", id="back")
 
             yield Label("Output:")
@@ -109,7 +109,7 @@ class CompileScreen(Screen):
         elif event.button.id == "compile":
             # Show immediate feedback
             status = self.query_one("#status", Static)
-            status.update("⏳ Starting compilation...")
+            status.update("⏳ Starting generation...")
             status.refresh()
             
             # Run compilation in background to avoid blocking UI
@@ -130,7 +130,7 @@ class CompileScreen(Screen):
                 status.refresh()
                 self.is_generating = False
             elif event.state == WorkerState.CANCELLED:
-                output_log.write(f"\n[bold yellow]⚠ Compilation cancelled[/]")
+                output_log.write(f"\n[bold yellow]⚠ Generation cancelled[/]")
                 output_log.refresh()
                 status.update("⚠ Cancelled")
                 status.refresh()
@@ -146,10 +146,10 @@ class CompileScreen(Screen):
         
         # Clear and show initial message
         output_log.clear()
-        output_log.write("[bold cyan]Initializing compilation...[/]")
+        output_log.write("[bold cyan]Initializing generation...[/]")
         output_log.refresh()
         
-        status.update("⏳ Compiling character...")
+        status.update("⏳ Generating draft...")
         status.remove_class("error")
         status.refresh()
 

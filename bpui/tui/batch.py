@@ -1,4 +1,4 @@
-"""Batch compilation screen for Blueprint UI."""
+"""Batch generation screen for Character Generator."""
 
 from pathlib import Path
 from textual.app import ComposeResult

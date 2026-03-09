@@ -1,4 +1,4 @@
-"""Offspring generator screen for Blueprint UI."""
+"""Offspring generator screen for Character Generator."""
 
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical, Horizontal

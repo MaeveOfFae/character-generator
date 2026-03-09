@@ -1,4 +1,4 @@
-"""Home screen for Blueprint UI."""
+"""Home screen for Character Generator."""
 
 from textual.app import ComposeResult
 from textual.containers import Container, VerticalScroll
@@ -28,12 +28,12 @@ class HomeScreen(Screen):
     def compose(self) -> ComposeResult:
         """Compose home screen."""
         with Container(id="home-container"):
-            yield Static("🎭 Blueprint UI", classes="title")
-            yield Static("RPBotGenerator Character Compiler", classes="subtitle")
-            yield Button("🌱 [1] Compile from Seed", id="compile", variant="primary")
-            yield Button("📦 [2] Batch Compile", id="batch")
+            yield Static("🎭 Character Generator", classes="title")
+            yield Static("Template-aware character generation and review", classes="subtitle")
+            yield Button("🌱 [1] Generate from Seed", id="compile", variant="primary")
+            yield Button("📦 [2] Batch Generate", id="batch")
             yield Button("🎲 [3] Seed Generator", id="seed-gen")
-            yield Button("📁 [4] Open Drafts", id="drafts")
+            yield Button("📁 [4] Review Drafts", id="drafts")
             yield Button("👶 [5] Offspring Generator", id="offspring")
             yield Button("✓ [6] Validate Directory", id="validate")
             yield Button("⚙️  [7] Settings", id="settings")

@@ -1,4 +1,4 @@
-"""Base LLM interface for Blueprint UI."""
+"""Base LLM interface for Character Generator."""
 
 from abc import ABC, abstractmethod
 from typing import AsyncIterator, Dict, Any, Optional

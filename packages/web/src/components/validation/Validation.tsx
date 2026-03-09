@@ -56,7 +56,7 @@ export default function Validation() {
       <div>
         <h1 className="text-3xl font-bold">Validation</h1>
         <p className="text-muted-foreground">
-          Run the pack validator against any workspace directory or a saved draft.
+          Run the validator against any workspace directory or a saved draft.
         </p>
       </div>
 
@@ -67,7 +67,7 @@ export default function Validation() {
             <h2 className="text-lg font-semibold">Validate Directory</h2>
           </div>
           <p className="text-sm text-muted-foreground">
-            Use a workspace-relative path like drafts/..., output/..., or another generated pack directory.
+            Use a workspace-relative path like drafts/... or another generated directory.
           </p>
           <input
             type="text"
@@ -92,7 +92,7 @@ export default function Validation() {
             <h2 className="text-lg font-semibold">Validate Saved Draft</h2>
           </div>
           <p className="text-sm text-muted-foreground">
-            Pick an existing draft by review ID and run the same pack validation used by the CLI and TUI.
+            Pick an existing draft by review ID and run the same validation used by the CLI and TUI.
           </p>
           <select
             value={selectedDraftId}

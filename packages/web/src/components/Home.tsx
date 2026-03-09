@@ -30,8 +30,8 @@ export default function Home() {
           Character Generator
         </h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          Create rich, consistent characters with AI-powered generation.
-          From a single seed, generate complete character profiles, backstories, and more.
+          Generate template-aware character drafts with shared blueprints, validation, and export.
+          Start from one seed and build a consistent set of assets for review, editing, and publishing.
         </p>
       </div>
 
@@ -74,7 +74,7 @@ export default function Home() {
             <h2 className="text-xl font-semibold">Drafts</h2>
           </div>
           <p className="text-sm text-muted-foreground">
-            Browse characters
+            Browse saved drafts
           </p>
           <ArrowRight className="ml-auto h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
         </Link>
@@ -130,7 +130,7 @@ export default function Home() {
             <h2 className="text-xl font-semibold">Validation</h2>
           </div>
           <p className="text-sm text-muted-foreground">
-            Check generated packs
+            Check drafts and exports
           </p>
           <ArrowRight className="ml-auto h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
         </Link>
@@ -165,7 +165,7 @@ export default function Home() {
       {statsData?.drafts && statsData.drafts.length > 0 && (
         <div className="rounded-lg border border-border bg-card p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Recent Characters</h3>
+            <h3 className="text-lg font-semibold">Recent Drafts</h3>
             <Link to="/drafts" className="text-sm text-primary hover:underline">
               View all
             </Link>
@@ -180,7 +180,7 @@ export default function Home() {
                 <div>
                   <div className="font-medium">{draft.character_name || draft.seed}</div>
                   <div className="text-sm text-muted-foreground">
-                    {draft.template_name || 'Default'} • {draft.mode || 'SFW'}
+                    {draft.template_name || 'V2/V3 Card'} • {draft.mode || 'SFW'}
                   </div>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />

@@ -28,14 +28,14 @@ class HomeWidget(QWidget):
         layout.setSpacing(15)
         
         # Title
-        title = QLabel("🌟 Blueprint UI")
+        title = QLabel("🌟 Character Generator")
         title_font = QFont("Arial", 24, QFont.Weight.Bold)
         title.setFont(title_font)
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
         
         # Subtitle
-        subtitle = QLabel("Character Asset Generator")
+        subtitle = QLabel("Template-aware character generation and review")
         subtitle.setObjectName("subtitleLabel")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(subtitle)
@@ -51,12 +51,12 @@ class HomeWidget(QWidget):
         seedgen_btn.clicked.connect(lambda: self.main_window.show_seed_generator())
         btn_layout.addWidget(seedgen_btn)
         
-        compile_btn = QPushButton("🌱 New Compilation")
+        compile_btn = QPushButton("🌱 Generate from Seed")
         compile_btn.setStyleSheet("font-size: 14px; font-weight: bold;")
         compile_btn.clicked.connect(lambda: self.main_window.show_compile())
         btn_layout.addWidget(compile_btn)
         
-        batch_btn = QPushButton("📦 Batch Compilation")
+        batch_btn = QPushButton("📦 Batch Generate")
         batch_btn.setStyleSheet("font-size: 14px; font-weight: bold;")
         batch_btn.clicked.connect(lambda: self.main_window.show_batch())
         btn_layout.addWidget(batch_btn)
