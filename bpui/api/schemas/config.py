@@ -15,6 +15,94 @@ class BatchConfig(BaseModel):
     rate_limit_delay: float = Field(default=1.0, ge=0, le=60)
 
 
+class ThemeAppColors(BaseModel):
+    """Theme overrides for app-facing colors."""
+
+    background: Optional[str] = None
+    text: Optional[str] = None
+    accent: Optional[str] = None
+    button: Optional[str] = None
+    button_text: Optional[str] = None
+    border: Optional[str] = None
+    highlight: Optional[str] = None
+    window: Optional[str] = None
+    muted_text: Optional[str] = None
+    surface: Optional[str] = None
+    success_bg: Optional[str] = None
+    danger_bg: Optional[str] = None
+    accent_bg: Optional[str] = None
+    accent_title: Optional[str] = None
+    success_text: Optional[str] = None
+    error_text: Optional[str] = None
+    warning_text: Optional[str] = None
+
+
+class ThemeTokenizerColors(BaseModel):
+    """Theme overrides for tokenizer colors."""
+
+    brackets: Optional[str] = None
+    asterisk: Optional[str] = None
+    parentheses: Optional[str] = None
+    double_brackets: Optional[str] = None
+    curly_braces: Optional[str] = None
+    pipes: Optional[str] = None
+    at_sign: Optional[str] = None
+
+
+class ThemeOverride(BaseModel):
+    """Persisted custom theme override payload."""
+
+    app: ThemeAppColors = Field(default_factory=ThemeAppColors)
+    tokenizer: ThemeTokenizerColors = Field(default_factory=ThemeTokenizerColors)
+
+
+class ThemeColorsResponse(BaseModel):
+    """Resolved theme palette."""
+
+    background: str
+    text: str
+    accent: str
+    button: str
+    button_text: str
+    border: str
+    highlight: str
+    window: str
+    tok_brackets: str
+    tok_asterisk: str
+    tok_parentheses: str
+    tok_double_brackets: str
+    tok_curly_braces: str
+    tok_pipes: str
+    tok_at_sign: str
+    muted_text: str
+    surface: str
+    success_bg: str
+    danger_bg: str
+    accent_bg: str
+    accent_title: str
+    success_text: str
+    error_text: str
+    warning_text: str
+    tui_primary: str
+    tui_secondary: str
+    tui_surface: str
+    tui_panel: str
+    tui_warning: str
+    tui_error: str
+    tui_success: str
+    tui_accent: str
+
+
+class ThemePresetResponse(BaseModel):
+    """Theme preset metadata and palette."""
+
+    name: str
+    display_name: str
+    description: str = ""
+    is_builtin: bool = True
+    colors: ThemeColorsResponse
+
+
 class ConfigResponse(BaseModel):
     """Full configuration response."""
     engine: EngineType = "auto"
@@ -25,6 +113,8 @@ class ConfigResponse(BaseModel):
     api_keys: Dict[str, str] = Field(default_factory=dict)
     batch: BatchConfig = Field(default_factory=BatchConfig)
     base_url: Optional[str] = None
+    theme_name: str = "dark"
+    theme: ThemeOverride = Field(default_factory=ThemeOverride)
     available_providers: list[str] = Field(default_factory=lambda: ["openai", "google", "openrouter"])
 
 
@@ -38,6 +128,8 @@ class ConfigUpdate(BaseModel):
     api_keys: Optional[Dict[str, str]] = None
     batch: Optional[BatchConfig] = None
     base_url: Optional[str] = None
+    theme_name: Optional[str] = None
+    theme: Optional[ThemeOverride] = None
 
 
 class ConnectionTestRequest(BaseModel):

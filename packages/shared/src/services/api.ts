@@ -37,6 +37,7 @@ import type {
   Blueprint,
   BlueprintList,
   ExportPresetSummary,
+  ThemePreset,
 } from '../types';
 
 export interface DownloadResponse {
@@ -134,6 +135,10 @@ export class CharacterGeneratorAPI {
       method: 'POST',
       body: JSON.stringify(request),
     });
+  }
+
+  async getThemes(): Promise<ThemePreset[]> {
+    return this.request<ThemePreset[]>('/config/themes');
   }
 
   // ===========================================================================

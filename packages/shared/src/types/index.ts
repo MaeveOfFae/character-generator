@@ -26,6 +26,84 @@ export interface BatchConfig {
   rate_limit_delay: number;
 }
 
+export interface ThemeAppColors {
+  background?: string;
+  text?: string;
+  accent?: string;
+  button?: string;
+  button_text?: string;
+  border?: string;
+  highlight?: string;
+  window?: string;
+  muted_text?: string;
+  surface?: string;
+  success_bg?: string;
+  danger_bg?: string;
+  accent_bg?: string;
+  accent_title?: string;
+  success_text?: string;
+  error_text?: string;
+  warning_text?: string;
+}
+
+export interface ThemeTokenizerColors {
+  brackets?: string;
+  asterisk?: string;
+  parentheses?: string;
+  double_brackets?: string;
+  curly_braces?: string;
+  pipes?: string;
+  at_sign?: string;
+}
+
+export interface ThemeOverride {
+  app?: ThemeAppColors;
+  tokenizer?: ThemeTokenizerColors;
+}
+
+export interface ThemeColors {
+  background: string;
+  text: string;
+  accent: string;
+  button: string;
+  button_text: string;
+  border: string;
+  highlight: string;
+  window: string;
+  tok_brackets: string;
+  tok_asterisk: string;
+  tok_parentheses: string;
+  tok_double_brackets: string;
+  tok_curly_braces: string;
+  tok_pipes: string;
+  tok_at_sign: string;
+  muted_text: string;
+  surface: string;
+  success_bg: string;
+  danger_bg: string;
+  accent_bg: string;
+  accent_title: string;
+  success_text: string;
+  error_text: string;
+  warning_text: string;
+  tui_primary: string;
+  tui_secondary: string;
+  tui_surface: string;
+  tui_panel: string;
+  tui_warning: string;
+  tui_error: string;
+  tui_success: string;
+  tui_accent: string;
+}
+
+export interface ThemePreset {
+  name: string;
+  display_name: string;
+  description: string;
+  is_builtin: boolean;
+  colors: ThemeColors;
+}
+
 export interface Config {
   engine: EngineType;
   engine_mode: EngineMode;
@@ -35,6 +113,8 @@ export interface Config {
   api_keys: ApiKeys;
   batch: BatchConfig;
   base_url?: string;
+  theme_name?: string;
+  theme?: ThemeOverride;
 }
 
 // ============================================================================

@@ -22,6 +22,11 @@
     --input: 240 5.9% 90%;
     --ring: 262 83% 58%;
     --radius: 0.5rem;
+    --app-bg: #ffffff;
+    --app-surface: #ffffff;
+    --app-border: #e5e7eb;
+    --app-highlight: #7c3aed;
+    --app-accent: #7c3aed;
   }
 
   .dark {
@@ -51,6 +56,10 @@
   }
   body {
     @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(circle at top, color-mix(in srgb, var(--app-highlight) 20%, transparent), transparent 38%),
+      linear-gradient(180deg, color-mix(in srgb, var(--app-bg) 100%, transparent), color-mix(in srgb, var(--app-surface) 100%, transparent));
+    background-attachment: fixed;
   }
 }
 

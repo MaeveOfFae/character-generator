@@ -8,6 +8,8 @@ from ..schemas.config import (
     ConfigUpdate,
     ConnectionTestRequest,
     ConnectionTestResult,
+    ThemePresetResponse,
+    ThemeColorsResponse,
 )
 
 router = APIRouter()
@@ -26,7 +28,20 @@ def _config_to_response(config_data: Dict[str, Any]) -> ConfigResponse:
         api_keys=config_data.get("api_keys", {}),
         batch=config_data.get("batch", {"max_concurrent": 3, "rate_limit_delay": 1.0}),
         base_url=config_data.get("base_url"),
+        theme_name=config_data.get("theme_name", "dark"),
+        theme=config_data.get("theme", {}),
         available_providers=AVAILABLE_PROVIDERS,
+    )
+
+
+def _theme_to_response(theme) -> ThemePresetResponse:
+    """Convert a ThemeDefinition into the API response shape."""
+    return ThemePresetResponse(
+        name=theme.name,
+        display_name=theme.display_name,
+        description=theme.description,
+        is_builtin=theme.is_builtin,
+        colors=ThemeColorsResponse(**theme.to_dict()["colors"]),
     )
 
 
@@ -56,6 +71,18 @@ async def update_config(update: ConfigUpdate):
     save_config()
 
     return _config_to_response(config.to_dict())
+
+
+@router.get("/themes", response_model=list[ThemePresetResponse])
+async def list_themes():
+    """List available theme presets and resolved palettes."""
+    from bpui.core.theme import list_available_themes, get_theme
+
+    themes = []
+    for theme_name in list_available_themes():
+        themes.append(_theme_to_response(get_theme(theme_name)))
+
+    return themes
 
 
 @router.post("/test", response_model=ConnectionTestResult)
