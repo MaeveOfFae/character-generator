@@ -33,12 +33,37 @@ pnpm dev:mobile
 
 ### Option 3: Desktop App (Tauri)
 
-> **Note:** Desktop app is in development. Currently a placeholder.
+The desktop launcher starts both the local API backend and the Tauri shell.
 
 ```bash
-# Requires Rust installation first
-pnpm tauri:dev
+# Linux / macOS
+./run_desktop.sh
+
+# Windows
+run_desktop.bat
+
+# Optional: refresh Python and Node dependencies first
+./run_desktop.sh --update-deps
 ```
+
+Desktop prerequisites:
+
+- Rust/Cargo installed
+- `pnpm` installed
+- Python 3.10+ installed
+- Linux only: WebKitGTK/GTK development packages for Tauri
+
+Ubuntu/Debian packages for Linux desktop builds:
+
+```bash
+sudo apt install -y libgtk-3-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev librsvg2-dev pkg-config
+```
+
+Notes:
+
+- `run_desktop.sh` sanitizes Snap-injected GTK/GIO environment variables before launching Tauri, which avoids the common VS Code Snap runtime crash on Linux.
+- The launcher will restart an existing local `uvicorn bpui.api.main:app` process on port `8000` if it belongs to this repo, then start a fresh API instance.
+- A temporary desktop icon is currently used until dedicated desktop icon assets are added.
 
 ### Option 4: Terminal UI (TUI)
 

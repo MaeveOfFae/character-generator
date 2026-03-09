@@ -43,6 +43,7 @@ env/
 *.swo
 *~
 .DS_Store
+packages/
 
 # AI Assistant Configuration (not needed to use bpui)
 .clinerules/

@@ -76,6 +76,32 @@ All screens display available shortcuts in the footer. Press the indicated keys 
 
 ## Installation
 
+## Desktop Launcher
+
+If you want the desktop shell instead of the Textual UI, use the root launchers:
+
+```bash
+# Linux / macOS
+./run_desktop.sh
+
+# Windows
+run_desktop.bat
+```
+
+What the desktop launcher does:
+
+- Ensures the Python virtual environment exists
+- Installs Node dependencies if needed
+- Restarts an existing local API instance on port `8000` when it belongs to this app
+- Starts `bpui.api.main:app`
+- Launches the Tauri desktop shell
+
+Linux desktop prerequisites:
+
+```bash
+sudo apt install -y libgtk-3-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev librsvg2-dev pkg-config
+```
+
 ### 1. Install dependencies
 
 **Quick Start (Recommended):**
