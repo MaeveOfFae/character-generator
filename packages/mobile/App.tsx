@@ -17,6 +17,8 @@ import OffspringScreen from './src/screens/OffspringScreen';
 import ChatScreen from './src/screens/ChatScreen';
 import SeedGeneratorScreen from './src/screens/SeedGeneratorScreen';
 import ValidationScreen from './src/screens/ValidationScreen';
+import LineageScreen from './src/screens/LineageScreen';
+import BlueprintsScreen from './src/screens/BlueprintsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -36,6 +38,8 @@ function HomeStack() {
       <Stack.Screen name="HomeRoot" component={HomeScreen} options={{ title: 'Home' }} />
       <Stack.Screen name="SeedGenerator" component={SeedGeneratorScreen} options={{ title: 'Seed Generator' }} />
       <Stack.Screen name="Validation" component={ValidationScreen} options={{ title: 'Validation' }} />
+      <Stack.Screen name="Lineage" component={LineageScreen} options={{ title: 'Lineage' }} />
+      <Stack.Screen name="Blueprints" component={BlueprintsScreen} options={{ title: 'Blueprints' }} />
     </Stack.Navigator>
   );
 }

@@ -2,7 +2,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../config/api';
-import { SparklesIcon, FolderIcon, StarIcon, DocumentTextIcon } from '../components/Icons';
+import { SparklesIcon, FolderIcon, StarIcon, DocumentTextIcon, GitCompareIcon } from '../components/Icons';
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -59,6 +59,25 @@ export default function HomeScreen() {
             <DocumentTextIcon color="#7c3aed" size={32} />
             <Text style={styles.actionTitle}>Validation</Text>
             <Text style={styles.actionDesc}>Run pack checks on drafts or paths</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.actionsGrid}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => (navigation as any).navigate('Lineage')}
+          >
+            <GitCompareIcon color="#7c3aed" size={32} />
+            <Text style={styles.actionTitle}>Lineage</Text>
+            <Text style={styles.actionDesc}>Browse family trees and offspring branches</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => (navigation as any).navigate('Blueprints')}
+          >
+            <DocumentTextIcon color="#7c3aed" size={32} />
+            <Text style={styles.actionTitle}>Blueprints</Text>
+            <Text style={styles.actionDesc}>Browse prompt blueprints and template files</Text>
           </TouchableOpacity>
         </View>
       </View>
