@@ -151,7 +151,7 @@ bpui tui
    - Choose content mode for all seeds
    - Shows progress counter (X/Y completed)
    - Continues on error with summary at end
-6. **Review**: View and edit all 7 assets in tabs
+6. **Review**: View and edit all assets from the active template in tabs
    - Toggle edit mode to modify assets
    - Save changes back to files
    - Auto-validates on open
@@ -230,7 +230,7 @@ bpui similarity "char1" "char2" --format json
   - `openai_compat_engine.py`: OpenAI-compatible REST API
 - **bpui/prompting.py**: Blueprint loading and prompt construction
 - **bpui/similarity.py**: Character similarity analyzer with LLM support
-- **bpui/parse_blocks.py**: Strict 7-codeblock parser
+- **bpui/parse_blocks.py**: Template-aware codeblock parser
 - **bpui/pack_io.py**: Draft directory management
 - **bpui/validate.py**: Validation wrapper (`tools/validate_pack.py`)
 - **bpui/export.py**: Export wrapper (`tools/export_character.sh`)
@@ -251,14 +251,18 @@ bpui similarity "char1" "char2" --format json
 The parser enforces strict codeblock isolation:
 
 1. Optional first codeblock: `Adjustment Note: ...`
-2. Required 7 codeblocks in exact order:
+2. Required asset codeblocks in the active template order
+
+Default V2/V3 Card order:
+
    1. system_prompt → `system_prompt.txt`
    2. post_history → `post_history.txt`
    3. character_sheet → `character_sheet.txt`
    4. intro_scene → `intro_scene.txt`
    5. intro_page → `intro_page.md`
    6. a1111 → `a1111_prompt.txt`
-   7. suno → `suno_prompt.txt`
+
+Custom templates can require a different count, order, and filename mapping.
 
 Character name is extracted from `character_sheet` (`name: ...` field).
 
@@ -283,8 +287,9 @@ drafts/
     intro_scene.txt
     intro_page.md
     a1111_prompt.txt
-    suno_prompt.txt
 ```
+
+Template-backed drafts may instead use the filenames defined by that template.
 
 **Exports** (`output/`):
 
@@ -297,8 +302,9 @@ output/
     intro_scene.txt
     intro_page.md
     a1111_prompt.txt
-    suno_prompt.txt
 ```
+
+Raw export preserves the current draft layout exactly as it exists on disk.
 
 ## Development
 

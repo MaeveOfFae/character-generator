@@ -122,7 +122,8 @@ docker-compose --profile dev up
 
 ### 🎭 Character Generation
 
-- **7-Asset Suite**: Generate system_prompt, post_history, character_sheet, intro_scene, intro_page, a1111_prompt, suno_prompt from a single SEED
+- **V2/V3 Card Default**: Generate system_prompt, post_history, character_sheet, intro_scene, intro_page, and a1111_prompt from a single SEED
+- **Template-Aware Generation**: Custom templates can override the default asset set and filenames while preserving dependency order
 - **Strict Hierarchy**: Ensures consistency across all assets
 - **Asset Isolation**: Prevents downstream contradictions
 - **Deterministic Output**: Reproducible results for the same seed
@@ -228,7 +229,7 @@ character-generator/
 │       │   ├── a1111.md
 │       │   ├── character_sheet.md
 │       │   └── post_history.md
-│       └── example_minimal/       # Minimal template (default)
+│       └── example_minimal/       # V2/V3 Card default template
 │           ├── character_sheet.md
 │           ├── intro_page.md
 │           ├── intro_scene.md

@@ -1,7 +1,7 @@
 [template]
 name = "Official Aksho"
 version = "1.1"
-description = "Copy of Official RPBotGenerator"
+description = "Aksho card template derived from the V2/V3 card flow"
 
 [[assets]]
 name = "initial_message"
