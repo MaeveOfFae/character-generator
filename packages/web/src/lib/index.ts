@@ -20,4 +20,4 @@ export type {
   StreamGenerateOptions,
   ConnectionTestResult,
   LLMEngine,
-} from './llm/index.js';
+} from '@char-gen/shared';

@@ -34,6 +34,7 @@ export interface GenerateOptions {
   topP?: number;
   frequencyPenalty?: number;
   presencePenalty?: number;
+  signal?: AbortSignal;
 }
 
 export interface GenerateResult {

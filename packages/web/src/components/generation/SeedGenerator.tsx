@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, Shuffle, Loader2, ArrowRight, Copy, Check } from 'lucide-react';
 import { useAssistantScreenContext } from '../common/AssistantContext';
-import { GenerationService, type GenerateRequest } from '@char-gen/web';
+import { GenerationService, type GenerateRequest } from '../../lib';
 
 const defaultGenreLines = ['Noir detective', 'Cyberpunk mercenary', 'Fantasy sorceress'].join('\n');
 

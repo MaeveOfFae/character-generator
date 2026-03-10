@@ -11,10 +11,11 @@ import type {
   StreamChunk,
   StreamGenerateOptions,
   LLMConnectionTestResult,
-} from './types';
+  LLMProvider,
+} from "./types";
 
 export interface OpenAICompatConfig {
-  provider: string;
+  provider: LLMProvider;
   model: string;
   apiKey: string;
   baseUrl: string;
@@ -30,12 +31,12 @@ export class OpenAICompatEngine implements LLMEngine {
     this.config = {
       temperature: 0.7,
       maxTokens: 4096,
-      timeout: 120000, // 2 minutes
+      timeout: 120000,
       ...config,
     };
   }
 
-  getProvider(): string {
+  getProvider(): LLMProvider {
     return this.config.provider;
   }
 
@@ -50,8 +51,8 @@ export class OpenAICompatEngine implements LLMEngine {
     const temperature = options?.temperature ?? this.config.temperature;
     const maxTokens = options?.maxTokens ?? this.config.maxTokens;
 
-    const response = await fetch(`${this.config.baseUrl}/chat/completions`, {
-      method: 'POST',
+    const response = await fetch(this.config.baseUrl + "/chat/completions", {
+      method: "POST",
       headers: this.buildHeaders(),
       body: JSON.stringify({
         model: this.config.model,
@@ -69,19 +70,20 @@ export class OpenAICompatEngine implements LLMEngine {
       throw new Error(error);
     }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
+    const responseJson = await response.json();
+    const data = responseJson as any;
+    const content = data?.choices?.[0]?.message?.content;
     if (!content) {
-      throw new Error('No content in response');
+      throw new Error("No content in response");
     }
 
     return {
       content,
-      finishReason: data.choices?.[0]?.finish_reason,
-      usage: data.usage ? {
-        promptTokens: data.usage.prompt_tokens,
-        completionTokens: data.usage.completion_tokens,
-        totalTokens: data.usage.total_tokens,
+      finishReason: data?.choices?.[0]?.finish_reason,
+      usage: data?.usage ? {
+        promptTokens: data?.usage?.prompt_tokens,
+        completionTokens: data?.usage?.completion_tokens,
+        totalTokens: data?.usage?.total_tokens,
       } : undefined,
     };
   }
@@ -93,8 +95,8 @@ export class OpenAICompatEngine implements LLMEngine {
     const temperature = options?.temperature ?? this.config.temperature;
     const maxTokens = options?.maxTokens ?? this.config.maxTokens;
 
-    const response = await fetch(`${this.config.baseUrl}/chat/completions`, {
-      method: 'POST',
+    const response = await fetch(this.config.baseUrl + "/chat/completions", {
+      method: "POST",
       headers: this.buildHeaders(),
       body: JSON.stringify({
         model: this.config.model,
@@ -113,12 +115,12 @@ export class OpenAICompatEngine implements LLMEngine {
     }
 
     if (!response.body) {
-      throw new Error('No response body');
+      throw new Error("No response body");
     }
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-    let buffer = '';
+    let buffer = "";
 
     try {
       while (true) {
@@ -126,14 +128,14 @@ export class OpenAICompatEngine implements LLMEngine {
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
+          if (line.startsWith("data: ")) {
             const dataStr = line.slice(6);
-            if (dataStr.trim() === '[DONE]') {
-              yield { content: '', done: true };
+            if (dataStr.trim() === "[DONE]") {
+              yield { content: "", done: true };
               return;
             }
 
@@ -143,7 +145,6 @@ export class OpenAICompatEngine implements LLMEngine {
               if (delta?.content) {
                 yield { content: delta.content, done: false };
               }
-              // Handle tool calls if present
               if (delta?.tool_calls) {
                 yield { content: JSON.stringify({ tool_calls: delta.tool_calls }), done: false };
               }
@@ -162,12 +163,12 @@ export class OpenAICompatEngine implements LLMEngine {
     const start = performance.now();
 
     try {
-      const response = await fetch(`${this.config.baseUrl}/chat/completions`, {
-        method: 'POST',
+      const response = await fetch(this.config.baseUrl + "/chat/completions", {
+        method: "POST",
         headers: this.buildHeaders(),
         body: JSON.stringify({
           model: this.config.model,
-          messages: [{ role: 'user', content: 'test' }],
+          messages: [{ role: "user", content: "test" }],
           max_tokens: 5,
           stream: false,
         }),
@@ -197,7 +198,7 @@ export class OpenAICompatEngine implements LLMEngine {
       const latency = performance.now() - start;
       return {
         success: false,
-        error: e instanceof Error ? e.message : 'Unknown error',
+        error: e instanceof Error ? e.message : "Unknown error",
         modelInfo: {
           name: this.config.model,
         },
@@ -207,17 +208,17 @@ export class OpenAICompatEngine implements LLMEngine {
 
   private buildHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     };
 
     if (this.config.apiKey) {
-      headers['Authorization'] = `Bearer ${this.config.apiKey}`;
+      headers["Authorization"] = "Bearer " + this.config.apiKey;
     }
 
     // OpenRouter-specific headers
-    if (this.config.baseUrl.includes('openrouter.ai')) {
-      headers['HTTP-Referer'] = 'https://github.com/maeveoffae/character-generator';
-      headers['X-Title'] = 'Blueprint Character Generator';
+    if (this.config.baseUrl.includes("openrouter.ai")) {
+      headers["HTTP-Referer"] = "https://github.com/maeveoffae/character-generator";
+      headers["X-Title"] = "Blueprint Character Generator";
     }
 
     return headers;
@@ -235,53 +236,55 @@ export class OpenAICompatEngine implements LLMEngine {
 
   private async parseErrorResponse(response: Response): Promise<string> {
     try {
-      const data = await response.json();
-      if (data.error?.message) {
+      const data = await response.json() as { error?: { message?: string } | string };
+      if (typeof data.error === 'object' && data.error?.message) {
         return data.error.message;
       }
       if (data.error) {
         return String(data.error);
       }
-      return `HTTP ${response.status}`;
+      return "HTTP " + response.status;
     } catch {
-      return `HTTP ${response.status}`;
+      return "HTTP " + response.status;
     }
   }
+}
 
 /**
- * List available models from OpenAI-compatible API
+ * List available models from an OpenAI-compatible API endpoint.
  */
 export async function listModels(baseUrl: string, apiKey?: string): Promise<string[]> {
   const headers: Record<string, string> = {};
+
   if (apiKey) {
-    headers['Authorization'] = `Bearer ${apiKey}`;
+    headers["Authorization"] = "Bearer " + apiKey;
   }
 
   // OpenRouter-specific headers
-  if (baseUrl.includes('openrouter.ai')) {
-    headers['HTTP-Referer'] = 'https://github.com/maeveoffae/character-generator';
-    headers['X-Title'] = 'Blueprint Character Generator';
+  if (baseUrl.includes("openrouter.ai")) {
+    headers["HTTP-Referer"] = "https://github.com/maeveoffae/character-generator";
+    headers["X-Title"] = "Blueprint Character Generator";
   }
 
-  const response = await fetch(`${baseUrl}/models`, {
-    method: 'GET',
+  const response = await fetch(baseUrl + "/models", {
+    method: "GET",
     headers,
   });
 
   if (response.status === 404) {
-    // /models endpoint not available
     return [];
   }
 
   if (!response.ok) {
-    throw new Error(`Failed to list models: HTTP ${response.status}`);
+    throw new Error("Failed to list models: HTTP " + response.status);
   }
 
-  const data = await response.json();
+  const responseJson = await response.json();
+  const data = responseJson as { data?: { data?: any[]; error?: any; choices?: any[] } | any[] | null };
+  const dataData = data?.data;
 
-  // Parse response - OpenAI format has "data" array with "id" field
-  if (data.data && Array.isArray(data.data)) {
-    return data.data.map((m: any) => m.id).sort();
+  if (dataData && Array.isArray(dataData)) {
+    return dataData.map((m: any) => m.id).sort();
   }
 
   return [];

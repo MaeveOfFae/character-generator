@@ -2,7 +2,7 @@ import { lazy, Suspense, useState, type ChangeEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FileText, Plus, Star, Trash2, ChevronDown, ChevronUp, ShieldCheck, Copy, Download, Pencil, Upload, Loader2 } from 'lucide-react';
 import { api } from '@char-gen/shared';
-import type { CreateTemplateRequest, Template } from '@char-gen/shared';
+import type { CreateTemplateRequest, Template, AssetDefinition } from '@char-gen/shared';
 import { useAssistantScreenContext } from '../common/AssistantContext';
 import { saveDownload } from '../../utils/download';
 
@@ -98,8 +98,11 @@ export default function Templates() {
   const handleExport = async (name: string) => {
     try {
       const download = await api.exportTemplate(name);
+      // Convert string content to Blob for download
+      const blob = new Blob([download], { type: 'application/zip' });
+      const downloadResponse = { blob, filename: `${name}.zip`, contentType: 'application/zip' } as const;
       const result = await saveDownload(
-        download,
+        downloadResponse,
         `${name.toLowerCase().replace(/[^a-z0-9]+/gi, '_')}.zip`
       );
 
@@ -223,7 +226,7 @@ export default function Templates() {
 
       {/* Template List */}
       <div className="space-y-3">
-        {templates?.map((template) => (
+        {templates?.map((template: Template) => (
           <div
             key={template.name}
             className="rounded-lg border border-border bg-card overflow-hidden"
@@ -264,7 +267,7 @@ export default function Templates() {
                 <div>
                   <h3 className="text-sm font-medium mb-2">Assets ({template.assets.length})</h3>
                   <div className="space-y-2">
-                    {template.assets.map((asset) => (
+                    {template.assets.map((asset: AssetDefinition) => (
                       <div
                         key={asset.name}
                         className="flex items-center justify-between text-sm p-2 rounded bg-muted/50"

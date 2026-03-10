@@ -272,7 +272,7 @@ export class DraftStorage {
    * Get favorite drafts
    */
   static async getFavorites(): Promise<DraftMetadata[]> {
-    const entities = await db.drafts.where('metadata.favorite').equals(true).toArray();
+    const entities = await db.drafts.filter(draft => draft.metadata.favorite === true).toArray();
     return entities.map(e => e.metadata);
   }
 

@@ -12,6 +12,7 @@ import type {
   GenerateAssetRequest,
   OffspringRequest,
   ChatMessage,
+  LLMProvider,
 } from '@char-gen/shared';
 import { createEngine } from '../llm/factory.js';
 import { configManager } from '../config/manager.js';
@@ -64,7 +65,7 @@ export class GenerationService {
     const engine = createEngine({
       model: config.model,
       apiKey: apiKeys.openai || apiKeys.openrouter || apiKeys.google,
-      provider: provider === 'openai_compatible' ? undefined : provider,
+      provider: provider === 'openai_compatible' ? undefined : provider as LLMProvider,
       baseUrl: config.base_url,
       temperature: config.temperature,
       maxTokens: config.max_tokens,
@@ -165,7 +166,7 @@ export class GenerationService {
     const engine = createEngine({
       model: config.model,
       apiKey: apiKeys.openai || apiKeys.openrouter || apiKeys.google,
-      provider: provider === 'openai_compatible' ? undefined : provider,
+      provider: provider === 'openai_compatible' ? undefined : provider as LLMProvider,
       baseUrl: config.base_url,
       temperature: config.temperature,
       maxTokens: config.max_tokens,
@@ -248,7 +249,7 @@ export class GenerationService {
     const engine = createEngine({
       model: config.model,
       apiKey: apiKeys.openai || apiKeys.openrouter || apiKeys.google,
-      provider: provider === 'openai_compatible' ? undefined : provider,
+      provider: provider === 'openai_compatible' ? undefined : provider as LLMProvider,
       baseUrl: config.base_url,
       temperature: config.temperature,
       maxTokens: config.max_tokens,
@@ -276,7 +277,7 @@ export class GenerationService {
     const [orchestratorSystem, orchestratorUser] = await buildOrchestratorPrompt(
       offspringSeed,
       mode,
-      template ? templateToAssets(template) : undefined
+      template ? templateToAssets(template as unknown as Template) : undefined
     );
 
     const orchestratorMessages = formatMessages(orchestratorSystem, orchestratorUser);
@@ -329,7 +330,7 @@ export class GenerationService {
     const engine = createEngine({
       model: config.model,
       apiKey: apiKeys.openai || apiKeys.openrouter || apiKeys.google,
-      provider: provider === 'openai_compatible' ? undefined : provider,
+      provider: provider === 'openai_compatible' ? undefined : provider as LLMProvider,
       baseUrl: config.base_url,
       temperature: config.temperature,
       maxTokens: config.max_tokens,
@@ -379,7 +380,7 @@ export class GenerationService {
     const engine = createEngine({
       model: config.model,
       apiKey: apiKeys.openai || apiKeys.openrouter || apiKeys.google,
-      provider: provider === 'openai_compatible' ? undefined : provider,
+      provider: provider === 'openai_compatible' ? undefined : provider as LLMProvider,
       baseUrl: config.base_url,
       temperature: config.temperature,
       maxTokens: config.max_tokens,
@@ -445,7 +446,7 @@ export class GenerationService {
     const engine = createEngine({
       model: config.model,
       apiKey: apiKeys.openai || apiKeys.openrouter || apiKeys.google,
-      provider: provider === 'openai_compatible' ? undefined : provider,
+      provider: provider === 'openai_compatible' ? undefined : provider as LLMProvider,
       baseUrl: config.base_url,
       temperature: config.temperature,
       maxTokens: config.max_tokens,

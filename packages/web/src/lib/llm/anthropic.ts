@@ -265,20 +265,20 @@ export class AnthropicEngine extends BaseLLMEngine {
         }),
       });
 
-      const latencyMs = performance.now() - startTime;
+      const latency_ms = performance.now() - startTime;
 
       if (!response.ok) {
         return {
           success: false,
-          latencyMs,
+          latency_ms,
           error: await this.parseError(response),
         };
       }
 
       return {
         success: true,
-        latencyMs,
-        modelInfo: {
+        latency_ms,
+        model_info: {
           name: this.config.model,
         },
       };
