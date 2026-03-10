@@ -237,6 +237,9 @@ async def duplicate_theme_preset(theme_name: str, request: ThemeDuplicateRequest
             new_name=request.new_name,
             display_name=request.display_name,
             description=request.description,
+            author=request.author,
+            tags=request.tags,
+            based_on=request.based_on,
         )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error

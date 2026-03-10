@@ -142,6 +142,9 @@ export interface ThemeDuplicateRequest {
   new_name: string;
   display_name?: string;
   description?: string;
+  author?: string;
+  tags?: string[];
+  based_on?: string;
 }
 
 export interface ThemeRenameRequest {

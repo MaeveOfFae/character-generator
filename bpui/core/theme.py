@@ -512,6 +512,9 @@ def duplicate_theme(
     new_name: str,
     display_name: Optional[str] = None,
     description: Optional[str] = None,
+    author: Optional[str] = None,
+    tags: Optional[List[str]] = None,
+    based_on: Optional[str] = None,
 ) -> ThemeDefinition:
     """Duplicate any theme into a new custom preset."""
     source_theme = get_theme(name)
@@ -519,9 +522,9 @@ def duplicate_theme(
         name=new_name,
         display_name=display_name or f"{source_theme.display_name} Copy",
         description=description if description is not None else source_theme.description,
-        author=source_theme.author,
-        tags=source_theme.tags,
-        based_on=source_theme.based_on,
+        author=author if author is not None else source_theme.author,
+        tags=tags if tags is not None else source_theme.tags,
+        based_on=based_on if based_on is not None else source_theme.based_on,
         colors=asdict(source_theme.colors),
         source_style_name=source_theme.name if _theme_tcss_path(source_theme.name).exists() else DEFAULT_THEME_NAME,
     )

@@ -136,6 +136,9 @@ class ThemeDuplicateRequest(BaseModel):
     new_name: str
     display_name: Optional[str] = None
     description: Optional[str] = None
+    author: Optional[str] = None
+    tags: Optional[list[str]] = None
+    based_on: Optional[str] = None
 
 
 class ThemeRenameRequest(BaseModel):
