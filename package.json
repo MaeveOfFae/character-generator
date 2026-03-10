@@ -9,7 +9,7 @@
     "dev:web:lan": "pnpm --filter @char-gen/web dev --host 0.0.0.0 --port 3000",
     "dev:mobile": "pnpm --filter @char-gen/mobile start",
     "build": "turbo run build",
-    "build:web": "pnpm --filter @char-gen/web build",
+    "build:web": "pnpm build:shared && pnpm --filter @char-gen/web build",
     "build:shared": "pnpm --filter @char-gen/shared build",
     "lint": "turbo run lint",
     "test": "turbo run test",
