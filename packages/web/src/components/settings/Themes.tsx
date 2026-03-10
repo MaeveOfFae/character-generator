@@ -66,6 +66,9 @@ interface ThemeImportOptions {
   target_name?: string;
 }
 
+type ThemeSortMode = 'name-asc' | 'name-desc' | 'author-asc' | 'source';
+type ThemeViewMode = 'comfortable' | 'compact';
+
 type ThemePresetRecord = ThemePreset & {
   author: string;
   tags: string[];
@@ -187,6 +190,8 @@ export default function Themes() {
   const [sourceFilter, setSourceFilter] = useState<'all' | 'builtin' | 'custom'>('all');
   const [selectedAuthor, setSelectedAuthor] = useState<string>('all');
   const [selectedTag, setSelectedTag] = useState<string>('all');
+  const [sortMode, setSortMode] = useState<ThemeSortMode>('name-asc');
+  const [viewMode, setViewMode] = useState<ThemeViewMode>('comfortable');
   const [newThemeName, setNewThemeName] = useState('');
   const [newThemeDisplayName, setNewThemeDisplayName] = useState('');
   const [newThemeDescription, setNewThemeDescription] = useState('');
@@ -485,6 +490,36 @@ export default function Themes() {
       return haystack.includes(normalizedQuery);
     });
   }, [themes, searchQuery, sourceFilter, selectedAuthor, selectedTag]);
+
+  const sortedThemes = useMemo(() => {
+    const themesToSort = [...filteredThemes];
+
+    themesToSort.sort((left, right) => {
+      if (sortMode === 'name-desc') {
+        return right.display_name.localeCompare(left.display_name);
+      }
+
+      if (sortMode === 'author-asc') {
+        const authorCompare = (left.author || 'zzzz').localeCompare(right.author || 'zzzz');
+        if (authorCompare !== 0) {
+          return authorCompare;
+        }
+        return left.display_name.localeCompare(right.display_name);
+      }
+
+      if (sortMode === 'source') {
+        const sourceCompare = Number(left.is_builtin) - Number(right.is_builtin);
+        if (sourceCompare !== 0) {
+          return sourceCompare;
+        }
+        return left.display_name.localeCompare(right.display_name);
+      }
+
+      return left.display_name.localeCompare(right.display_name);
+    });
+
+    return themesToSort;
+  }, [filteredThemes, sortMode]);
 
   const isBusy = createMutation.isPending || activateMutation.isPending || updateCurrentCustomMutation.isPending || updateMetadataMutation.isPending || duplicateMutation.isPending || renameMutation.isPending || deleteMutation.isPending || exportMutation.isPending || importMutation.isPending;
 
@@ -916,7 +951,7 @@ export default function Themes() {
               </div>
             </div>
           </div>
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_240px]">
             <div className="space-y-2 text-sm">
               <div className="font-medium">Filter by author</div>
               <div className="flex flex-wrap gap-2">
@@ -967,47 +1002,108 @@ export default function Themes() {
                 )}
               </div>
             </div>
+            <div className="space-y-4">
+              <label className="space-y-2 text-sm">
+                <span className="font-medium">Sort presets</span>
+                <select
+                  value={sortMode}
+                  onChange={(event) => setSortMode(event.target.value as ThemeSortMode)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="name-asc">Name A-Z</option>
+                  <option value="name-desc">Name Z-A</option>
+                  <option value="author-asc">Author</option>
+                  <option value="source">Source</option>
+                </select>
+              </label>
+              <div className="space-y-2 text-sm">
+                <div className="font-medium">View mode</div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('comfortable')}
+                    className={`rounded-md border px-3 py-2 text-xs ${viewMode === 'comfortable' ? 'border-primary bg-primary text-primary-foreground' : 'border-input hover:bg-accent'}`}
+                  >
+                    Comfortable
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('compact')}
+                    className={`rounded-md border px-3 py-2 text-xs ${viewMode === 'compact' ? 'border-primary bg-primary text-primary-foreground' : 'border-input hover:bg-accent'}`}
+                  >
+                    Compact
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
           <div className="mt-3 text-xs text-muted-foreground">
-            Showing {filteredThemes.length} of {themes.length} presets.
+            Showing {sortedThemes.length} of {themes.length} presets.
           </div>
         </div>
 
-        {filteredThemes.length === 0 && (
+        {sortedThemes.length === 0 && (
           <div className="rounded-lg border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
             No themes match the current search and tag filters.
           </div>
         )}
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          {filteredThemes.map((theme) => {
+        <div className={`grid gap-4 ${viewMode === 'compact' ? 'lg:grid-cols-2 xl:grid-cols-3' : 'lg:grid-cols-2'}`}>
+          {sortedThemes.map((theme) => {
             const isActive = config?.theme_name === theme.name;
             const isCustom = !theme.is_builtin;
             const isDuplicating = duplicateDraft?.sourceName === theme.name;
             const isRenaming = renameDraft?.sourceName === theme.name;
             const isEditingMetadata = metadataDraft?.sourceName === theme.name;
+            const isCompact = viewMode === 'compact';
+            const actionButtonClass = isCompact
+              ? 'inline-flex items-center gap-1.5 rounded-md border border-input px-2 py-1.5 text-xs hover:bg-accent disabled:opacity-50'
+              : 'inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent disabled:opacity-50';
 
             return (
-              <div key={theme.name} className={`rounded-lg border bg-card p-4 ${isActive ? 'border-primary' : 'border-border'}`}>
-                <div className="flex items-start justify-between gap-4">
+              <div key={theme.name} className={`rounded-lg border bg-card ${isCompact ? 'p-3' : 'p-4'} ${isActive ? 'border-primary' : 'border-border'}`}>
+                <div className={`flex ${isCompact ? 'flex-col gap-3' : 'items-start justify-between gap-4'}`}>
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold">{theme.display_name}</h3>
                       {isActive && <CheckCircle className="h-4 w-4 text-primary" />}
                     </div>
                     <div className="text-xs text-muted-foreground">{theme.name}</div>
-                    <p className="mt-2 text-sm text-muted-foreground">{theme.description || 'No description'}</p>
-                    {(theme.author || theme.based_on || theme.tags.length > 0) && (
-                      <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                        {theme.author && <div>Author: {theme.author}</div>}
-                        {theme.based_on && <div>Based on: {theme.based_on}</div>}
-                        {theme.tags.length > 0 && <div>Tags: {theme.tags.join(', ')}</div>}
-                      </div>
+                    {isCompact ? (
+                      <>
+                        <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+                          <span className="rounded-full border border-border px-2 py-0.5">{theme.is_builtin ? 'Built-in' : 'Custom'}</span>
+                          {theme.author && <span>By {theme.author}</span>}
+                        </div>
+                        {theme.tags.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {theme.tags.slice(0, 3).map((tag) => (
+                              <span key={`${theme.name}-${tag}`} className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+                                {tag}
+                              </span>
+                            ))}
+                            {theme.tags.length > 3 && (
+                              <span className="text-[11px] text-muted-foreground">+{theme.tags.length - 3} more</span>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <p className="mt-2 text-sm text-muted-foreground">{theme.description || 'No description'}</p>
+                        {(theme.author || theme.based_on || theme.tags.length > 0) && (
+                          <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                            {theme.author && <div>Author: {theme.author}</div>}
+                            {theme.based_on && <div>Based on: {theme.based_on}</div>}
+                            {theme.tags.length > 0 && <div>Tags: {theme.tags.join(', ')}</div>}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                   <div className="flex gap-2">
                     {[theme.colors.background, theme.colors.surface, theme.colors.accent, theme.colors.tui_primary].map((color) => (
-                      <span key={`${theme.name}-${color}`} className="h-6 w-6 rounded-full border border-black/10" style={{ backgroundColor: color }} />
+                      <span key={`${theme.name}-${color}`} className={`${isCompact ? 'h-5 w-5' : 'h-6 w-6'} rounded-full border border-black/10`} style={{ backgroundColor: color }} />
                     ))}
                   </div>
                 </div>
@@ -1017,7 +1113,7 @@ export default function Themes() {
                     type="button"
                     onClick={() => activateMutation.mutate(theme.name)}
                     disabled={isBusy}
-                    className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
+                    className={actionButtonClass}
                   >
                     <Palette className="h-4 w-4" />
                     Activate
@@ -1026,7 +1122,7 @@ export default function Themes() {
                     type="button"
                     onClick={() => exportMutation.mutate(theme)}
                     disabled={isBusy}
-                    className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
+                    className={actionButtonClass}
                   >
                     <Download className="h-4 w-4" />
                     Export
@@ -1043,7 +1139,7 @@ export default function Themes() {
                       basedOn: theme.based_on,
                     })}
                     disabled={isBusy}
-                    className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
+                    className={actionButtonClass}
                   >
                     <Copy className="h-4 w-4" />
                     Duplicate
@@ -1061,7 +1157,7 @@ export default function Themes() {
                           basedOn: theme.based_on,
                         })}
                         disabled={isBusy}
-                        className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
+                        className={actionButtonClass}
                       >
                         <Pencil className="h-4 w-4" />
                         Edit details
@@ -1074,7 +1170,7 @@ export default function Themes() {
                           displayName: theme.display_name,
                         })}
                         disabled={isBusy}
-                        className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
+                        className={actionButtonClass}
                       >
                         <Pencil className="h-4 w-4" />
                         Rename
@@ -1087,7 +1183,7 @@ export default function Themes() {
                           }
                         }}
                         disabled={isBusy}
-                        className="inline-flex items-center gap-2 rounded-md border border-destructive/40 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                        className={`${isCompact ? 'inline-flex items-center gap-1.5 rounded-md border border-destructive/40 px-2 py-1.5 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50' : 'inline-flex items-center gap-2 rounded-md border border-destructive/40 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50'}`}
                       >
                         <Trash2 className="h-4 w-4" />
                         Delete
