@@ -51,16 +51,37 @@ export interface DownloadResponse {
   contentType: string | null;
 }
 
+interface BrowserStorageLike {
+  getItem(key: string): string | null;
+}
+
+type HeaderInput = ConstructorParameters<typeof Headers>[0];
+
 const API_KEYS_STORAGE_KEY = 'bpui.web.apiKeys';
 const API_KEYS_HEADER = 'X-BPUI-API-KEYS';
 
+function getBrowserStorage(): BrowserStorageLike | null {
+  const maybeStorage = (globalThis as { localStorage?: BrowserStorageLike }).localStorage;
+  return maybeStorage ?? null;
+}
+
+function encodeBase64(value: string): string {
+  const withBtoa = globalThis as { btoa?: (data: string) => string };
+  if (typeof withBtoa.btoa === 'function') {
+    return withBtoa.btoa(value);
+  }
+
+  return Buffer.from(value, 'utf-8').toString('base64');
+}
+
 function getBrowserApiKeysHeader(): Record<string, string> {
-  if (typeof window === 'undefined') {
+  const storage = getBrowserStorage();
+  if (!storage) {
     return {};
   }
 
   try {
-    const raw = window.localStorage.getItem(API_KEYS_STORAGE_KEY);
+    const raw = storage.getItem(API_KEYS_STORAGE_KEY);
     if (!raw) {
       return {};
     }
@@ -75,7 +96,7 @@ function getBrowserApiKeysHeader(): Record<string, string> {
     }
 
     return {
-      [API_KEYS_HEADER]: btoa(JSON.stringify(keys)),
+      [API_KEYS_HEADER]: encodeBase64(JSON.stringify(keys)),
     };
   } catch {
     return {};
@@ -89,7 +110,7 @@ export class CharacterGeneratorAPI {
     this.baseUrl = baseUrl;
   }
 
-  private buildHeaders(headers: HeadersInit = {}, contentType?: string): Headers {
+  private buildHeaders(headers: HeaderInput = {}, contentType?: string): Headers {
     const merged = new Headers(headers);
 
     Object.entries(getBrowserApiKeysHeader()).forEach(([key, value]) => {
