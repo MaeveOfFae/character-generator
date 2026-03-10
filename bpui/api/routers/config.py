@@ -4,7 +4,7 @@ import io
 import json
 import time
 from typing import Dict, Any
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from ..schemas.config import (
     ConfigResponse,
@@ -26,6 +26,9 @@ AVAILABLE_PROVIDERS = ["openai", "google", "openrouter", "deepseek", "zai", "moo
 
 def _config_to_response(config_data: Dict[str, Any]) -> ConfigResponse:
     """Convert config dict to response model."""
+    from bpui.api.byok import scrub_api_keys
+
+    config_data = scrub_api_keys(config_data)
     return ConfigResponse(
         engine=config_data.get("engine", "auto"),
         engine_mode=config_data.get("engine_mode", "auto"),
@@ -74,6 +77,8 @@ async def update_config(update: ConfigUpdate):
 
     # Update config with new values
     for key, value in update_data.items():
+        if key == "api_keys":
+            continue
         if value is not None:
             config.set(key, value)
 
@@ -291,14 +296,14 @@ async def delete_theme_preset(theme_name: str):
 
 
 @router.post("/test", response_model=ConnectionTestResult)
-async def test_connection(request: ConnectionTestRequest):
+async def test_connection(request: ConnectionTestRequest, http_request: Request):
     """Test API connection for a provider using stored API keys."""
     try:
         from bpui.llm.factory import create_engine
-        from bpui.core.config import load_config
+        from bpui.api.byok import build_request_config
 
-        # Load current config (has stored API keys)
-        config = load_config()
+        # Load a request-scoped config that only uses browser-provided keys.
+        config = build_request_config(http_request)
 
         # Determine which API key to use based on provider
         provider_key = config.get_api_key(request.provider)
@@ -306,7 +311,7 @@ async def test_connection(request: ConnectionTestRequest):
         if not provider_key:
             return ConnectionTestResult(
                 success=False,
-                error=f"No API key configured for {request.provider}. Please add your API key in Settings.",
+                error=f"No API key provided for {request.provider}. Add your key in the browser Settings panel.",
             )
 
         # Create a temporary config for testing

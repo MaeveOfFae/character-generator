@@ -51,11 +51,56 @@ export interface DownloadResponse {
   contentType: string | null;
 }
 
+const API_KEYS_STORAGE_KEY = 'bpui.web.apiKeys';
+const API_KEYS_HEADER = 'X-BPUI-API-KEYS';
+
+function getBrowserApiKeysHeader(): Record<string, string> {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+
+  try {
+    const raw = window.localStorage.getItem(API_KEYS_STORAGE_KEY);
+    if (!raw) {
+      return {};
+    }
+
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    const keys = Object.fromEntries(
+      Object.entries(parsed).filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
+    );
+
+    if (Object.keys(keys).length === 0) {
+      return {};
+    }
+
+    return {
+      [API_KEYS_HEADER]: btoa(JSON.stringify(keys)),
+    };
+  } catch {
+    return {};
+  }
+}
+
 export class CharacterGeneratorAPI {
   private baseUrl: string;
 
   constructor(baseUrl: string = '/api') {
     this.baseUrl = baseUrl;
+  }
+
+  private buildHeaders(headers: HeadersInit = {}, contentType?: string): Headers {
+    const merged = new Headers(headers);
+
+    Object.entries(getBrowserApiKeysHeader()).forEach(([key, value]) => {
+      merged.set(key, value);
+    });
+
+    if (contentType && !merged.has('Content-Type')) {
+      merged.set('Content-Type', contentType);
+    }
+
+    return merged;
   }
 
   private async request<T>(
@@ -64,10 +109,7 @@ export class CharacterGeneratorAPI {
   ): Promise<T> {
     const response = await fetch(`${this.baseUrl}${path}`, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers: this.buildHeaders(options.headers, 'application/json'),
     });
 
     if (!response.ok) {
@@ -106,7 +148,10 @@ export class CharacterGeneratorAPI {
     options: RequestInit = {},
     fallbackError: string
   ): Promise<DownloadResponse> {
-    const response = await fetch(`${this.baseUrl}${path}`, options);
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      ...options,
+      headers: this.buildHeaders(options.headers),
+    });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ detail: response.statusText })) as { detail?: string };
@@ -174,6 +219,7 @@ export class CharacterGeneratorAPI {
     const response = await fetch(`${this.baseUrl}/config/themes/import`, {
       method: 'POST',
       body: formData,
+      headers: this.buildHeaders(),
     });
 
     if (!response.ok) {
@@ -290,6 +336,7 @@ export class CharacterGeneratorAPI {
     const response = await fetch(`${this.baseUrl}/templates/import`, {
       method: 'POST',
       body: formData,
+      headers: this.buildHeaders(),
     });
 
     if (!response.ok) {
@@ -555,7 +602,10 @@ export class GenerationStream {
     try {
       const response = await fetch(this.url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: new Headers({
+          'Content-Type': 'application/json',
+          ...getBrowserApiKeysHeader(),
+        }),
         body: JSON.stringify(this.body),
         signal: this.controller.signal,
       });

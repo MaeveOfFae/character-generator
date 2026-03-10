@@ -1,7 +1,7 @@
 """Chat/refinement router."""
 
 import json
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List
@@ -33,11 +33,11 @@ class RefineRequest(BaseModel):
 
 
 @router.post("")
-async def chat(request: ChatRequest):
+async def chat(request: ChatRequest, http_request: Request):
     """Chat-based refinement with SSE streaming."""
     async def event_generator():
         try:
-            from bpui.core.config import load_config
+            from bpui.api.byok import build_request_config
             from bpui.llm.factory import create_engine
 
             # Build context
@@ -70,7 +70,7 @@ async def chat(request: ChatRequest):
             system_prompt += "\n\nHelp the user refine or navigate the workflow. Be concrete, brief, and useful."
 
             # Create engine
-            config = load_config()
+            config = build_request_config(http_request)
             engine = create_engine(config)
 
             messages = [{"role": "system", "content": system_prompt}]
@@ -99,11 +99,11 @@ async def chat(request: ChatRequest):
 
 
 @router.post("/refine")
-async def refine_asset(request: RefineRequest):
+async def refine_asset(request: RefineRequest, http_request: Request):
     """Refine a specific asset with SSE streaming."""
     async def event_generator():
         try:
-            from bpui.core.config import load_config
+            from bpui.api.byok import build_request_config
             from bpui.llm.factory import create_engine
 
             # Find draft and load assets
@@ -129,7 +129,7 @@ Please provide an updated version of the {request.asset} that addresses the user
 Only output the updated content, no explanations or markdown."""
 
             # Create engine
-            config = load_config()
+            config = build_request_config(http_request)
             engine = create_engine(config)
 
             # Stream response

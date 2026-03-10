@@ -3,7 +3,7 @@
 import asyncio
 import aiohttp
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from functools import lru_cache
 import time
@@ -77,14 +77,11 @@ FALLBACK_MODELS: Dict[str, List[ModelInfo]] = {
 SUPPORTED_PROVIDERS = list(FALLBACK_MODELS.keys())
 
 
-def _get_api_key(provider: str) -> Optional[str]:
-    """Get API key for a provider from config."""
-    try:
-        from bpui.core.config import load_config
-        config = load_config()
-        return config.get_api_key(provider)
-    except Exception:
-        return None
+def _get_api_key(provider: str, request: Request) -> Optional[str]:
+    """Get API key for a provider from browser-provided request headers."""
+    from bpui.api.byok import get_request_api_keys
+
+    return get_request_api_keys(request).get(provider)
 
 
 async def _fetch_openai_models(api_key: str) -> List[ModelInfo]:
@@ -270,12 +267,12 @@ async def _fetch_moonshot_models(api_key: str) -> List[ModelInfo]:
     return sorted(models, key=lambda m: m.id)
 
 
-async def _fetch_provider_models(provider: str) -> tuple[List[ModelInfo], Optional[str]]:
+async def _fetch_provider_models(provider: str, request: Request) -> tuple[List[ModelInfo], Optional[str]]:
     """Fetch models from a provider's API.
 
     Returns tuple of (models, error_message).
     """
-    api_key = _get_api_key(provider)
+    api_key = _get_api_key(provider, request)
 
     if not api_key:
         return FALLBACK_MODELS.get(provider, []), f"No API key configured for {provider}. Using fallback models."
@@ -302,7 +299,7 @@ async def _fetch_provider_models(provider: str) -> tuple[List[ModelInfo], Option
 
 
 @router.get("/{provider}", response_model=ModelsResponse)
-async def get_models(provider: str, refresh: bool = False):
+async def get_models(provider: str, request: Request, refresh: bool = False):
     """Get available models for a provider.
 
     Args:
@@ -330,7 +327,7 @@ async def get_models(provider: str, refresh: bool = False):
             )
 
     # Fetch models
-    models, error = await _fetch_provider_models(provider_lower)
+    models, error = await _fetch_provider_models(provider_lower, request)
 
     # Update cache
     if models and not error:
@@ -345,7 +342,7 @@ async def get_models(provider: str, refresh: bool = False):
 
 
 @router.post("/{provider}/refresh")
-async def refresh_models(provider: str):
+async def refresh_models(provider: str, request: Request):
     """Refresh model list from provider API.
 
     Forces a fresh fetch from the provider's API, bypassing the cache.
@@ -359,7 +356,7 @@ async def refresh_models(provider: str):
         )
 
     # Force refresh
-    models, error = await _fetch_provider_models(provider_lower)
+    models, error = await _fetch_provider_models(provider_lower, request)
 
     # Update cache
     if models and not error:

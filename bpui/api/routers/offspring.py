@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from ..schemas.generation import OffspringRequest
 from .drafts import _find_draft_dir
@@ -11,11 +11,11 @@ router = APIRouter()
 
 
 @router.post("")
-async def generate_offspring(request: OffspringRequest):
+async def generate_offspring(request: OffspringRequest, http_request: Request):
     """Generate offspring character from two parents with SSE streaming."""
     async def event_generator():
         try:
-            from bpui.core.config import load_config
+            from bpui.api.byok import build_request_config
             from bpui.llm.factory import create_engine
             from bpui.core.prompting import build_offspring_prompt, build_asset_prompt
             from bpui.core.parse_blocks import extract_single_asset, extract_character_name
@@ -49,7 +49,7 @@ async def generate_offspring(request: OffspringRequest):
             yield f"event: status\ndata: {json.dumps({'stage': 'parents_loaded', 'parent1': parent1_name, 'parent2': parent2_name})}\n\n"
 
             # Load config and create engine
-            config = load_config()
+            config = build_request_config(http_request)
             engine = create_engine(config)
 
             # Get template

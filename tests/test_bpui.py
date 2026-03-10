@@ -124,11 +124,11 @@ Second block
         assert len(blocks) == 2, f"Expected 2 blocks, got {len(blocks)}"
         print(f"✓ Codeblock extraction works")
 
-        # Test 7-block parsing
-        test_output = "\n".join([f"```\nBlock {i}\n```" for i in range(1, 8)])
+        # Test default 6-block parsing
+        test_output = "\n".join([f"```\nBlock {i}\n```" for i in range(1, 7)])
         assets = parse_blueprint_output(test_output)
-        assert len(assets) == 7, f"Expected 7 assets, got {len(assets)}"
-        print(f"✓ 7-block parsing works")
+        assert len(assets) == 6, f"Expected 6 assets, got {len(assets)}"
+        print(f"✓ 6-block parsing works")
 
         return True
     except Exception as e:

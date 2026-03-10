@@ -1,6 +1,6 @@
 """Seed generator router."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from ..schemas.seedgen import SeedGenerationRequest, SeedGenerationResponse
 
@@ -30,10 +30,10 @@ Now generate 12 new seeds:"""
 
 
 @router.post("", response_model=SeedGenerationResponse)
-async def generate_seeds(request: SeedGenerationRequest):
+async def generate_seeds(request: SeedGenerationRequest, http_request: Request):
     """Generate character seeds from genre lines or surprise mode."""
     try:
-        from bpui.core.config import load_config
+        from bpui.api.byok import build_request_config
         from bpui.core.prompting import build_seedgen_prompt
         from bpui.llm.factory import create_engine
 
@@ -46,7 +46,7 @@ async def generate_seeds(request: SeedGenerationRequest):
         else:
             system_prompt, user_prompt = build_seedgen_prompt(request.genre_lines)
 
-        config = load_config()
+        config = build_request_config(http_request)
         engine = create_engine(config)
         output = await engine.generate(system_prompt, user_prompt)
 

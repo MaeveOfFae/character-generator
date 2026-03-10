@@ -4,7 +4,7 @@ import asyncio
 import json
 import time
 from typing import Awaitable, Callable
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from ..schemas.generation import (
     FinalizeGenerationRequest,
@@ -142,7 +142,7 @@ def _validate_asset_request(template_obj, asset_name: str, prior_assets: dict[st
     return missing
 
 
-async def _generate_single(seed: str, mode: str, template: str | None = None):
+async def _generate_single(seed: str, mode: str, request_config, template: str | None = None):
     """Generate a single character with SSE streaming."""
     start_time = time.time()
 
@@ -152,12 +152,11 @@ async def _generate_single(seed: str, mode: str, template: str | None = None):
         async def run_generation() -> None:
             try:
                 from bpui.llm.factory import create_engine
-                from bpui.core.config import load_config
                 from bpui.utils.file_io.pack_io import create_draft_dir
 
                 await event_queue.put(_sse("status", {"stage": "initializing", "status": "started"}))
 
-                config = load_config()
+                config = request_config
                 engine = create_engine(config)
                 template_obj = _resolve_template(template)
 
@@ -223,10 +222,10 @@ async def _generate_single(seed: str, mode: str, template: str | None = None):
 
 
 @router.post("/asset")
-async def generate_asset(request: GenerateAssetRequest):
+async def generate_asset(request: GenerateAssetRequest, http_request: Request):
     """Generate a single asset using the currently approved prior assets as context."""
     from bpui.api.schemas.generation import GenerateAssetResponse
-    from bpui.core.config import load_config
+    from bpui.api.byok import build_request_config
     from bpui.core.prompting import build_asset_prompt
     from bpui.core.parse_blocks import extract_single_asset, extract_character_display_name
     from bpui.features.templates.templates import TemplateManager
@@ -249,7 +248,7 @@ async def generate_asset(request: GenerateAssetRequest):
                 detail=f"Blueprint for asset '{request.asset_name}' not found in template '{template_obj.name}'",
             )
 
-        config = load_config()
+        config = build_request_config(http_request)
         engine = create_engine(config)
         system_prompt, user_prompt = build_asset_prompt(
             asset_name=request.asset_name,
@@ -319,18 +318,25 @@ async def finalize_generation(request: FinalizeGenerationRequest):
 
 
 @router.post("/single")
-async def generate_single(request: GenerateRequest):
+async def generate_single(request: GenerateRequest, http_request: Request):
     """Generate a single character with SSE streaming."""
+    from bpui.api.byok import build_request_config
+
     return await _generate_single(
         seed=request.seed,
         mode=request.mode,
+        request_config=build_request_config(http_request),
         template=request.template,
     )
 
 
 @router.post("/batch")
-async def generate_batch(request: GenerateBatchRequest):
+async def generate_batch(request: GenerateBatchRequest, http_request: Request):
     """Generate multiple characters with SSE streaming."""
+    from bpui.api.byok import build_request_config
+
+    request_config = build_request_config(http_request)
+
     async def event_generator():
         max_concurrent = request.max_concurrent if request.parallel else 1
         semaphore = asyncio.Semaphore(max_concurrent)
@@ -340,14 +346,13 @@ async def generate_batch(request: GenerateBatchRequest):
             async with semaphore:
                 try:
                     from bpui.llm.factory import create_engine
-                    from bpui.core.config import load_config
                     from bpui.utils.file_io.pack_io import create_draft_dir
 
                     await event_queue.put(
                         f"event: batch_start\ndata: {json.dumps({'index': index, 'seed': seed})}\n\n"
                     )
 
-                    config = load_config()
+                    config = request_config
                     engine = create_engine(config)
                     template_obj = _resolve_template(request.template)
                     assets, character_name = await _generate_assets_sequential(

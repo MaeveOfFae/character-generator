@@ -24,6 +24,39 @@ import {
 
 const ALL_PROVIDERS = ['openai', 'google', 'openrouter', 'deepseek', 'zai', 'moonshot'] as const;
 type Provider = typeof ALL_PROVIDERS[number];
+const API_KEYS_STORAGE_KEY = 'bpui.web.apiKeys';
+
+function loadBrowserApiKeys(): Record<string, string> {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+
+  try {
+    const raw = window.localStorage.getItem(API_KEYS_STORAGE_KEY);
+    if (!raw) {
+      return {};
+    }
+
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    return Object.fromEntries(
+      Object.entries(parsed).filter(([, value]) => typeof value === 'string')
+    );
+  } catch {
+    return {};
+  }
+}
+
+function saveBrowserApiKeys(apiKeys: Record<string, string | undefined>): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const cleaned = Object.fromEntries(
+    Object.entries(apiKeys).filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
+  );
+
+  window.localStorage.setItem(API_KEYS_STORAGE_KEY, JSON.stringify(cleaned));
+}
 
 type ThemeImportPayload = {
   version?: number;
@@ -113,7 +146,7 @@ export default function Settings() {
       return;
     }
 
-    setLocalConfig(config);
+    setLocalConfig({ ...config, api_keys: loadBrowserApiKeys() });
 
     const model = config.model || '';
     for (const provider of ALL_PROVIDERS) {
@@ -166,7 +199,8 @@ export default function Settings() {
   }, [previewTheme, clearPreview, selectedThemeName, localConfig.theme]);
 
   const handleSave = () => {
-    updateMutation.mutate(localConfig);
+    const { api_keys: _apiKeys, ...persistedConfig } = localConfig;
+    updateMutation.mutate(persistedConfig);
   };
 
   const handleTest = (provider: string) => {
@@ -176,6 +210,20 @@ export default function Settings() {
 
   const toggleShowKey = (provider: string) => {
     setShowKeys((prev) => ({ ...prev, [provider]: !prev[provider] }));
+  };
+
+  const handleApiKeyChange = (provider: Provider, value: string) => {
+    setLocalConfig((previous) => {
+      const nextApiKeys = {
+        ...(previous.api_keys || {}),
+        [provider]: value,
+      };
+      saveBrowserApiKeys(nextApiKeys);
+      return {
+        ...previous,
+        api_keys: nextApiKeys,
+      };
+    });
   };
 
   const handleModelSelect = (modelId: string) => {
@@ -308,7 +356,7 @@ export default function Settings() {
         <div className="border-b border-border p-4">
           <h2 className="text-lg font-semibold">API Keys</h2>
           <p className="text-sm text-muted-foreground">
-            Configure your LLM provider API keys. Keys are stored locally in .bpui.toml.
+            Configure your LLM provider API keys. Keys stay in this browser only and are sent with each request.
           </p>
         </div>
         <div className="space-y-4 p-4">
@@ -319,16 +367,8 @@ export default function Settings() {
                 <div className="relative flex-1">
                   <input
                     type={showKeys[provider] ? 'text' : 'password'}
-                    value={localConfig.api_keys?.[provider] || config?.api_keys?.[provider] || ''}
-                    onChange={(e) =>
-                      setLocalConfig((previous) => ({
-                        ...previous,
-                        api_keys: {
-                          ...(previous.api_keys || config?.api_keys || {}),
-                          [provider]: e.target.value,
-                        },
-                      }))
-                    }
+                    value={localConfig.api_keys?.[provider] || ''}
+                    onChange={(e) => handleApiKeyChange(provider, e.target.value)}
                     placeholder={`Enter your ${provider} API key`}
                     className="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />

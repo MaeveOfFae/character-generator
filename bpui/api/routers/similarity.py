@@ -1,6 +1,6 @@
 """Similarity analysis router."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from ..schemas.similarity import (
     SimilarityRequest,
     SimilarityResultSchema,
@@ -13,12 +13,12 @@ router = APIRouter()
 
 
 @router.post("", response_model=SimilarityResultSchema)
-async def analyze_similarity(request: SimilarityRequest):
+async def analyze_similarity(request: SimilarityRequest, http_request: Request):
     """Compare two characters for similarity."""
     try:
         from bpui.features.similarity.engine import SimilarityAnalyzer, CharacterProfile
         from bpui.utils.file_io.pack_io import load_draft
-        from bpui.core.config import load_config
+        from bpui.api.byok import build_request_config
 
         # Find draft directories
         draft1_path = _find_draft_dir(request.draft1_id)
@@ -46,7 +46,7 @@ async def analyze_similarity(request: SimilarityRequest):
         if request.include_llm_analysis:
             try:
                 from bpui.llm.factory import create_engine
-                config = load_config()
+                config = build_request_config(http_request)
                 llm_engine = create_engine(config)
             except Exception:
                 pass  # Continue without LLM analysis

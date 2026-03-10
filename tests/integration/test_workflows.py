@@ -14,7 +14,7 @@ from bpui.features.export.export import export_character
 
 @pytest.fixture
 def mock_complete_llm_output():
-    """Mock complete 7-asset LLM output."""
+    """Mock complete default 6-asset LLM output."""
     return """
 ```
 system prompt content
@@ -51,12 +51,6 @@ Short description here.
 [Control]
 [Title: Test Portrait]
 [Content: NSFW]
-```
-
-```
-[Control]
-[Title: Test Song]
-[Genre: Rock]
 ```
 """
 
@@ -114,7 +108,7 @@ class TestCompileWorkflow:
         
         # Step 3: Parse output
         assets = parse_blueprint_output(llm_output)
-        assert len(assets) == 7
+        assert len(assets) == 6
         assert "system_prompt" in assets
         assert "character_sheet" in assets
         
@@ -169,14 +163,10 @@ intro scene
 ```
 [Control]
 ```
-
-```
-[Control]
-```
 """
-        # Parse should extract 7 assets, skipping adjustment note
+        # Parse should extract 6 assets, skipping adjustment note
         assets = parse_blueprint_output(llm_output)
-        assert len(assets) == 7
+        assert len(assets) == 6
         assert "system_prompt" in assets
         assert assets["system_prompt"] == "system prompt"
     
@@ -457,7 +447,7 @@ post history
 ```
 """
         # Should raise ParseError for missing assets
-        with pytest.raises(ParseError, match="Expected 7 asset blocks"):
+        with pytest.raises(ParseError, match="Expected 6 asset blocks"):
             parse_blueprint_output(incomplete_output)
     
     def test_missing_character_name_recovery(self):
