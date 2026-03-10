@@ -199,7 +199,8 @@ export default function Settings() {
   }, [previewTheme, clearPreview, selectedThemeName, localConfig.theme]);
 
   const handleSave = () => {
-    const { api_keys: _apiKeys, ...persistedConfig } = localConfig;
+    const persistedConfig = { ...localConfig };
+    delete persistedConfig.api_keys;
     updateMutation.mutate(persistedConfig);
   };
 
