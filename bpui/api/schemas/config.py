@@ -113,6 +113,9 @@ class ThemePresetCreate(BaseModel):
     name: str
     display_name: str
     description: str = ""
+    author: str = ""
+    tags: list[str] = Field(default_factory=list)
+    based_on: str = ""
     colors: ThemeColorsResponse
 
 
@@ -121,6 +124,9 @@ class ThemePresetUpdate(BaseModel):
 
     display_name: Optional[str] = None
     description: Optional[str] = None
+    author: Optional[str] = None
+    tags: Optional[list[str]] = None
+    based_on: Optional[str] = None
     colors: Optional[ThemeColorsResponse] = None
 
 
@@ -145,6 +151,9 @@ class ThemePresetResponse(BaseModel):
     name: str
     display_name: str
     description: str = ""
+    author: str = ""
+    tags: list[str] = Field(default_factory=list)
+    based_on: str = ""
     is_builtin: bool = True
     colors: ThemeColorsResponse
 

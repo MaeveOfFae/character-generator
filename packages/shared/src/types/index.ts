@@ -112,6 +112,9 @@ export interface ThemePreset {
   name: string;
   display_name: string;
   description: string;
+  author: string;
+  tags: string[];
+  based_on: string;
   is_builtin: boolean;
   colors: ThemeColors;
 }
@@ -120,12 +123,18 @@ export interface ThemePresetCreate {
   name: string;
   display_name: string;
   description?: string;
+  author?: string;
+  tags?: string[];
+  based_on?: string;
   colors: ThemeColors;
 }
 
 export interface ThemePresetUpdate {
   display_name?: string;
   description?: string;
+  author?: string;
+  tags?: string[];
+  based_on?: string;
   colors?: ThemeColors;
 }
 
@@ -138,6 +147,13 @@ export interface ThemeDuplicateRequest {
 export interface ThemeRenameRequest {
   new_name: string;
   display_name?: string;
+}
+
+export type ThemeImportStrategy = 'reject' | 'rename' | 'overwrite';
+
+export interface ThemeImportRequest {
+  conflict_strategy?: ThemeImportStrategy;
+  target_name?: string;
 }
 
 export interface Config {

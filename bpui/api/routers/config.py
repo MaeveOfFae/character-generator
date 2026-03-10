@@ -4,7 +4,7 @@ import io
 import json
 import time
 from typing import Dict, Any
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from ..schemas.config import (
     ConfigResponse,
@@ -47,6 +47,9 @@ def _theme_to_response(theme) -> ThemePresetResponse:
         name=theme.name,
         display_name=theme.display_name,
         description=theme.description,
+        author=theme.author,
+        tags=theme.tags,
+        based_on=theme.based_on,
         is_builtin=theme.is_builtin,
         colors=ThemeColorsResponse(**theme.to_dict()["colors"]),
     )
@@ -98,6 +101,9 @@ async def create_theme(request: ThemePresetCreate):
             name=request.name,
             display_name=request.display_name,
             description=request.description,
+            author=request.author,
+            tags=request.tags,
+            based_on=request.based_on,
             colors=request.colors.model_dump(),
         )
     except ValueError as error:
@@ -123,6 +129,9 @@ async def export_theme_preset(theme_name: str):
             "name": theme.name,
             "display_name": theme.display_name,
             "description": theme.description,
+            "author": theme.author,
+            "tags": theme.tags,
+            "based_on": theme.based_on,
             "colors": theme.to_dict()["colors"],
         },
     }
@@ -139,9 +148,13 @@ async def export_theme_preset(theme_name: str):
 
 
 @router.post("/themes/import", response_model=ThemePresetResponse)
-async def import_theme_preset(file: UploadFile = File(...)):
+async def import_theme_preset(
+    file: UploadFile = File(...),
+    conflict_strategy: str = Form("reject"),
+    target_name: str | None = Form(None),
+):
     """Import a theme preset from a portable JSON file."""
-    from bpui.core.theme import create_custom_theme
+    from bpui.core.theme import import_theme_definition
 
     try:
         raw = await file.read()
@@ -156,21 +169,35 @@ async def import_theme_preset(file: UploadFile = File(...)):
     name = theme_payload.get("name")
     display_name = theme_payload.get("display_name") or theme_payload.get("displayName")
     description = theme_payload.get("description", "")
+    author = theme_payload.get("author", "")
+    tags = theme_payload.get("tags", [])
+    based_on = theme_payload.get("based_on") or theme_payload.get("basedOn") or ""
     colors = theme_payload.get("colors")
 
     if not isinstance(name, str) or not name.strip():
         raise HTTPException(status_code=400, detail="Imported theme is missing a valid name")
     if not isinstance(display_name, str) or not display_name.strip():
         raise HTTPException(status_code=400, detail="Imported theme is missing a valid display_name")
+    if not isinstance(author, str):
+        raise HTTPException(status_code=400, detail="Imported theme author must be a string")
+    if not isinstance(tags, list):
+        raise HTTPException(status_code=400, detail="Imported theme tags must be a list")
+    if not isinstance(based_on, str):
+        raise HTTPException(status_code=400, detail="Imported theme based_on must be a string")
     if not isinstance(colors, dict):
         raise HTTPException(status_code=400, detail="Imported theme is missing a colors object")
 
     try:
-        theme = create_custom_theme(
+        theme = import_theme_definition(
             name=name,
             display_name=display_name,
             description=description,
+            author=author,
+            tags=tags,
+            based_on=based_on,
             colors=colors,
+            conflict_strategy=conflict_strategy,
+            target_name=target_name,
         )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
@@ -188,6 +215,9 @@ async def update_theme(theme_name: str, request: ThemePresetUpdate):
             name=theme_name,
             display_name=request.display_name,
             description=request.description,
+            author=request.author,
+            tags=request.tags,
+            based_on=request.based_on,
             colors=request.colors.model_dump() if request.colors else None,
         )
     except ValueError as error:

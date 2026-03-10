@@ -86,6 +86,9 @@ class ThemeDefinition:
     name: str
     display_name: str
     description: str = ""
+    author: str = ""
+    tags: list[str] = field(default_factory=list)
+    based_on: str = ""
     is_builtin: bool = True
     colors: ThemeColors = field(default_factory=ThemeColors)
 
@@ -183,6 +186,9 @@ def _load_theme_from_file(path: Path) -> ThemeDefinition:
         name=data.get("name", path.stem),
         display_name=data.get("display_name", path.stem.replace("_", " ").title()),
         description=data.get("description", ""),
+        author=data.get("author", ""),
+        tags=[str(tag).strip() for tag in data.get("tags", []) if str(tag).strip()],
+        based_on=data.get("based_on", ""),
         is_builtin=data.get("is_builtin", False),
         colors=colors,
     )
@@ -204,14 +210,56 @@ def _theme_tcss_path(name: str) -> Path:
     return _get_themes_dir() / f"{name}.tcss"
 
 
+def theme_exists(name: str) -> bool:
+    """Return whether a theme name already exists as built-in or custom."""
+    sanitized_name = _sanitize_theme_name(name)
+    return (
+        sanitized_name in BUILTIN_THEMES
+        or _theme_toml_path(sanitized_name).exists()
+        or _theme_tcss_path(sanitized_name).exists()
+    )
+
+
+def _generate_unique_theme_name(base_name: str) -> str:
+    """Generate a unique theme name based on the provided base name."""
+    sanitized_base = _sanitize_theme_name(base_name)
+    if not theme_exists(sanitized_base):
+        return sanitized_base
+
+    index = 2
+    while theme_exists(f"{sanitized_base}_{index}"):
+        index += 1
+    return f"{sanitized_base}_{index}"
+
+
 def _theme_to_toml_payload(theme: ThemeDefinition) -> Dict[str, Any]:
     return {
         "name": theme.name,
         "display_name": theme.display_name,
         "description": theme.description,
+        "author": theme.author,
+        "tags": theme.tags,
+        "based_on": theme.based_on,
         "is_builtin": theme.is_builtin,
         "colors": asdict(theme.colors),
     }
+
+
+def _normalize_theme_tags(tags: Optional[List[str]]) -> list[str]:
+    if not tags:
+        return []
+    normalized_tags: list[str] = []
+    seen: set[str] = set()
+    for tag in tags:
+        cleaned = str(tag).strip()
+        if not cleaned:
+            continue
+        lowered = cleaned.lower()
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        normalized_tags.append(cleaned)
+    return normalized_tags
 
 
 def _write_theme_files(theme: ThemeDefinition, source_style_name: Optional[str] = None) -> None:
@@ -405,6 +453,9 @@ def create_custom_theme(
     display_name: str,
     colors: Dict[str, Any],
     description: str = "",
+    author: str = "",
+    tags: Optional[List[str]] = None,
+    based_on: str = "",
     source_style_name: Optional[str] = None,
 ) -> ThemeDefinition:
     """Create a new reusable custom theme preset."""
@@ -416,6 +467,9 @@ def create_custom_theme(
         name=sanitized_name,
         display_name=display_name.strip() or sanitized_name.replace("_", " ").title(),
         description=description,
+        author=author.strip(),
+        tags=_normalize_theme_tags(tags),
+        based_on=based_on.strip(),
         is_builtin=False,
         colors=ThemeColors(**colors),
     )
@@ -428,6 +482,9 @@ def update_custom_theme(
     name: str,
     display_name: Optional[str] = None,
     description: Optional[str] = None,
+    author: Optional[str] = None,
+    tags: Optional[List[str]] = None,
+    based_on: Optional[str] = None,
     colors: Optional[Dict[str, Any]] = None,
 ) -> ThemeDefinition:
     """Update an existing custom theme preset."""
@@ -439,6 +496,9 @@ def update_custom_theme(
         name=existing.name,
         display_name=display_name if display_name is not None else existing.display_name,
         description=description if description is not None else existing.description,
+        author=author.strip() if author is not None else existing.author,
+        tags=_normalize_theme_tags(tags) if tags is not None else existing.tags,
+        based_on=based_on.strip() if based_on is not None else existing.based_on,
         is_builtin=False,
         colors=ThemeColors(**(colors or asdict(existing.colors))),
     )
@@ -459,6 +519,9 @@ def duplicate_theme(
         name=new_name,
         display_name=display_name or f"{source_theme.display_name} Copy",
         description=description if description is not None else source_theme.description,
+        author=source_theme.author,
+        tags=source_theme.tags,
+        based_on=source_theme.based_on,
         colors=asdict(source_theme.colors),
         source_style_name=source_theme.name if _theme_tcss_path(source_theme.name).exists() else DEFAULT_THEME_NAME,
     )
@@ -478,6 +541,9 @@ def rename_custom_theme(name: str, new_name: str, display_name: Optional[str] = 
         name=new_sanitized_name,
         display_name=display_name or existing.display_name,
         description=existing.description,
+        author=existing.author,
+        tags=existing.tags,
+        based_on=existing.based_on,
         is_builtin=False,
         colors=existing.colors,
     )
@@ -506,6 +572,56 @@ def delete_custom_theme(name: str) -> None:
     if tcss_path.exists():
         tcss_path.unlink()
     reload_themes()
+
+
+def import_theme_definition(
+    name: str,
+    display_name: str,
+    colors: Dict[str, Any],
+    description: str = "",
+    author: str = "",
+    tags: Optional[List[str]] = None,
+    based_on: str = "",
+    conflict_strategy: str = "reject",
+    target_name: Optional[str] = None,
+) -> ThemeDefinition:
+    """Import a theme preset with explicit conflict handling."""
+    imported_name = _sanitize_theme_name(name)
+    desired_name = _sanitize_theme_name(target_name) if target_name else imported_name
+
+    if conflict_strategy not in {"reject", "rename", "overwrite"}:
+        raise ValueError(f"Unsupported conflict strategy '{conflict_strategy}'")
+
+    if theme_exists(desired_name):
+        if conflict_strategy == "reject":
+            raise ValueError(f"Theme '{desired_name}' already exists")
+
+        if conflict_strategy == "overwrite":
+            _ensure_custom_theme(desired_name)
+            return update_custom_theme(
+                name=desired_name,
+                display_name=display_name,
+                description=description,
+                author=author,
+                tags=tags,
+                based_on=based_on,
+                colors=colors,
+            )
+
+        if target_name:
+            raise ValueError(f"Theme '{desired_name}' already exists")
+
+        desired_name = _generate_unique_theme_name(imported_name)
+
+    return create_custom_theme(
+        name=desired_name,
+        display_name=display_name,
+        description=description,
+        author=author,
+        tags=tags,
+        based_on=based_on,
+        colors=colors,
+    )
 
 
 def _apply_custom_overrides(

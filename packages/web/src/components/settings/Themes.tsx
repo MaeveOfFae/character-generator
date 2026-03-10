@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   CheckCircle,
+  AlertTriangle,
   Copy,
   Download,
   Loader2,
@@ -15,23 +16,60 @@ import {
   Wand2,
 } from 'lucide-react';
 import { api, type ThemeColors, type ThemePreset } from '@char-gen/shared';
-import { resolveThemeColors } from '../../theme/theme';
+import { EDITABLE_THEME_SECTIONS, resolveThemeColors } from '../../theme/theme';
 import { saveDownload } from '../../utils/download';
 
-interface ThemeActionDraft {
+interface ThemeDuplicateDraft {
   sourceName: string;
   newName: string;
   displayName: string;
   description: string;
 }
 
+interface ThemeRenameDraft {
+  sourceName: string;
+  newName: string;
+  displayName: string;
+}
+
+interface ImportedThemePayload {
+  name: string;
+  displayName: string;
+  description: string;
+  author: string;
+  tags: string[];
+  basedOn: string;
+  colors: ThemeColors;
+}
+
+interface ThemeImportDraft {
+  file: File;
+  imported: ImportedThemePayload;
+  targetName: string;
+  conflictTheme: ThemePresetRecord;
+}
+
+interface ThemeImportOptions {
+  conflict_strategy?: 'reject' | 'rename' | 'overwrite';
+  target_name?: string;
+}
+
+type ThemePresetRecord = ThemePreset & {
+  author: string;
+  tags: string[];
+  based_on: string;
+};
+
 type ThemeApi = typeof api & {
   exportTheme: (name: string) => Promise<{ blob: Blob; filename: string | null; contentType: string | null }>;
-  importTheme: (file: File) => Promise<ThemePreset>;
+  importTheme: (file: File, options?: ThemeImportOptions) => Promise<ThemePreset>;
   createTheme: (request: {
     name: string;
     display_name: string;
     description?: string;
+    author?: string;
+    tags?: string[];
+    based_on?: string;
     colors: ThemeColors;
   }) => Promise<ThemePreset>;
   updateTheme: (name: string, request: { colors?: ThemeColors }) => Promise<ThemePreset>;
@@ -46,6 +84,78 @@ type ThemeApi = typeof api & {
 
 const themeApi = api as ThemeApi;
 
+async function readImportedThemePayload(file: File): Promise<ImportedThemePayload> {
+  const raw = JSON.parse(await file.text()) as Record<string, unknown>;
+  const payload = (raw.theme && typeof raw.theme === 'object' ? raw.theme : raw) as Record<string, unknown>;
+  const name = typeof payload.name === 'string' ? payload.name.trim() : '';
+  const displayNameValue = payload.display_name ?? payload.displayName;
+  const displayName = typeof displayNameValue === 'string' ? displayNameValue.trim() : '';
+  const description = typeof payload.description === 'string' ? payload.description : '';
+  const author = typeof payload.author === 'string' ? payload.author : '';
+  const tags = Array.isArray(payload.tags) ? payload.tags.map((tag) => String(tag).trim()).filter(Boolean) : [];
+  const basedOnValue = payload.based_on ?? payload.basedOn;
+  const basedOn = typeof basedOnValue === 'string' ? basedOnValue : '';
+  const colors = payload.colors;
+
+  if (!name || !displayName || !colors || typeof colors !== 'object') {
+    throw new Error('Theme file is missing a valid name, display name, or colors payload.');
+  }
+
+  return { name, displayName, description, author, tags, basedOn, colors: colors as ThemeColors };
+}
+
+function parseTagInput(value: string): string[] {
+  return value
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
+function sanitizeThemeName(name: string): string {
+  return name.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
+}
+
+function buildUniqueThemeName(baseName: string, themes: ThemePreset[]): string {
+  const sanitizedBase = sanitizeThemeName(baseName);
+  const existing = new Set(themes.map((theme) => sanitizeThemeName(theme.name)));
+
+  if (!existing.has(sanitizedBase)) {
+    return sanitizedBase;
+  }
+
+  let index = 2;
+  while (existing.has(`${sanitizedBase}_${index}`)) {
+    index += 1;
+  }
+
+  return `${sanitizedBase}_${index}`;
+}
+
+const palettePreviewKeys: Array<keyof ThemeColors> = [
+  'background',
+  'surface',
+  'accent',
+  'highlight',
+  'tui_primary',
+  'tok_brackets',
+];
+
+function isHexColor(value: string): boolean {
+  return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim());
+}
+
+function renderColorValue(value: string) {
+  return (
+    <div className="flex items-center gap-2">
+      <span
+        className="h-4 w-4 rounded-full border border-black/10"
+        style={{ backgroundColor: isHexColor(value) ? value : 'transparent' }}
+      />
+      <span className="font-mono text-xs">{value}</span>
+    </div>
+  );
+}
+
 export default function Themes() {
   const queryClient = useQueryClient();
   const importInputId = 'theme-import-input';
@@ -54,17 +164,21 @@ export default function Themes() {
   const [newThemeName, setNewThemeName] = useState('');
   const [newThemeDisplayName, setNewThemeDisplayName] = useState('');
   const [newThemeDescription, setNewThemeDescription] = useState('');
-  const [duplicateDraft, setDuplicateDraft] = useState<ThemeActionDraft | null>(null);
-  const [renameDraft, setRenameDraft] = useState<Omit<ThemeActionDraft, 'description'> | null>(null);
+  const [newThemeAuthor, setNewThemeAuthor] = useState('');
+  const [newThemeTags, setNewThemeTags] = useState('');
+  const [newThemeBasedOn, setNewThemeBasedOn] = useState('');
+  const [duplicateDraft, setDuplicateDraft] = useState<ThemeDuplicateDraft | null>(null);
+  const [renameDraft, setRenameDraft] = useState<ThemeRenameDraft | null>(null);
+  const [importDraft, setImportDraft] = useState<ThemeImportDraft | null>(null);
 
   const { data: config, isLoading: configLoading } = useQuery({
     queryKey: ['config'],
     queryFn: () => api.getConfig(),
   });
 
-  const { data: themes = [], isLoading: themesLoading } = useQuery({
+  const { data: themes = [], isLoading: themesLoading } = useQuery<ThemePresetRecord[]>({
     queryKey: ['themes'],
-    queryFn: () => api.getThemes(),
+    queryFn: () => api.getThemes() as Promise<ThemePresetRecord[]>,
   });
 
   const activeTheme = useMemo(
@@ -75,6 +189,41 @@ export default function Themes() {
   const resolvedCurrentTheme = useMemo(
     () => resolveThemeColors(activeTheme, config?.theme),
     [activeTheme, config?.theme]
+  );
+
+  const importDiffSections = useMemo(() => {
+    if (!importDraft) {
+      return [];
+    }
+
+    return EDITABLE_THEME_SECTIONS.map((section) => {
+      const changes = section.fields
+        .map((field) => {
+          const existingValue = importDraft.conflictTheme.colors[field.colorKey];
+          const importedValue = importDraft.imported.colors[field.colorKey];
+
+          if (existingValue === importedValue) {
+            return null;
+          }
+
+          return {
+            label: field.label,
+            existingValue,
+            importedValue,
+          };
+        })
+        .filter((value): value is { label: string; existingValue: string; importedValue: string } => Boolean(value));
+
+      return {
+        title: section.title,
+        changes,
+      };
+    }).filter((section) => section.changes.length > 0);
+  }, [importDraft]);
+
+  const importDiffCount = useMemo(
+    () => importDiffSections.reduce((count, section) => count + section.changes.length, 0),
+    [importDiffSections]
   );
 
   const invalidateThemeData = async () => {
@@ -94,6 +243,9 @@ export default function Themes() {
         name: newThemeName,
         display_name: newThemeDisplayName,
         description: newThemeDescription,
+        author: newThemeAuthor,
+        tags: parseTagInput(newThemeTags),
+        based_on: newThemeBasedOn,
         colors: resolvedCurrentTheme,
       });
     },
@@ -104,6 +256,9 @@ export default function Themes() {
       setNewThemeName('');
       setNewThemeDisplayName('');
       setNewThemeDescription('');
+      setNewThemeAuthor('');
+      setNewThemeTags('');
+      setNewThemeBasedOn('');
     },
     onError: (mutationError) => {
       setError(mutationError instanceof Error ? mutationError.message : 'Failed to create theme');
@@ -143,7 +298,7 @@ export default function Themes() {
   });
 
   const duplicateMutation = useMutation({
-    mutationFn: (draft: ThemeActionDraft) => themeApi.duplicateTheme(draft.sourceName, {
+    mutationFn: (draft: ThemeDuplicateDraft) => themeApi.duplicateTheme(draft.sourceName, {
       new_name: draft.newName,
       display_name: draft.displayName,
       description: draft.description,
@@ -161,7 +316,7 @@ export default function Themes() {
   });
 
   const renameMutation = useMutation({
-    mutationFn: (draft: Omit<ThemeActionDraft, 'description'>) => themeApi.renameTheme(draft.sourceName, {
+    mutationFn: (draft: ThemeRenameDraft) => themeApi.renameTheme(draft.sourceName, {
       new_name: draft.newName,
       display_name: draft.displayName,
     }),
@@ -207,11 +362,12 @@ export default function Themes() {
   });
 
   const importMutation = useMutation({
-    mutationFn: (file: File) => themeApi.importTheme(file),
+    mutationFn: ({ file, options }: { file: File; options?: ThemeImportOptions }) => themeApi.importTheme(file, options),
     onSuccess: async (theme) => {
       await invalidateThemeData();
       setNotice(`Imported theme preset ${theme.display_name}.`);
       setError(null);
+      setImportDraft(null);
     },
     onError: (mutationError) => {
       setError(mutationError instanceof Error ? mutationError.message : 'Failed to import theme');
@@ -224,13 +380,34 @@ export default function Themes() {
 
   const isBusy = createMutation.isPending || activateMutation.isPending || updateCurrentCustomMutation.isPending || duplicateMutation.isPending || renameMutation.isPending || deleteMutation.isPending || exportMutation.isPending || importMutation.isPending;
 
-  const handleImportChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
       return;
     }
 
-    importMutation.mutate(file);
+    try {
+      const imported = await readImportedThemePayload(file);
+      const existingTheme = themes.find((theme) => sanitizeThemeName(theme.name) === sanitizeThemeName(imported.name));
+
+      if (!existingTheme) {
+        importMutation.mutate({ file });
+      } else {
+        setImportDraft({
+          file,
+          imported,
+          conflictTheme: existingTheme,
+          targetName: buildUniqueThemeName(imported.name, themes),
+        });
+        setError(null);
+        setNotice(`Theme ${imported.displayName} conflicts with existing preset ${existingTheme.display_name}. Choose how to import it.`);
+      }
+    } catch (importError) {
+      setError(importError instanceof Error ? importError.message : 'Failed to read theme file');
+      setNotice(null);
+      setImportDraft(null);
+    }
+
     event.target.value = '';
   };
 
@@ -339,6 +516,38 @@ export default function Themes() {
               className="w-full rounded-md border border-input bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </label>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <label className="space-y-2 text-sm">
+              <span className="font-medium">Author</span>
+              <input
+                type="text"
+                value={newThemeAuthor}
+                onChange={(event) => setNewThemeAuthor(event.target.value)}
+                placeholder="e.g. Nyx"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </label>
+            <label className="space-y-2 text-sm">
+              <span className="font-medium">Based on</span>
+              <input
+                type="text"
+                value={newThemeBasedOn}
+                onChange={(event) => setNewThemeBasedOn(event.target.value)}
+                placeholder="e.g. dark"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </label>
+          </div>
+          <label className="mt-4 block space-y-2 text-sm">
+            <span className="font-medium">Tags</span>
+            <input
+              type="text"
+              value={newThemeTags}
+              onChange={(event) => setNewThemeTags(event.target.value)}
+              placeholder="warm, editorial, night"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </label>
 
           {resolvedCurrentTheme && (
             <div className="mt-4 rounded-lg border border-border bg-background/60 p-4">
@@ -392,6 +601,166 @@ export default function Themes() {
         </div>
       )}
 
+      {importDraft && (
+        <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                Import conflict detected
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {importDraft.imported.displayName} wants to use the preset name {sanitizeThemeName(importDraft.imported.name)}, which already exists as {importDraft.conflictTheme.display_name}.
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {importDiffCount === 0 ? 'The palettes are identical.' : `${importDiffCount} palette values differ across the imported and existing presets.`}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setImportDraft(null)}
+              className="rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
+            >
+              Dismiss
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-4 xl:grid-cols-2">
+            <div className="rounded-lg border border-border bg-background/60 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium">Existing preset</div>
+                  <div className="text-xs text-muted-foreground">{importDraft.conflictTheme.display_name}</div>
+                </div>
+                <div className="text-right text-xs text-muted-foreground">{importDraft.conflictTheme.name}</div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {palettePreviewKeys.map((key) => (
+                  <span key={`existing-${key}`} className="h-8 w-8 rounded-full border border-black/10" style={{ backgroundColor: importDraft.conflictTheme.colors[key] }} />
+                ))}
+              </div>
+              <div className="mt-3 text-xs text-muted-foreground">
+                {importDraft.conflictTheme.description || 'No description'}
+              </div>
+              {(importDraft.conflictTheme.author || importDraft.conflictTheme.based_on || importDraft.conflictTheme.tags.length > 0) && (
+                <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                  {importDraft.conflictTheme.author && <div>Author: {importDraft.conflictTheme.author}</div>}
+                  {importDraft.conflictTheme.based_on && <div>Based on: {importDraft.conflictTheme.based_on}</div>}
+                  {importDraft.conflictTheme.tags.length > 0 && <div>Tags: {importDraft.conflictTheme.tags.join(', ')}</div>}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-border bg-background/60 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium">Imported preset</div>
+                  <div className="text-xs text-muted-foreground">{importDraft.imported.displayName}</div>
+                </div>
+                <div className="text-right text-xs text-muted-foreground">{sanitizeThemeName(importDraft.imported.name)}</div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {palettePreviewKeys.map((key) => (
+                  <span key={`imported-${key}`} className="h-8 w-8 rounded-full border border-black/10" style={{ backgroundColor: importDraft.imported.colors[key] }} />
+                ))}
+              </div>
+              <div className="mt-3 text-xs text-muted-foreground">
+                {importDraft.imported.description || 'No description'}
+              </div>
+              {(importDraft.imported.author || importDraft.imported.basedOn || importDraft.imported.tags.length > 0) && (
+                <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                  {importDraft.imported.author && <div>Author: {importDraft.imported.author}</div>}
+                  {importDraft.imported.basedOn && <div>Based on: {importDraft.imported.basedOn}</div>}
+                  {importDraft.imported.tags.length > 0 && <div>Tags: {importDraft.imported.tags.join(', ')}</div>}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {importDiffSections.length > 0 && (
+            <div className="mt-4 rounded-lg border border-border bg-background/60 p-4">
+              <div className="text-sm font-medium">Palette diff</div>
+              <div className="mt-3 space-y-4">
+                {importDiffSections.map((section) => (
+                  <div key={section.title}>
+                    <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{section.title}</div>
+                    <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+                      <div className="text-xs font-medium text-muted-foreground">Field</div>
+                      <div className="text-xs font-medium text-muted-foreground">Existing</div>
+                      <div className="text-xs font-medium text-muted-foreground">Imported</div>
+                      {section.changes.map((change) => (
+                        <>
+                          <div key={`${section.title}-${change.label}-label`} className="rounded-md border border-border px-3 py-2 text-sm">
+                            {change.label}
+                          </div>
+                          <div key={`${section.title}-${change.label}-existing`} className="rounded-md border border-border px-3 py-2">
+                            {renderColorValue(change.existingValue)}
+                          </div>
+                          <div key={`${section.title}-${change.label}-imported`} className="rounded-md border border-border px-3 py-2">
+                            {renderColorValue(change.importedValue)}
+                          </div>
+                        </>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-[auto_1fr]">
+            {!importDraft.conflictTheme.is_builtin && (
+              <button
+                type="button"
+                onClick={() => importMutation.mutate({
+                  file: importDraft.file,
+                  options: {
+                    conflict_strategy: 'overwrite',
+                    target_name: importDraft.conflictTheme.name,
+                  },
+                })}
+                disabled={importMutation.isPending}
+                className="inline-flex items-center justify-center gap-2 rounded-md border border-input px-4 py-2 text-sm hover:bg-accent disabled:opacity-50"
+              >
+                {importMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Overwrite existing custom preset
+              </button>
+            )}
+
+            <div className="rounded-lg border border-border bg-background/60 p-4">
+              <div className="text-sm font-medium">Import as new preset</div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Built-in presets cannot be overwritten. Rename the imported preset and keep both versions.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-3">
+                <input
+                  type="text"
+                  value={importDraft.targetName}
+                  onChange={(event) => setImportDraft({ ...importDraft, targetName: event.target.value })}
+                  placeholder="new preset name"
+                  className="min-w-[220px] flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => importMutation.mutate({
+                    file: importDraft.file,
+                    options: {
+                      conflict_strategy: 'rename',
+                      target_name: importDraft.targetName,
+                    },
+                  })}
+                  disabled={importMutation.isPending || !importDraft.targetName.trim()}
+                  className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {importMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  Import renamed preset
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       <section className="space-y-4">
         <div>
           <h2 className="text-lg font-semibold">Available Themes</h2>
@@ -417,6 +786,13 @@ export default function Themes() {
                     </div>
                     <div className="text-xs text-muted-foreground">{theme.name}</div>
                     <p className="mt-2 text-sm text-muted-foreground">{theme.description || 'No description'}</p>
+                    {(theme.author || theme.based_on || theme.tags.length > 0) && (
+                      <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                        {theme.author && <div>Author: {theme.author}</div>}
+                        {theme.based_on && <div>Based on: {theme.based_on}</div>}
+                        {theme.tags.length > 0 && <div>Tags: {theme.tags.join(', ')}</div>}
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     {[theme.colors.background, theme.colors.surface, theme.colors.accent, theme.colors.tui_primary].map((color) => (

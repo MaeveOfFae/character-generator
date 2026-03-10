@@ -8,6 +8,8 @@ from bpui.core.theme import (
     ThemeDefinition,
     ThemeColors,
     BUILTIN_THEMES,
+    create_custom_theme,
+    import_theme_definition,
     load_theme_from_config,
     list_available_themes,
     save_theme_selection,
@@ -43,11 +45,17 @@ class TestThemeDefinition:
         theme = ThemeDefinition(
             name="test",
             display_name="Test Theme",
+            author="Nyx",
+            tags=["warm", "editorial"],
+            based_on="dark",
             colors=colors,
         )
         
         assert theme.name == "test"
         assert theme.display_name == "Test Theme"
+        assert theme.author == "Nyx"
+        assert theme.tags == ["warm", "editorial"]
+        assert theme.based_on == "dark"
         assert theme.colors.background == "#000000"
         assert theme.colors.tok_brackets == "#aaa"
         assert theme.colors.tui_primary == "#111"
@@ -242,6 +250,151 @@ class TestSaveThemeSelection:
         # Reload config
         config2 = Config(config_path)
         assert config2.theme_name == "nyx"
+
+
+class TestThemeImport:
+    """Test reusable theme import behavior."""
+
+    def test_import_theme_rejects_conflict_by_default(self, monkeypatch):
+        monkeypatch.setattr("bpui.core.theme.theme_exists", lambda name: name == "ember_night")
+
+        with pytest.raises(ValueError, match="already exists"):
+            import_theme_definition(
+                name="ember_night",
+                display_name="Imported Ember",
+                description="",
+                colors=BUILTIN_THEMES["light"].to_dict()["colors"],
+            )
+
+    def test_import_theme_can_rename_on_conflict(self, monkeypatch):
+        created = {}
+
+        def fake_theme_exists(name):
+            return name == "ember_night"
+
+        def fake_create_custom_theme(**kwargs):
+            created.update(kwargs)
+            return ThemeDefinition(
+                name=kwargs["name"],
+                display_name=kwargs["display_name"],
+                description=kwargs.get("description", ""),
+                author=kwargs.get("author", ""),
+                tags=kwargs.get("tags", []),
+                based_on=kwargs.get("based_on", ""),
+                is_builtin=False,
+                colors=ThemeColors(**kwargs["colors"]),
+            )
+
+        monkeypatch.setattr("bpui.core.theme.theme_exists", fake_theme_exists)
+        monkeypatch.setattr("bpui.core.theme.create_custom_theme", fake_create_custom_theme)
+
+        imported = import_theme_definition(
+            name="ember_night",
+            display_name="Imported Ember",
+            description="",
+            author="Nyx",
+            tags=["warm", "night"],
+            based_on="dark",
+            colors=BUILTIN_THEMES["light"].to_dict()["colors"],
+            conflict_strategy="rename",
+        )
+
+        assert imported.name == "ember_night_2"
+        assert imported.display_name == "Imported Ember"
+        assert imported.author == "Nyx"
+        assert imported.tags == ["warm", "night"]
+        assert imported.based_on == "dark"
+        assert created["name"] == "ember_night_2"
+
+    def test_import_theme_can_overwrite_custom_theme(self, monkeypatch):
+        updated = {}
+
+        def fake_update_custom_theme(**kwargs):
+            updated.update(kwargs)
+            return ThemeDefinition(
+                name=kwargs["name"],
+                display_name=kwargs["display_name"],
+                description=kwargs["description"],
+                author=kwargs.get("author", ""),
+                tags=kwargs.get("tags", []),
+                based_on=kwargs.get("based_on", ""),
+                is_builtin=False,
+                colors=ThemeColors(**kwargs["colors"]),
+            )
+
+        monkeypatch.setattr("bpui.core.theme.theme_exists", lambda name: name == "ember_night")
+        monkeypatch.setattr("bpui.core.theme._ensure_custom_theme", lambda name: None)
+        monkeypatch.setattr("bpui.core.theme.update_custom_theme", fake_update_custom_theme)
+
+        imported = import_theme_definition(
+            name="ember_night",
+            display_name="Overwritten Ember",
+            description="Updated",
+            author="Nyx",
+            tags=["warm"],
+            based_on="dark",
+            colors=BUILTIN_THEMES["light"].to_dict()["colors"],
+            conflict_strategy="overwrite",
+        )
+
+        assert imported.name == "ember_night"
+        assert imported.display_name == "Overwritten Ember"
+        assert imported.description == "Updated"
+        assert imported.author == "Nyx"
+        assert imported.tags == ["warm"]
+        assert imported.based_on == "dark"
+        assert imported.colors.background == BUILTIN_THEMES["light"].colors.background
+        assert updated["name"] == "ember_night"
+
+    def test_import_theme_cannot_overwrite_builtin_theme(self, monkeypatch):
+        monkeypatch.setattr("bpui.core.theme.theme_exists", lambda name: name == "dark")
+        monkeypatch.setattr(
+            "bpui.core.theme._ensure_custom_theme",
+            lambda name: (_ for _ in ()).throw(ValueError("Built-in theme 'dark' cannot be modified")),
+        )
+
+        with pytest.raises(ValueError, match="cannot be modified"):
+            import_theme_definition(
+                name="dark",
+                display_name="Dark Override",
+                description="",
+                colors=BUILTIN_THEMES["light"].to_dict()["colors"],
+                conflict_strategy="overwrite",
+            )
+
+    def test_import_theme_uses_requested_rename_target(self, monkeypatch):
+        created = {}
+
+        def fake_create_custom_theme(**kwargs):
+            created.update(kwargs)
+            return ThemeDefinition(
+                name=kwargs["name"],
+                display_name=kwargs["display_name"],
+                description=kwargs.get("description", ""),
+                author=kwargs.get("author", ""),
+                tags=kwargs.get("tags", []),
+                based_on=kwargs.get("based_on", ""),
+                is_builtin=False,
+                colors=ThemeColors(**kwargs["colors"]),
+            )
+
+        monkeypatch.setattr("bpui.core.theme.theme_exists", lambda name: name == "ember_night")
+        monkeypatch.setattr("bpui.core.theme.create_custom_theme", fake_create_custom_theme)
+
+        imported = import_theme_definition(
+            name="ember_night",
+            display_name="Imported Ember",
+            description="",
+            author="Nyx",
+            tags=["warm", "night"],
+            based_on="dark",
+            colors=BUILTIN_THEMES["light"].to_dict()["colors"],
+            conflict_strategy="rename",
+            target_name="ember_night_variant",
+        )
+
+        assert imported.name == "ember_night_variant"
+        assert created["name"] == "ember_night_variant"
 
 
 class TestTUIThemeManager:

@@ -42,6 +42,7 @@ import type {
   ThemePresetUpdate,
   ThemeDuplicateRequest,
   ThemeRenameRequest,
+  ThemeImportRequest,
 } from '../types';
 
 export interface DownloadResponse {
@@ -160,9 +161,15 @@ export class CharacterGeneratorAPI {
     );
   }
 
-  async importTheme(file: File): Promise<ThemePreset> {
+  async importTheme(file: File, options: ThemeImportRequest = {}): Promise<ThemePreset> {
     const formData = new FormData();
     formData.append('file', file);
+    if (options.conflict_strategy) {
+      formData.append('conflict_strategy', options.conflict_strategy);
+    }
+    if (options.target_name) {
+      formData.append('target_name', options.target_name);
+    }
 
     const response = await fetch(`${this.baseUrl}/config/themes/import`, {
       method: 'POST',
