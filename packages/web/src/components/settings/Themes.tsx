@@ -24,6 +24,9 @@ interface ThemeDuplicateDraft {
   newName: string;
   displayName: string;
   description: string;
+  author: string;
+  tags: string;
+  basedOn: string;
 }
 
 interface ThemeRenameDraft {
@@ -93,6 +96,9 @@ type ThemeApi = typeof api & {
     new_name: string;
     display_name?: string;
     description?: string;
+    author?: string;
+    tags?: string[];
+    based_on?: string;
   }) => Promise<ThemePreset>;
   renameTheme: (name: string, request: { new_name: string; display_name?: string }) => Promise<ThemePreset>;
   deleteTheme: (name: string) => Promise<{ status: string; name: string }>;
@@ -343,6 +349,9 @@ export default function Themes() {
       new_name: draft.newName,
       display_name: draft.displayName,
       description: draft.description,
+      author: draft.author,
+      tags: parseTagInput(draft.tags),
+      based_on: draft.basedOn,
     }),
     onSuccess: async (theme) => {
       await invalidateThemeData();
@@ -1029,6 +1038,9 @@ export default function Themes() {
                       newName: `${theme.name}_copy`,
                       displayName: `${theme.display_name} Copy`,
                       description: theme.description,
+                      author: theme.author,
+                      tags: theme.tags.join(', '),
+                      basedOn: theme.based_on,
                     })}
                     disabled={isBusy}
                     className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
@@ -1169,6 +1181,29 @@ export default function Themes() {
                       value={duplicateDraft.description}
                       onChange={(event) => setDuplicateDraft({ ...duplicateDraft, description: event.target.value })}
                       rows={2}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    />
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <input
+                        type="text"
+                        value={duplicateDraft.author}
+                        onChange={(event) => setDuplicateDraft({ ...duplicateDraft, author: event.target.value })}
+                        placeholder="author"
+                        className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      />
+                      <input
+                        type="text"
+                        value={duplicateDraft.basedOn}
+                        onChange={(event) => setDuplicateDraft({ ...duplicateDraft, basedOn: event.target.value })}
+                        placeholder="based on"
+                        className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      value={duplicateDraft.tags}
+                      onChange={(event) => setDuplicateDraft({ ...duplicateDraft, tags: event.target.value })}
+                      placeholder="warm, editorial, night"
                       className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     />
                     <div className="flex justify-end gap-2">
