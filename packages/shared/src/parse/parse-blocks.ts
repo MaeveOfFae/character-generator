@@ -3,8 +3,17 @@
  * Extracts and validates assets from LLM-generated content.
  */
 
+import type {
+  AssetDefinition as TypesAssetDefinition,
+  Template as TypesTemplate,
+} from '../types';
+
+// Re-export types from types/index with local type names to avoid conflicts
+export type AssetDefinition = TypesAssetDefinition;
+export type Template = TypesTemplate;
+
 // Ordered asset names as they appear in output
-export const ASSET_ORDER = [
+export const ASSET_ORDER: ReadonlyArray<AssetName> = [
   'system_prompt',
   'post_history',
   'character_sheet',
@@ -14,34 +23,7 @@ export const ASSET_ORDER = [
   'suno',
 ] as const;
 
-// Default filename mapping (can be overridden by templates)
-export const DEFAULT_ASSET_FILENAMES = {
-  system_prompt: 'system_prompt.txt',
-  post_history: 'post_history.txt',
-  character_sheet: 'character_sheet.txt',
-  intro_scene: 'intro_scene.txt',
-  intro_page: 'intro_page.md',
-  a1111: 'a1111_prompt.txt',
-  suno: 'suno_prompt.txt',
-} as const;
-
 export type AssetName = typeof ASSET_ORDER[number];
-
-export interface AssetDefinition {
-  name: string;
-  required: boolean;
-  dependsOn: string[];
-  description: string;
-  blueprintFile?: string;
-}
-
-export interface Template {
-  name: string;
-  version: string;
-  description: string;
-  assets: AssetDefinition[];
-  isOfficial?: boolean;
-}
 
 export interface ParseResult {
   assets: Record<string, string>;
@@ -54,6 +36,27 @@ export class ParseError extends Error {
     this.name = 'ParseError';
   }
 }
+
+// Asset order for parsing
+const DEFAULT_ASSET_ORDER: AssetName[] = [
+  'system_prompt',
+  'post_history',
+  'character_sheet',
+  'intro_scene',
+  'intro_page',
+  'a1111',
+];
+
+// Default filename mapping (can be overridden by templates)
+export const DEFAULT_ASSET_FILENAMES: Record<AssetName, string> = {
+  system_prompt: 'system_prompt.txt',
+  post_history: 'post_history.txt',
+  character_sheet: 'character_sheet.txt',
+  intro_scene: 'intro_scene.txt',
+  intro_page: 'intro_page.md',
+  a1111: 'a1111_prompt.txt',
+  suno: 'suno_prompt.txt',
+};
 
 /**
  * Extract all fenced codeblocks from text.
@@ -74,7 +77,7 @@ export function extractCodeblocks(text: string): string[] {
  * @returns Dict mapping asset names to content
  * @throws ParseError if output doesn't match expected structure
  */
-export function parseBlueprintOutput(text: string, template?: Template): ParseResult {
+export function parseBlueprintOutput(text: string, template?: TypesTemplate): ParseResult {
   const blocks = extractCodeblocks(text);
 
   if (blocks.length === 0) {
@@ -97,7 +100,7 @@ export function parseBlueprintOutput(text: string, template?: Template): ParseRe
   if (template && template.assets.length > 0) {
     expectedAssets = template.assets.map(a => a.name as AssetName);
   } else {
-    expectedAssets = ASSET_ORDER.slice(0, 6); // Default V2/V3 Card (no suno)
+    expectedAssets = DEFAULT_ASSET_ORDER;
   }
 
   const expectedCount = expectedAssets.length;
@@ -109,15 +112,15 @@ export function parseBlueprintOutput(text: string, template?: Template): ParseRe
       .map((b, i) => `  Block ${i}: ${b.substring(0, 75)}${b.length > 75 ? '...' : ''}`)
       .join('\n');
 
+    let errorMessage = `Expected ${expectedCount} asset blocks, found ${assetBlocks.length}. `;
+    errorMessage += `Template requires order: ${expectedAssets.join(', ')}\n`;
+    errorMessage += `Actual blocks found:\n${blockPreviews}`;
+
     if (assetBlocks.length > 3) {
-      blockPreviews += `\n  ... and ${assetBlocks.length - 3} more blocks`;
+      errorMessage += `\n  ... and ${assetBlocks.length - 3} more blocks`;
     }
 
-    throw new ParseError(
-      `Expected ${expectedCount} asset blocks, found ${assetBlocks.length}. ` +
-      `Template requires order: ${expectedAssets.join(', ')}\n` +
-      `Actual blocks found:\n${blockPreviews}`
-    );
+    throw new ParseError(errorMessage);
   }
 
   // Map blocks to asset names
@@ -141,7 +144,7 @@ export function parseBlueprintOutput(text: string, template?: Template): ParseRe
 /**
  * Extract a single asset from LLM output.
  */
-export function extractSingleAsset(output: string, assetName: string): string {
+export function extractSingleAsset(output: string, assetName: AssetName): string {
   const blocks = extractCodeblocks(output);
 
   if (!blocks.length) {
@@ -200,8 +203,8 @@ export function inferCharacterDisplayNameFromAssets(
   assets: Record<string, string>,
   preferredAssets: Iterable<string> = ['character_sheet', 'char_basic_info']
 ): string | null {
-  const orderedAssetNames: string[] = [];
-  const seen = new Set<string>();
+  const orderedAssetNames: AssetName[] = [];
+  const seen = new Set<AssetName>();
 
   for (const asset of preferredAssets) {
     if (asset in assets && !seen.has(asset)) {
@@ -241,14 +244,14 @@ export function inferCharacterNameFromAssets(
 // Content Validation
 // ============================================================================
 
-const PLACEHOLDER_PATTERNS: Array<[string, RegExp]> = [
+const PLACEHOLDER_PATTERNS: ReadonlyArray<[string, RegExp]> = [
   ['{PLACEHOLDER}', /\{PLACEHOLDER\}/g],
   ['Suno {TITLE}', /\{TITLE\}/g],
   [
     'Suno other {..}',
     /\{GENRE\}|\{STYLE\}|\{MOOD\}|\{ENERGY\}|\{TEMPO\}|\{BPM\}|\{TEXTURE\}|\{Remaster Style\}/g,
   ],
-  ['A1111 slot ((...))', /\(\(\.\.\.\)\)/g],
+  ['A1111 slot ((...))', /\(\(\.\.\)\)/g],
   [
     'A1111 any slot ((...something...)) left',
     /\(\([^\)]*\.\.\.[^\)]*\)/g,
@@ -257,18 +260,18 @@ const PLACEHOLDER_PATTERNS: Array<[string, RegExp]> = [
     'Character sheet bracket placeholders',
     /\[(?!\")["'][A-Z][^\]]*\]/g,
   ],
-];
+] as const;
 
-const USER_AUTHORITY_PATTERNS: Array<[string, RegExp]> = [
+const USER_AUTHORITY_PATTERNS: ReadonlyArray<[string, RegExp]> = [
   [
     'Narrates {{user}} action/thought/consent',
-    /\{\{user\}\}\s+(?:is|was|feels?|felt|thinks?|thought|decides?|decided|knows?|knew|wants?|wanted|says?|said|nods?|smiles?|walks?|steps?|looks?|touches?|takes?|gives?|allows?|consents?|agrees?|gasps?|moans?)\b/gi,
+    /\{\{user\}\}\s+(?:is|was|feels?|felt|thinks?|thought|decides?|decided|knows?|knows?|wants?|wanted|says?|said|nods?|smiles?|walks?|steps?|looks?|touches?|takes?|gives?|allows?|consents?|agrees?|gasps?|moans?)\b/gi,
   ],
   [
     'Narrates {{user}} internal state',
     /\{\{user\}\}'s\s+(?:mind|thoughts?|feelings?|emotions?|desire|consent|decision|reaction|actions?)\b/gi,
   ],
-];
+] as const;
 
 const INSTRUCTIONAL_USER_REFERENCE_PATTERN = /(?:never|do not|don't|avoid|without)\s+(?:narrat(?:e|ing)|describ(?:e|ing)|assign(?:ing)?)\s*$/gi;
 
@@ -314,7 +317,7 @@ function detectUserAuthorityIssues(text: string): string[] {
 /**
  * Validate a generated asset's content and return issue labels.
  */
-export function validateAssetContent(assetName: string, content: string): string[] {
+export function validateAssetContent(assetName: AssetName, content: string): string[] {
   let filename = `${assetName}.txt`;
   if (assetName === 'intro_page') filename = 'intro_page.md';
   if (assetName === 'character_sheet') filename = CHARACTER_SHEET_FILENAME;
@@ -330,7 +333,7 @@ export function validateAssetContent(assetName: string, content: string): string
 export function validateAssetsContent(assets: Record<string, string>): Record<string, string[]> | null {
   const failures: Record<string, string[]> = {};
   for (const [assetName, content] of Object.entries(assets)) {
-    const issues = validateAssetContent(assetName, content);
+    const issues = validateAssetContent(assetName as AssetName, content);
     if (issues.length > 0) {
       failures[assetName] = issues;
     }

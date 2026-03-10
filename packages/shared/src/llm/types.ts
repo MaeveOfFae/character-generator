@@ -23,7 +23,7 @@ export interface LLMConfig {
   timeout?: number;
 }
 
-export interface ChatMessage {
+export interface LLMChatMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
 }
@@ -56,7 +56,7 @@ export interface StreamGenerateOptions extends GenerateOptions {
   signal?: AbortSignal;
 }
 
-export interface ConnectionTestResult {
+export interface LLMConnectionTestResult {
   success: boolean;
   latencyMs?: number;
   error?: string;
@@ -71,7 +71,7 @@ export interface LLMEngine {
    * Generate a completion (non-streaming)
    */
   generate(
-    messages: ChatMessage[],
+    messages: LLMChatMessage[],
     options?: GenerateOptions
   ): Promise<GenerateResult>;
 
@@ -79,22 +79,22 @@ export interface LLMEngine {
    * Generate a completion with streaming
    */
   generateStream(
-    messages: ChatMessage[],
+    messages: LLMChatMessage[],
     options?: StreamGenerateOptions
   ): AsyncIterable<StreamChunk>;
 
   /**
-   * Test connection to the LLM provider
+   * Test connection to LLM provider
    */
-  testConnection(): Promise<ConnectionTestResult>;
+  testConnection(): Promise<LLMConnectionTestResult>;
 
   /**
-   * Get the provider type
+   * Get provider type
    */
   getProvider(): LLMProvider;
 
   /**
-   * Get the model name
+   * Get model name
    */
   getModel(): string;
 }

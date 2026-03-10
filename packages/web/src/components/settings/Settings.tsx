@@ -1,23 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Save,
-  TestTube,
-  Loader2,
-  CheckCircle,
+  CheckCircle2,
   XCircle,
   Eye,
   EyeOff,
-  RefreshCw,
-  Palette,
-  Upload,
   Download,
+  Upload,
   RotateCcw,
   Shield,
-  ShieldAlert,
+  Zap,
+  Palette,
+  Lock,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { api, type Config, type ModelInfo, type ThemeOverride, type ThemePreset } from '@char-gen/shared';
+import { api, type Config, type ThemeOverride, type ThemePreset } from '@char-gen/shared';
 import { useThemePreview } from '../common/ThemeProvider';
 import {
   EDITABLE_THEME_SECTIONS,
@@ -31,16 +29,10 @@ type Provider = typeof ALL_PROVIDERS[number];
 const API_KEYS_STORAGE_KEY = 'bpui.web.apiKeys';
 
 function loadBrowserApiKeys(): Record<string, string> {
-  if (typeof window === 'undefined') {
-    return {};
-  }
-
+  if (typeof window === 'undefined') return {};
   try {
     const raw = window.localStorage.getItem(API_KEYS_STORAGE_KEY);
-    if (!raw) {
-      return {};
-    }
-
+    if (!raw) return {};
     const parsed = JSON.parse(raw) as Record<string, string>;
     return Object.fromEntries(
       Object.entries(parsed).filter(([, value]) => typeof value === 'string')
@@ -51,14 +43,10 @@ function loadBrowserApiKeys(): Record<string, string> {
 }
 
 function saveBrowserApiKeys(apiKeys: Record<string, string | undefined>): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
+  if (typeof window === 'undefined') return;
   const cleaned = Object.fromEntries(
     Object.entries(apiKeys).filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
   );
-
   window.localStorage.setItem(API_KEYS_STORAGE_KEY, JSON.stringify(cleaned));
 }
 
@@ -117,8 +105,17 @@ function buildThemeOverrideFromColors(colors: ThemePreset['colors']): ThemeOverr
   } as ThemeOverride;
 }
 
+// Provider colors for badges
+const PROVIDER_COLORS: Record<Provider, string> = {
+  openai: 'from-emerald-500 to-green-500',
+  google: 'from-blue-500 to-cyan-500',
+  openrouter: 'from-violet-500 to-purple-500',
+  deepseek: 'from-cyan-500 to-teal-500',
+  zai: 'from-pink-500 to-rose-500',
+  moonshot: 'from-orange-500 to-amber-500',
+};
+
 export default function Settings() {
-  const queryClient = useQueryClient();
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const { themes, isLoading: themesLoading, previewTheme, clearPreview } = useThemePreview();
 
@@ -129,7 +126,6 @@ export default function Settings() {
   const [themeNotice, setThemeNotice] = useState<string | null>(null);
   const [themeError, setThemeError] = useState<string | null>(null);
   const [persistKeys, setPersistKeys] = useState(false);
-  const [useClientSide, setUseClientSide] = useState(true);
 
   // Load config from client-side manager
   useEffect(() => {
@@ -158,7 +154,6 @@ export default function Settings() {
     configManager.updateConfig(persistedConfig);
     configManager.setPersistApiKeys(persistKeys);
 
-    // Save API keys to config manager
     if (localConfig.api_keys) {
       configManager.setApiKeys(localConfig.api_keys);
     }
@@ -208,7 +203,7 @@ export default function Settings() {
         setTestResult({
           provider,
           success: true,
-          message: `Connected! Latency: ${latency.toFixed(0)}ms`,
+          message: `${latency.toFixed(0)}ms`,
         });
       } else {
         setTestResult({
@@ -234,10 +229,6 @@ export default function Settings() {
     };
   }, [previewTheme, clearPreview, selectedThemeName, localConfig.theme]);
 
-  const handleSave = () => {
-    updateConfig();
-  };
-
   const handleTest = (provider: string) => {
     testConnection(provider);
   };
@@ -252,7 +243,6 @@ export default function Settings() {
         ...(previous.api_keys || {}),
         [provider]: value,
       };
-      // Also update the config manager
       configManager.setApiKey(provider, value);
       return {
         ...previous,
@@ -289,7 +279,7 @@ export default function Settings() {
     key: string,
     value: string
   ) => {
-    const themeSections = (localConfig.theme ?? {}) as ThemeOverrideDraft & Record<string, Record<string, string | undefined> | undefined>;
+    const themeSections = (localConfig.theme ?? {}) as ThemeOverrideDraft & Record<string, Record<string, string | undefined> | undefined;
     const sectionValues = themeSections[section] ?? {};
     const nextTheme = {
       ...localConfig.theme,
@@ -305,7 +295,7 @@ export default function Settings() {
   };
 
   const getThemeOverrideValue = (section: 'app' | 'tokenizer' | 'tui', key: string) => {
-    const themeSections = (localConfig.theme ?? {}) as ThemeOverrideDraft & Record<string, Record<string, string | undefined> | undefined>;
+    const themeSections = (localConfig.theme ?? {}) as ThemeOverrideDraft & Record<string, Record<string, string | undefined> | undefined;
     const sectionValues = themeSections[section] as Record<string, string | undefined> | undefined;
     return sectionValues?.[key] || '';
   };
@@ -342,9 +332,7 @@ export default function Settings() {
 
   const handleImportTheme = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     try {
       const raw = await file.text();
@@ -368,228 +356,328 @@ export default function Settings() {
     }
   };
 
-  // Removed loading check - we now use local config
-
   const currentModel = localConfig.model || '';
 
   return (
-    <div className="max-w-5xl space-y-6">
-      <div>
+    <div className="mx-auto max-w-6xl space-y-8 pb-8">
+      {/* Header */}
+      <div className="text-center space-y-2 mb-8">
         <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground">
-          Configure providers, generation defaults, and the active application theme.
+        <p className="text-muted-foreground max-w-2xl mx-auto">
+          Configure providers, generation defaults, and customize your theme.
         </p>
       </div>
 
-      <div className="rounded-lg border border-border bg-card">
-        <div className="border-b border-border p-4">
-          <h2 className="text-lg font-semibold">API Keys</h2>
-          <p className="text-sm text-muted-foreground">
-            Configure your LLM provider API keys. Keys stay in this browser only and are sent with each request.
-          </p>
-        </div>
-        <div className="space-y-4 p-4">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={persistKeys}
-              onChange={(e) => handlePersistKeysToggle(e.target.checked)}
-              className="h-4 w-4 rounded border-input"
-            />
-            <span>Save API keys to browser storage (requires encryption warning)</span>
-          </label>
-          {persistKeys && (
-            <p className="text-xs text-yellow-600">
-              Warning: API keys are stored in localStorage. Clearing browser data will remove them. Use with caution on shared devices.
-            </p>
-          )}
-          {ALL_PROVIDERS.map((provider) => (
-            <div key={provider} className="space-y-2">
-              <label className="text-sm font-medium capitalize">{provider}</label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <input
-                    type={showKeys[provider] ? 'text' : 'password'}
-                    value={localConfig.api_keys?.[provider] || ''}
-                    onChange={(e) => handleApiKeyChange(provider, e.target.value)}
-                    placeholder={`Enter your ${provider} API key`}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => toggleShowKey(provider)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showKeys[provider] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                <button
-                  onClick={() => handleTest(provider)}
-                  className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
-                >
-                  <TestTube className="h-4 w-4" />
-                  Test
-                </button>
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* API Keys Section */}
+        <section className="lg:col-span-2 space-y-4">
+          <div className="rounded-2xl border border-border/50 bg-card/50 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-primary to-accent">
+                <Lock className="h-5 w-5 text-white" />
               </div>
-              {testResult?.provider === provider && (
-                <div className={`flex items-center gap-2 text-sm ${testResult.success ? 'text-green-500' : 'text-destructive'}`}>
-                  {testResult.success ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                  {testResult.message}
+              <div>
+                <h2 className="text-xl font-bold">API Keys</h2>
+                <p className="text-sm text-muted-foreground">
+                  Keys stay in browser and are sent with each request.
+                </p>
+              </div>
+            </div>
+
+            <label className="flex items-center gap-3 p-3 rounded-lg bg-background/60 hover:bg-background/80 transition-colors cursor-pointer">
+              <input
+                type="checkbox"
+                checked={persistKeys}
+                onChange={(e) => handlePersistKeysToggle(e.target.checked)}
+                className="h-5 w-5 rounded border-input"
+              />
+              <span className="text-sm font-medium">
+                Save API keys to browser storage
+              </span>
+            </label>
+
+            {persistKeys && (
+              <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3">
+                <p className="text-sm text-amber-900 dark:text-amber-100">
+                  Warning: API keys are stored in localStorage. Clearing browser data will remove them. Use with caution on shared devices.
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {ALL_PROVIDERS.map((provider) => (
+                <div key={provider} className="space-y-2">
+                  <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {provider}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showKeys[provider] ? 'text' : 'password'}
+                      value={localConfig.api_keys?.[provider] || ''}
+                      onChange={(e) => handleApiKeyChange(provider, e.target.value)}
+                      placeholder={`Enter your ${provider} API key`}
+                      className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 pr-10 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-primary/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleTest(provider)}
+                      disabled={!localConfig.api_keys?.[provider]}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
+                    >
+                      {testResult?.provider === provider ? (
+                        <div className={`flex items-center gap-2 ${testResult.success ? 'text-green-500' : 'text-destructive'}`}>
+                          {testResult.success ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                          <span className="text-xs">{testResult.message}</span>
+                        </div>
+                      ) : (
+                        <Zap className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </button>
+                  </div>
                 </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Model Selection */}
+        <section className="space-y-4">
+          <div className="rounded-2xl border border-border/50 bg-card/50 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`p-2 rounded-xl bg-gradient-to-br ${PROVIDER_COLORS[selectedProvider]}`}>
+                <Zap className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">Model</h2>
+                <p className="text-sm text-muted-foreground">
+                  Choose your preferred LLM provider and model.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Provider</label>
+                <select
+                  value={selectedProvider}
+                  onChange={(e) => setSelectedProvider(e.target.value as Provider)}
+                  className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-primary/20"
+                >
+                  {ALL_PROVIDERS.map((provider) => (
+                    <option key={provider} value={provider}>
+                      {provider.charAt(0).toUpperCase() + provider.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Model</label>
+                <select
+                  value={currentModel}
+                  onChange={(e) => handleModelSelect(e.target.value)}
+                  className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-primary/20"
+                >
+                  <option value="">Select a model...</option>
+                  {modelSuggestions.map((model: string) => (
+                    <option key={model} value={model}>
+                      {model}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Or enter custom model ID</label>
+                <input
+                  type="text"
+                  value={currentModel}
+                  onChange={(e) => handleModelSelect(e.target.value)}
+                  placeholder="e.g., openrouter/openai/gpt-4o-mini"
+                  className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-primary/20"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Use format: provider/model-name
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Temperature</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="0.1"
+                  value={localConfig.temperature ?? 0.7}
+                  onChange={(e) => setLocalConfig((previous) => ({ ...previous, temperature: parseFloat(e.target.value) }))}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <span>Focused (0.0)</span>
+                  <span>Creative (2.0)</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Max Tokens</label>
+                <input
+                  type="number"
+                  value={localConfig.max_tokens ?? 4096}
+                  onChange={(e) => setLocalConfig((previous) => ({ ...previous, max_tokens: parseInt(e.target.value, 10) || 0 }))}
+                  className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {/* Batch Settings */}
+      <section className="rounded-2xl border border-border/50 bg-card/50 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 rounded-xl bg-gradient-to-br from-slate-600 to-slate-700">
+            <Zap className="h-5 w-5 text-white" />
+          </div>
+          <h2 className="text-xl font-bold">Batch Generation</h2>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Max Concurrent</label>
+            <input
+              type="number"
+              min="1"
+              max="10"
+              value={localConfig.batch?.max_concurrent ?? 3}
+              onChange={(e) =>
+                setLocalConfig((previous) => ({
+                  ...previous,
+                  batch: {
+                    ...(previous.batch || { max_concurrent: 3, rate_limit_delay: 1 }),
+                    max_concurrent: parseInt(e.target.value, 10) || 1,
+                  },
+                }))
+              }
+              className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Rate Limit Delay</label>
+            <input
+              type="number"
+              min="0"
+              max="60"
+              step="0.5"
+              value={localConfig.batch?.rate_limit_delay ?? 1}
+              onChange={(e) =>
+                setLocalConfig((previous) => ({
+                  ...previous,
+                  batch: {
+                    ...(previous.batch || { max_concurrent: 3, rate_limit_delay: 1 }),
+                    rate_limit_delay: parseFloat(e.target.value) || 0,
+                  },
+                }))
+              }
+              className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Theme Section */}
+      <section className="rounded-2xl border border-border/50 bg-card/50 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500">
+            <Palette className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">Theme Studio</h2>
+            <p className="text-sm text-muted-foreground">
+              Load a preset, tweak key colors, and export as JSON.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          {/* Preset Selection */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium uppercase tracking-wider text-muted-foreground mb-3">Presets</h3>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {themesLoading ? (
+                <div className="col-span-full flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="h-4 w-4 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                  Loading theme presets...
+                </div>
+              ) : (
+                themes.map((theme) => {
+                  const isSelected = theme.name === selectedThemeName;
+                  return (
+                    <button
+                      key={theme.name}
+                      type="button"
+                      onClick={() => handleThemePresetSelect(theme.name)}
+                      className={`relative overflow-hidden rounded-xl p-4 text-left transition-all duration-200 hover:scale-105 ${
+                        isSelected ? 'bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-lg shadow-primary/20' : 'bg-background/50 border border-border/50 hover:border-primary/50 hover:bg-accent/50'
+                      }`}
+                    >
+                      {isSelected && (
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/5 -z-10" />
+                      )}
+                      <div className="relative">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="space-y-0.5">
+                            <div className="font-semibold">{theme.display_name}</div>
+                            <div className="text-xs text-muted-foreground">{theme.name}</div>
+                          </div>
+                          {isSelected && <CheckCircle2 className="h-4 w-4" />}
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-2">{theme.description || 'No description'}</p>
+                        <div className="flex gap-2 mt-3">
+                          {[theme.colors.background, theme.colors.surface, theme.colors.accent, theme.colors.highlight].map((color) => (
+                            <span
+                              key={`${theme.name}-${color}`}
+                              className="h-6 w-6 rounded-full border border-border/50"
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })
               )}
             </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="rounded-lg border border-border bg-card">
-        <div className="border-b border-border p-4">
-          <h2 className="text-lg font-semibold">Model Selection</h2>
-          <p className="text-sm text-muted-foreground">
-            Choose your preferred model and engine. Models are fetched dynamically from providers.
-          </p>
-        </div>
-        <div className="space-y-4 p-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Provider</label>
-            <select
-              value={selectedProvider}
-              onChange={(e) => setSelectedProvider(e.target.value as Provider)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {ALL_PROVIDERS.map((provider) => (
-                <option key={provider} value={provider}>
-                  {provider.charAt(0).toUpperCase() + provider.slice(1)}
-                </option>
-              ))}
-            </select>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Engine</label>
-              <select
-                value={localConfig.engine || 'auto'}
-                onChange={(e) => setLocalConfig((previous) => ({ ...previous, engine: e.target.value as Config['engine'] }))}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="auto">Auto (detect from model)</option>
-                <option value="openai">OpenAI</option>
-                <option value="google">Google</option>
-                <option value="openai_compatible">OpenAI Compatible</option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Model</label>
-              <select
-                value={currentModel}
-                onChange={(e) => handleModelSelect(e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="">Select a model...</option>
-                {modelSuggestions.map((model: string) => (
-                  <option key={model} value={model}>
-                    {model}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Or enter custom model ID</label>
-            <input
-              type="text"
-              value={currentModel}
-              onChange={(e) => handleModelSelect(e.target.value)}
-              placeholder="e.g., openrouter/openai/gpt-4o-mini"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <p className="text-xs text-muted-foreground">
-              Use format: provider/model-name (e.g., openrouter/anthropic/claude-3.5-sonnet)
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-lg border border-border bg-card">
-        <div className="border-b border-border p-4">
-          <div className="flex items-center gap-2">
-            <Palette className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Theme Studio</h2>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Load a preset, tweak key colors, and import or export the current theme as JSON.
-          </p>
-        </div>
-        <div className="space-y-6 p-4">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {themesLoading ? (
-              <div className="col-span-full flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading theme presets...
-              </div>
-            ) : (
-              themes.map((theme) => {
-                const isSelected = theme.name === selectedThemeName;
-                return (
-                  <button
-                    key={theme.name}
-                    type="button"
-                    onClick={() => handleThemePresetSelect(theme.name)}
-                    className={`rounded-lg border p-4 text-left transition-colors ${
-                      isSelected ? 'border-primary bg-primary/10' : 'border-border hover:bg-accent'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="font-medium">{theme.display_name}</div>
-                        <div className="text-xs text-muted-foreground">{theme.name}</div>
-                      </div>
-                      {isSelected && <CheckCircle className="h-4 w-4 text-primary" />}
-                    </div>
-                    <p className="mt-2 text-sm text-muted-foreground">{theme.description || 'No description'}</p>
-                    <div className="mt-4 flex gap-2">
-                      {[theme.colors.background, theme.colors.surface, theme.colors.accent, theme.colors.highlight].map((color) => (
-                        <span
-                          key={`${theme.name}-${color}`}
-                          className="h-6 w-6 rounded-full border border-black/10"
-                          style={{ backgroundColor: color }}
-                        />
-                      ))}
-                    </div>
-                  </button>
-                );
-              })
-            )}
-          </div>
-
-          <div className="grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
-            <div className="space-y-4 rounded-lg border border-border bg-background/60 p-4">
-              <div className="flex items-center justify-between gap-3">
+          <div className="grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">
+            {/* Custom Overrides */}
+            <div className="space-y-4 rounded-xl border border-border/50 bg-background/60 p-4">
+              <div className="flex items-center justify-between mb-3">
                 <div>
                   <h3 className="font-semibold">Custom Overrides</h3>
                   <p className="text-sm text-muted-foreground">
-                    Overrides apply on top of the selected preset and preview live.
+                    Apply on top of the selected preset and preview live.
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Link
-                    to="/themes"
-                    className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
-                  >
-                    <Palette className="h-4 w-4" />
-                    Manage presets
-                  </Link>
+                <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={handleResetThemeOverrides}
-                    className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
+                    className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent transition-colors"
                   >
                     <RotateCcw className="h-4 w-4" />
-                    Reset overrides
+                    Reset
                   </button>
+                  <Link
+                    to="/themes"
+                    className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent transition-colors"
+                  >
+                    <Palette className="h-4 w-4" />
+                    Manage
+                  </Link>
                 </div>
               </div>
 
@@ -597,26 +685,26 @@ export default function Settings() {
                 {EDITABLE_THEME_SECTIONS.map((section) => (
                   <div key={section.title} className="space-y-3">
                     <div>
-                      <h4 className="font-medium">{section.title}</h4>
-                      <p className="text-sm text-muted-foreground">{section.description}</p>
+                      <h4 className="font-medium text-sm">{section.title}</h4>
+                      <p className="text-xs text-muted-foreground">{section.description}</p>
                     </div>
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-3 md:grid-cols-2">
                       {section.fields.map((field) => (
-                        <label key={`${section.title}-${field.key}`} className="space-y-2 text-sm">
+                        <label key={`${section.title}-${field.key}`} className="space-y-1.5 text-sm">
                           <span className="font-medium">{field.label}</span>
                           <div className="flex gap-2">
                             <input
                               type="color"
                               value={getThemeOverrideValue(field.section, field.key) || resolvedTheme?.[field.colorKey] || '#000000'}
                               onChange={(e) => handleThemeFieldChange(field.section, field.key, e.target.value)}
-                              className="h-10 w-12 rounded border border-input bg-background p-1"
+                              className="h-9 w-9 rounded-lg border border-border bg-background/50 p-1"
                             />
                             <input
                               type="text"
                               value={getThemeOverrideValue(field.section, field.key)}
                               onChange={(e) => handleThemeFieldChange(field.section, field.key, e.target.value)}
                               placeholder={resolvedTheme?.[field.colorKey] || '#000000'}
-                              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              className="flex-1 rounded-lg border border-border bg-background/50 px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             />
                           </div>
                         </label>
@@ -627,72 +715,88 @@ export default function Settings() {
               </div>
             </div>
 
-            <div className="space-y-4 rounded-lg border border-border bg-background/60 p-4">
-              <div>
-                <h3 className="font-semibold">Theme Preview</h3>
-                <p className="text-sm text-muted-foreground">
-                  Current preset: <span className="font-medium text-foreground">{selectedTheme?.display_name || selectedThemeName}</span>
-                </p>
-              </div>
-
+            {/* Preview */}
+            <div className="space-y-4">
+              <h3 className="font-medium text-sm">Preview</h3>
               {resolvedTheme && (
                 <div
-                  className="rounded-xl border p-4"
+                  className="rounded-2xl border p-4"
                   style={{
                     background: `linear-gradient(180deg, ${resolvedTheme.window} 0%, ${resolvedTheme.background} 100%)`,
                     borderColor: resolvedTheme.border,
                     color: resolvedTheme.text,
                   }}
                 >
-                  <div className="mb-4 flex items-center justify-between rounded-lg px-3 py-2"
+                  <div className="flex items-center justify-between mb-3 rounded-lg px-3 py-2"
                     style={{ backgroundColor: resolvedTheme.surface }}>
                     <span className="font-semibold">Character Generator</span>
                     <span
-                      className="rounded-full px-2 py-1 text-xs font-medium"
+                      className="rounded-full px-2 py-0.5 text-xs font-medium"
                       style={{ backgroundColor: resolvedTheme.accent, color: resolvedTheme.button_text }}
                     >
                       Theme Live
                     </span>
                   </div>
-                  <div className="space-y-3">
-                    <div className="rounded-lg p-3" style={{ backgroundColor: resolvedTheme.surface }}>
-                      <div className="text-sm font-medium">Review panel</div>
-                      <div className="text-xs" style={{ color: resolvedTheme.muted_text }}>
-                        Accent surfaces, borders, and button contrast update as you edit.
+
+                  <div className="grid gap-2 grid-cols-3">
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold text-muted-foreground mb-1">Review panel</p>
+                      <div
+                        className="rounded-lg p-3 text-sm"
+                        style={{ backgroundColor: resolvedTheme.surface }}
+                      >
+                        Review your generated character drafts and assets
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        className="rounded-md px-3 py-2 text-sm font-medium"
-                        style={{ backgroundColor: resolvedTheme.button, color: resolvedTheme.button_text }}
-                      >
-                        Primary action
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-md border px-3 py-2 text-sm font-medium"
-                        style={{ borderColor: resolvedTheme.border, color: resolvedTheme.text }}
-                      >
-                        Secondary
-                      </button>
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold text-muted-foreground mb-1">Colors</p>
+                      <div className="flex gap-1.5">
+                        <div
+                          className="flex-1 rounded-lg p-2 text-sm font-medium"
+                          style={{ backgroundColor: resolvedTheme.accent, color: resolvedTheme.button_text }}
+                        >
+                          Primary Action
+                        </div>
+                        <div
+                          className="flex-1 rounded-lg p-2 text-sm font-medium border"
+                          style={{ borderColor: resolvedTheme.border, color: resolvedTheme.text }}
+                        >
+                          Secondary
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex gap-2 text-xs font-medium">
-                      <span style={{ color: resolvedTheme.success_text }}>Success</span>
-                      <span style={{ color: resolvedTheme.warning_text }}>Warning</span>
-                      <span style={{ color: resolvedTheme.error_text }}>Error</span>
+                    <div className="flex gap-1.5">
+                      <div
+                        className="flex-1 rounded-lg p-2 text-xs font-medium"
+                        style={{ backgroundColor: resolvedTheme.surface, color: resolvedTheme.success_text }}
+                      >
+                        Success
+                      </div>
+                      <div
+                        className="flex-1 rounded-lg p-2 text-xs font-medium"
+                        style={{ backgroundColor: resolvedTheme.surface, color: resolvedTheme.warning_text }}
+                      >
+                        Warning
+                      </div>
+                      <div
+                        className="flex-1 rounded-lg p-2 text-xs font-medium"
+                        style={{ backgroundColor: resolvedTheme.surface, color: resolvedTheme.error_text }}
+                      >
+                        Error
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">Theme Import / Export</h4>
-                <div className="flex flex-wrap gap-2">
+              {/* Import/Export */}
+              <div className="space-y-3">
+                <h3 className="font-medium text-sm">Import / Export</h3>
+                <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={handleExportTheme}
-                    className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-primary to-accent px-4 py-2.5 text-sm font-medium text-primary-foreground hover:from-primary/90 hover:to-accent/90 transition-all duration-200 shadow-lg shadow-primary/20"
                   >
                     <Download className="h-4 w-4" />
                     Export JSON
@@ -700,7 +804,7 @@ export default function Settings() {
                   <button
                     type="button"
                     onClick={handleImportThemeClick}
-                    className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium hover:bg-accent transition-colors"
                   >
                     <Upload className="h-4 w-4" />
                     Import JSON
@@ -716,102 +820,33 @@ export default function Settings() {
               </div>
             </div>
           </div>
-
-          {(themeNotice || themeError) && (
-            <div className={`rounded-md border px-3 py-2 text-sm ${themeError ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-primary/30 bg-primary/10 text-foreground'}`}>
-              {themeError || themeNotice}
-            </div>
-          )}
         </div>
-      </div>
+      </section>
 
-      <div className="rounded-lg border border-border bg-card">
-        <div className="border-b border-border p-4">
-          <h2 className="text-lg font-semibold">Generation Settings</h2>
-          <p className="text-sm text-muted-foreground">Fine-tune generation parameters.</p>
-        </div>
-        <div className="space-y-4 p-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Temperature: {localConfig.temperature ?? config?.temperature ?? 0.7}
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="2"
-                step="0.1"
-                value={localConfig.temperature ?? config?.temperature ?? 0.7}
-                onChange={(e) => setLocalConfig((previous) => ({ ...previous, temperature: parseFloat(e.target.value) }))}
-                className="w-full"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Focused</span>
-                <span>Creative</span>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Max Tokens</label>
-              <input
-                type="number"
-                value={localConfig.max_tokens ?? config?.max_tokens ?? 4096}
-                onChange={(e) => setLocalConfig((previous) => ({ ...previous, max_tokens: parseInt(e.target.value, 10) || 0 }))}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </div>
+      {/* Footer Actions */}
+      <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
+        {(themeNotice || themeError) && (
+          <div className={`flex-1 rounded-lg px-4 py-2.5 text-sm flex items-center gap-2 ${
+            themeError
+              ? 'bg-destructive/10 border-destructive/30 text-destructive'
+              : 'bg-primary/10 border-primary/30 text-foreground'
+          }`}>
+            <Shield className={`h-4 w-4 flex-shrink-0 ${themeError ? 'text-destructive' : 'text-primary'}`} />
+            {themeError || themeNotice}
+            <button
+              onClick={() => { setThemeError(null); setThemeNotice(null); }}
+              className="ml-auto p-1 rounded hover:bg-black/10 transition-colors"
+            >
+              <XCircle className="h-4 w-4" />
+            </button>
           </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Max Concurrent (Batch)</label>
-              <input
-                type="number"
-                min="1"
-                max="10"
-                value={localConfig.batch?.max_concurrent ?? config?.batch?.max_concurrent ?? 3}
-                onChange={(e) =>
-                  setLocalConfig((previous) => ({
-                    ...previous,
-                    batch: {
-                      ...(previous.batch || config?.batch || { max_concurrent: 3, rate_limit_delay: 1 }),
-                      max_concurrent: parseInt(e.target.value, 10) || 1,
-                    },
-                  }))
-                }
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Rate Limit Delay (seconds)</label>
-              <input
-                type="number"
-                min="0"
-                max="60"
-                step="0.5"
-                value={localConfig.batch?.rate_limit_delay ?? config?.batch?.rate_limit_delay ?? 1}
-                onChange={(e) =>
-                  setLocalConfig((previous) => ({
-                    ...previous,
-                    batch: {
-                      ...(previous.batch || config?.batch || { max_concurrent: 3, rate_limit_delay: 1 }),
-                      rate_limit_delay: parseFloat(e.target.value) || 0,
-                    },
-                  }))
-                }
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex justify-end">
+        )}
         <button
-          onClick={handleSave}
-          className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          onClick={updateConfig}
+          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:from-primary/90 hover:to-accent/90 transition-all duration-200 shadow-lg shadow-primary/20"
         >
           <Save className="h-4 w-4" />
-          Save Settings
+          Save All Settings
         </button>
       </div>
     </div>

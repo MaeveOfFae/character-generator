@@ -2,21 +2,11 @@
  * Template system for custom asset types.
  */
 
-import type { AssetDefinition as BaseAssetDefinition } from '../types';
+import type { AssetDefinition as TypesAssetDefinition, Template as TypesTemplate } from '../types';
 
-export interface AssetDefinition extends BaseAssetDefinition {
-  dependsOn: string[];
-  blueprintFile?: string;
-}
-
-export interface Template {
-  name: string;
-  version: string;
-  description: string;
-  assets: AssetDefinition[];
-  isOfficial?: boolean;
-  path?: string;
-}
+// Re-export types from types/index with local type names to avoid conflicts
+export type AssetDefinition = TypesAssetDefinition;
+export type Template = TypesTemplate;
 
 /**
  * Official V2/V3 Card template
@@ -102,12 +92,14 @@ export function topologicalSort(assets: AssetDefinition[]): string[] {
     }
 
     visiting.add(assetName);
+
     const asset = assets.find(a => a.name === assetName);
     if (asset) {
       for (const dep of asset.dependsOn) {
         visit(dep);
       }
     }
+
     resolvedSet.add(assetName);
     resolved.push(assetName);
     visiting.delete(assetName);
@@ -149,23 +141,20 @@ export function validateTemplate(template: Template): { isValid: boolean; errors
 
   // Check for circular dependencies
   const assetMap = new Map(template.assets.map(a => [a.name, a]));
-  for (const asset of template.assets) {
-    const visited = new Set<string>();
-    function checkDeps(deps: string[]): boolean {
-      for (const dep of deps) {
-        if (dep === asset.name) {
-          return true; // Circular!
-        }
-        if (visited.has(dep)) continue;
-        visited.add(dep);
-        const depAsset = assetMap.get(dep);
-        if (depAsset && checkDeps(depAsset.dependsOn)) {
-          return true;
-        }
+  function checkDeps(deps: string[]): boolean {
+    for (const dep of deps) {
+      if (dep === asset.name) {
+        return true; // Circular!
       }
-      return false;
+      const depAsset = assetMap.get(dep);
+      if (depAsset && checkDeps(depAsset.dependsOn)) {
+        return true;
+      }
     }
+    return false;
+  }
 
+  for (const asset of template.assets) {
     if (checkDeps(asset.dependsOn)) {
       errors.push(`Circular dependency detected for asset: ${asset.name}`);
     }

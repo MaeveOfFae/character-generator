@@ -5,12 +5,12 @@
 
 import type {
   LLMEngine,
-  ChatMessage,
+  LLMChatMessage,
   GenerateOptions,
   GenerateResult,
   StreamChunk,
   StreamGenerateOptions,
-  ConnectionTestResult,
+  LLMConnectionTestResult,
 } from './types';
 
 export interface OpenAICompatConfig {
@@ -44,7 +44,7 @@ export class OpenAICompatEngine implements LLMEngine {
   }
 
   async generate(
-    messages: ChatMessage[],
+    messages: LLMChatMessage[],
     options?: GenerateOptions
   ): Promise<GenerateResult> {
     const temperature = options?.temperature ?? this.config.temperature;
@@ -87,7 +87,7 @@ export class OpenAICompatEngine implements LLMEngine {
   }
 
   async *generateStream(
-    messages: ChatMessage[],
+    messages: LLMChatMessage[],
     options?: StreamGenerateOptions
   ): AsyncIterable<StreamChunk> {
     const temperature = options?.temperature ?? this.config.temperature;
@@ -131,15 +131,15 @@ export class OpenAICompatEngine implements LLMEngine {
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data.trim() === '[DONE]') {
+            const dataStr = line.slice(6);
+            if (dataStr.trim() === '[DONE]') {
               yield { content: '', done: true };
               return;
             }
 
             try {
-              const parsed = JSON.parse(data);
-              const delta = parsed.choices?.[0]?.delta;
+              const data = JSON.parse(dataStr);
+              const delta = data.choices?.[0]?.delta;
               if (delta?.content) {
                 yield { content: delta.content, done: false };
               }
@@ -158,7 +158,7 @@ export class OpenAICompatEngine implements LLMEngine {
     }
   }
 
-  async testConnection(): Promise<ConnectionTestResult> {
+  async testConnection(): Promise<LLMConnectionTestResult> {
     const start = performance.now();
 
     try {
@@ -169,6 +169,7 @@ export class OpenAICompatEngine implements LLMEngine {
           model: this.config.model,
           messages: [{ role: 'user', content: 'test' }],
           max_tokens: 5,
+          stream: false,
         }),
       });
 
@@ -247,40 +248,41 @@ export class OpenAICompatEngine implements LLMEngine {
     }
   }
 
-  /**
-   * List available models from OpenAI-compatible API
-   */
-  static async listModels(baseUrl: string, apiKey?: string): Promise<string[]> {
-    const headers: Record<string, string> = {};
-    if (apiKey) {
-      headers['Authorization'] = `Bearer ${apiKey}`;
-    }
+/**
+ * List available models from OpenAI-compatible API
+ */
+export async function listModels(baseUrl: string, apiKey?: string): Promise<string[]> {
+  const headers: Record<string, string> = {};
+  if (apiKey) {
+    headers['Authorization'] = `Bearer ${apiKey}`;
+  }
 
-    // OpenRouter-specific headers
-    if (baseUrl.includes('openrouter.ai')) {
-      headers['HTTP-Referer'] = 'https://github.com/maeveoffae/character-generator';
-      headers['X-Title'] = 'Blueprint Character Generator';
-    }
+  // OpenRouter-specific headers
+  if (baseUrl.includes('openrouter.ai')) {
+    headers['HTTP-Referer'] = 'https://github.com/maeveoffae/character-generator';
+    headers['X-Title'] = 'Blueprint Character Generator';
+  }
 
-    const response = await fetch(`${baseUrl}/models`, {
-      method: 'GET',
-      headers,
-    });
+  const response = await fetch(`${baseUrl}/models`, {
+    method: 'GET',
+    headers,
+  });
 
-    if (response.status === 404) {
-      // /models endpoint not available
-      return [];
-    }
-
-    if (!response.ok) {
-      throw new Error(`Failed to list models: HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    if (data.data && Array.isArray(data.data)) {
-      return data.data.map((m: any) => m.id).sort();
-    }
-
+  if (response.status === 404) {
+    // /models endpoint not available
     return [];
   }
+
+  if (!response.ok) {
+    throw new Error(`Failed to list models: HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+
+  // Parse response - OpenAI format has "data" array with "id" field
+  if (data.data && Array.isArray(data.data)) {
+    return data.data.map((m: any) => m.id).sort();
+  }
+
+  return [];
 }
