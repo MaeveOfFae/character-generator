@@ -32,6 +32,15 @@ interface ThemeRenameDraft {
   displayName: string;
 }
 
+interface ThemeMetadataDraft {
+  sourceName: string;
+  displayName: string;
+  description: string;
+  author: string;
+  tags: string;
+  basedOn: string;
+}
+
 interface ImportedThemePayload {
   name: string;
   displayName: string;
@@ -72,7 +81,14 @@ type ThemeApi = typeof api & {
     based_on?: string;
     colors: ThemeColors;
   }) => Promise<ThemePreset>;
-  updateTheme: (name: string, request: { colors?: ThemeColors }) => Promise<ThemePreset>;
+  updateTheme: (name: string, request: {
+    display_name?: string;
+    description?: string;
+    author?: string;
+    tags?: string[];
+    based_on?: string;
+    colors?: ThemeColors;
+  }) => Promise<ThemePreset>;
   duplicateTheme: (name: string, request: {
     new_name: string;
     display_name?: string;
@@ -161,6 +177,10 @@ export default function Themes() {
   const importInputId = 'theme-import-input';
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'builtin' | 'custom'>('all');
+  const [selectedAuthor, setSelectedAuthor] = useState<string>('all');
+  const [selectedTag, setSelectedTag] = useState<string>('all');
   const [newThemeName, setNewThemeName] = useState('');
   const [newThemeDisplayName, setNewThemeDisplayName] = useState('');
   const [newThemeDescription, setNewThemeDescription] = useState('');
@@ -169,6 +189,7 @@ export default function Themes() {
   const [newThemeBasedOn, setNewThemeBasedOn] = useState('');
   const [duplicateDraft, setDuplicateDraft] = useState<ThemeDuplicateDraft | null>(null);
   const [renameDraft, setRenameDraft] = useState<ThemeRenameDraft | null>(null);
+  const [metadataDraft, setMetadataDraft] = useState<ThemeMetadataDraft | null>(null);
   const [importDraft, setImportDraft] = useState<ThemeImportDraft | null>(null);
 
   const { data: config, isLoading: configLoading } = useQuery({
@@ -297,6 +318,26 @@ export default function Themes() {
     },
   });
 
+  const updateMetadataMutation = useMutation({
+    mutationFn: (draft: ThemeMetadataDraft) => themeApi.updateTheme(draft.sourceName, {
+      display_name: draft.displayName,
+      description: draft.description,
+      author: draft.author,
+      tags: parseTagInput(draft.tags),
+      based_on: draft.basedOn,
+    }),
+    onSuccess: async (theme) => {
+      await invalidateThemeData();
+      setNotice(`Updated metadata for ${theme.display_name}.`);
+      setError(null);
+      setMetadataDraft(null);
+    },
+    onError: (mutationError) => {
+      setError(mutationError instanceof Error ? mutationError.message : 'Failed to update theme metadata');
+      setNotice(null);
+    },
+  });
+
   const duplicateMutation = useMutation({
     mutationFn: (draft: ThemeDuplicateDraft) => themeApi.duplicateTheme(draft.sourceName, {
       new_name: draft.newName,
@@ -378,7 +419,65 @@ export default function Themes() {
   const builtInThemes = themes.filter((theme) => theme.is_builtin);
   const customThemes = themes.filter((theme) => !theme.is_builtin);
 
-  const isBusy = createMutation.isPending || activateMutation.isPending || updateCurrentCustomMutation.isPending || duplicateMutation.isPending || renameMutation.isPending || deleteMutation.isPending || exportMutation.isPending || importMutation.isPending;
+  const availableTags = useMemo(() => {
+    const tags = new Set<string>();
+    themes.forEach((theme) => {
+      theme.tags.forEach((tag) => tags.add(tag));
+    });
+    return Array.from(tags).sort((left, right) => left.localeCompare(right));
+  }, [themes]);
+
+  const availableAuthors = useMemo(() => {
+    const authors = new Set<string>();
+    themes.forEach((theme) => {
+      if (theme.author.trim()) {
+        authors.add(theme.author.trim());
+      }
+    });
+    return Array.from(authors).sort((left, right) => left.localeCompare(right));
+  }, [themes]);
+
+  const filteredThemes = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    return themes.filter((theme) => {
+      const matchesSource = sourceFilter === 'all'
+        || (sourceFilter === 'builtin' && theme.is_builtin)
+        || (sourceFilter === 'custom' && !theme.is_builtin);
+      if (!matchesSource) {
+        return false;
+      }
+
+      const matchesAuthor = selectedAuthor === 'all' || theme.author === selectedAuthor;
+      if (!matchesAuthor) {
+        return false;
+      }
+
+      const matchesTag = selectedTag === 'all' || theme.tags.includes(selectedTag);
+      if (!matchesTag) {
+        return false;
+      }
+
+      if (!normalizedQuery) {
+        return true;
+      }
+
+      const haystack = [
+        theme.name,
+        theme.display_name,
+        theme.description,
+        theme.author,
+        theme.based_on,
+        ...theme.tags,
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      return haystack.includes(normalizedQuery);
+    });
+  }, [themes, searchQuery, sourceFilter, selectedAuthor, selectedTag]);
+
+  const isBusy = createMutation.isPending || activateMutation.isPending || updateCurrentCustomMutation.isPending || updateMetadataMutation.isPending || duplicateMutation.isPending || renameMutation.isPending || deleteMutation.isPending || exportMutation.isPending || importMutation.isPending;
 
   const handleImportChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -769,12 +868,115 @@ export default function Themes() {
           </p>
         </div>
 
+        <div className="rounded-lg border border-border bg-card p-4">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+            <label className="space-y-2 text-sm">
+              <span className="font-medium">Search presets</span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search by name, author, tag, lineage, or description"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </label>
+            <div className="space-y-2 text-sm">
+              <div className="font-medium">Filter by source</div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSourceFilter('all')}
+                  className={`rounded-full border px-3 py-1.5 text-xs ${sourceFilter === 'all' ? 'border-primary bg-primary text-primary-foreground' : 'border-input hover:bg-accent'}`}
+                >
+                  All presets
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSourceFilter('builtin')}
+                  className={`rounded-full border px-3 py-1.5 text-xs ${sourceFilter === 'builtin' ? 'border-primary bg-primary text-primary-foreground' : 'border-input hover:bg-accent'}`}
+                >
+                  Built-in
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSourceFilter('custom')}
+                  className={`rounded-full border px-3 py-1.5 text-xs ${sourceFilter === 'custom' ? 'border-primary bg-primary text-primary-foreground' : 'border-input hover:bg-accent'}`}
+                >
+                  Custom
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <div className="space-y-2 text-sm">
+              <div className="font-medium">Filter by author</div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedAuthor('all')}
+                  className={`rounded-full border px-3 py-1.5 text-xs ${selectedAuthor === 'all' ? 'border-primary bg-primary text-primary-foreground' : 'border-input hover:bg-accent'}`}
+                >
+                  All authors
+                </button>
+                {availableAuthors.map((author) => (
+                  <button
+                    key={author}
+                    type="button"
+                    onClick={() => setSelectedAuthor(author)}
+                    className={`rounded-full border px-3 py-1.5 text-xs ${selectedAuthor === author ? 'border-primary bg-primary text-primary-foreground' : 'border-input hover:bg-accent'}`}
+                  >
+                    {author}
+                  </button>
+                ))}
+                {availableAuthors.length === 0 && (
+                  <div className="text-xs text-muted-foreground">No authors yet</div>
+                )}
+              </div>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="font-medium">Filter by tag</div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedTag('all')}
+                  className={`rounded-full border px-3 py-1.5 text-xs ${selectedTag === 'all' ? 'border-primary bg-primary text-primary-foreground' : 'border-input hover:bg-accent'}`}
+                >
+                  All tags
+                </button>
+                {availableTags.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => setSelectedTag(tag)}
+                    className={`rounded-full border px-3 py-1.5 text-xs ${selectedTag === tag ? 'border-primary bg-primary text-primary-foreground' : 'border-input hover:bg-accent'}`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+                {availableTags.length === 0 && (
+                  <div className="text-xs text-muted-foreground">No tags yet</div>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 text-xs text-muted-foreground">
+            Showing {filteredThemes.length} of {themes.length} presets.
+          </div>
+        </div>
+
+        {filteredThemes.length === 0 && (
+          <div className="rounded-lg border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
+            No themes match the current search and tag filters.
+          </div>
+        )}
+
         <div className="grid gap-4 lg:grid-cols-2">
-          {themes.map((theme) => {
+          {filteredThemes.map((theme) => {
             const isActive = config?.theme_name === theme.name;
             const isCustom = !theme.is_builtin;
             const isDuplicating = duplicateDraft?.sourceName === theme.name;
             const isRenaming = renameDraft?.sourceName === theme.name;
+            const isEditingMetadata = metadataDraft?.sourceName === theme.name;
 
             return (
               <div key={theme.name} className={`rounded-lg border bg-card p-4 ${isActive ? 'border-primary' : 'border-border'}`}>
@@ -838,6 +1040,22 @@ export default function Themes() {
                     <>
                       <button
                         type="button"
+                        onClick={() => setMetadataDraft({
+                          sourceName: theme.name,
+                          displayName: theme.display_name,
+                          description: theme.description,
+                          author: theme.author,
+                          tags: theme.tags.join(', '),
+                          basedOn: theme.based_on,
+                        })}
+                        disabled={isBusy}
+                        className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Edit details
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setRenameDraft({
                           sourceName: theme.name,
                           newName: theme.name,
@@ -865,6 +1083,68 @@ export default function Themes() {
                     </>
                   )}
                 </div>
+
+                {isEditingMetadata && metadataDraft && (
+                  <div className="mt-4 space-y-3 rounded-lg border border-border bg-background/60 p-3">
+                    <div className="text-sm font-medium">Edit Theme Details</div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <input
+                        type="text"
+                        value={metadataDraft.displayName}
+                        onChange={(event) => setMetadataDraft({ ...metadataDraft, displayName: event.target.value })}
+                        placeholder="display name"
+                        className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      />
+                      <input
+                        type="text"
+                        value={metadataDraft.author}
+                        onChange={(event) => setMetadataDraft({ ...metadataDraft, author: event.target.value })}
+                        placeholder="author"
+                        className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <textarea
+                      value={metadataDraft.description}
+                      onChange={(event) => setMetadataDraft({ ...metadataDraft, description: event.target.value })}
+                      rows={2}
+                      placeholder="description"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    />
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <input
+                        type="text"
+                        value={metadataDraft.basedOn}
+                        onChange={(event) => setMetadataDraft({ ...metadataDraft, basedOn: event.target.value })}
+                        placeholder="based on"
+                        className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      />
+                      <input
+                        type="text"
+                        value={metadataDraft.tags}
+                        onChange={(event) => setMetadataDraft({ ...metadataDraft, tags: event.target.value })}
+                        placeholder="warm, editorial, night"
+                        className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setMetadataDraft(null)}
+                        className="rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateMetadataMutation.mutate(metadataDraft)}
+                        disabled={updateMetadataMutation.isPending || !metadataDraft.displayName.trim()}
+                        className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        {updateMetadataMutation.isPending ? 'Saving...' : 'Save details'}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {isDuplicating && duplicateDraft && (
                   <div className="mt-4 space-y-3 rounded-lg border border-border bg-background/60 p-3">
