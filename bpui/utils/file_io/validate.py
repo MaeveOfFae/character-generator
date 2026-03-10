@@ -1,8 +1,55 @@
 """Validate directory screen for Qt6 GUI."""
 
 from pathlib import Path
+import subprocess
+import sys
+from typing import Any, Dict, Optional
 
-from bpui.validate import validate_pack
+from bpui.validate import _resolve_validator
+
+
+def validate_pack(pack_dir: Path, repo_root: Optional[Path] = None) -> Dict[str, Any]:
+    """Validate a character pack directory using tools validator script."""
+    if repo_root is None:
+        repo_root = Path.cwd()
+
+    validator = _resolve_validator(repo_root)
+    if not validator:
+        return {
+            "output": "",
+            "errors": "Validator not found. Expected tools/validate_pack.py or tools/validation/validate_pack.py",
+            "exit_code": 1,
+            "success": False,
+        }
+
+    try:
+        result = subprocess.run(
+            [sys.executable, str(validator), str(pack_dir)],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=str(repo_root),
+        )
+        return {
+            "output": result.stdout,
+            "errors": result.stderr,
+            "exit_code": result.returncode,
+            "success": result.returncode == 0,
+        }
+    except subprocess.TimeoutExpired:
+        return {
+            "output": "",
+            "errors": "Validation timed out after 30 seconds",
+            "exit_code": 124,
+            "success": False,
+        }
+    except Exception as exc:
+        return {
+            "output": "",
+            "errors": str(exc),
+            "exit_code": 1,
+            "success": False,
+        }
 
 try:
     from PySide6.QtCore import Qt
