@@ -15,49 +15,49 @@ export const OFFICIAL_TEMPLATE: Template = {
   name: 'V2/V3 Card',
   version: '3.1',
   description: 'Official character card template with 6 standard assets',
-  isOfficial: true,
+  is_official: true,
   assets: [
     {
       name: 'system_prompt',
       required: true,
-      dependsOn: [],
+      depends_on: [],
       description: 'System-level behavioral instructions',
-      blueprintFile: 'system_prompt.md',
+      blueprint_file: 'system_prompt.md',
     },
     {
       name: 'post_history',
       required: true,
-      dependsOn: ['system_prompt'],
+      depends_on: ['system_prompt'],
       description: 'Conversation context and relationship state',
-      blueprintFile: 'post_history.txt',
+      blueprint_file: 'post_history.txt',
     },
     {
       name: 'character_sheet',
       required: true,
-      dependsOn: ['system_prompt', 'post_history'],
+      depends_on: ['system_prompt', 'post_history'],
       description: 'Structured character data',
-      blueprintFile: 'character_sheet.txt',
+      blueprint_file: 'character_sheet.txt',
     },
     {
       name: 'intro_scene',
       required: true,
-      dependsOn: ['system_prompt', 'post_history', 'character_sheet'],
+      depends_on: ['system_prompt', 'post_history', 'character_sheet'],
       description: 'First interaction scenario',
-      blueprintFile: 'intro_scene.txt',
+      blueprint_file: 'intro_scene.txt',
     },
     {
       name: 'intro_page',
       required: true,
-      dependsOn: ['character_sheet'],
+      depends_on: ['character_sheet'],
       description: 'Visual character introduction page',
-      blueprintFile: 'intro_page.md',
+      blueprint_file: 'intro_page.md',
     },
     {
       name: 'a1111',
       required: true,
-      dependsOn: ['character_sheet'],
+      depends_on: ['character_sheet'],
       description: 'Stable Diffusion image generation prompt',
-      blueprintFile: 'a1111.txt',
+      blueprint_file: 'a1111.txt',
     },
   ],
 };
@@ -95,7 +95,7 @@ export function topologicalSort(assets: AssetDefinition[]): string[] {
 
     const asset = assets.find(a => a.name === assetName);
     if (asset) {
-      for (const dep of asset.dependsOn) {
+      for (const dep of asset.depends_on) {
         visit(dep);
       }
     }
@@ -141,13 +141,13 @@ export function validateTemplate(template: Template): { isValid: boolean; errors
 
   // Check for circular dependencies
   const assetMap = new Map(template.assets.map(a => [a.name, a]));
-  function checkDeps(deps: string[]): boolean {
+  function checkDeps(deps: string[], currentAssetName: string): boolean {
     for (const dep of deps) {
-      if (dep === asset.name) {
+      if (dep === currentAssetName) {
         return true; // Circular!
       }
       const depAsset = assetMap.get(dep);
-      if (depAsset && checkDeps(depAsset.dependsOn)) {
+      if (depAsset && checkDeps(depAsset.depends_on, currentAssetName)) {
         return true;
       }
     }
@@ -155,7 +155,7 @@ export function validateTemplate(template: Template): { isValid: boolean; errors
   }
 
   for (const asset of template.assets) {
-    if (checkDeps(asset.dependsOn)) {
+    if (checkDeps(asset.depends_on, asset.name)) {
       errors.push(`Circular dependency detected for asset: ${asset.name}`);
     }
   }

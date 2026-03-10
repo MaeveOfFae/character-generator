@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Sparkles, FolderOpen, GitCompare, Baby, ArrowRight, Dice, GitBranch, ShieldCheck, Zap, FileText, Layers } from 'lucide-react';
-import { api } from '@char-gen/shared';
+import { Sparkles, FolderOpen, GitCompare, Baby, ArrowRight, Dice1, GitBranch, ShieldCheck, Zap, FileText, Layers } from 'lucide-react';
+import { api, type DraftMetadata } from '@char-gen/shared';
 import { useAssistantScreenContext } from './common/AssistantContext';
 
 const QUICK_ACTIONS = [
   { to: '/generate', label: 'Generate', description: 'Create a new character', icon: Sparkles, color: 'from-purple-500 to-pink-500' },
-  { to: '/seed-generator', label: 'Seeds', description: 'Brainstorm concepts', icon: Dice, color: 'from-blue-500 to-cyan-500' },
+  { to: '/seed-generator', label: 'Seeds', description: 'Brainstorm concepts', icon: Dice1, color: 'from-blue-500 to-cyan-500' },
   { to: '/drafts', label: 'Drafts', description: 'Browse saved drafts', icon: FolderOpen, color: 'from-amber-500 to-orange-500' },
   { to: '/similarity', label: 'Compare', description: 'Analyze similarities', icon: GitCompare, color: 'from-emerald-500 to-teal-500' },
   { to: '/offspring', label: 'Offspring', description: 'Combine characters', icon: Baby, color: 'from-rose-500 to-pink-500' },
@@ -110,14 +110,14 @@ export default function Home() {
 
   const { data: templatesData } = useQuery({
     queryKey: ['templates'],
-    queryFn: () => api.getTemplates(),
+    queryFn: () => api.listTemplates(),
   });
 
   useAssistantScreenContext({
     draft_count: statsData?.stats?.total_drafts ?? 0,
     favorite_count: statsData?.stats?.favorites ?? 0,
     template_count: templatesData?.length ?? 0,
-    recent_drafts: (statsData?.drafts ?? []).slice(0, 5).map((draft) => draft.character_name || draft.seed),
+    recent_drafts: (statsData?.drafts ?? []).slice(0, 5).map((draft: DraftMetadata) => draft.character_name || draft.seed),
   });
 
   return (
@@ -228,9 +228,9 @@ export default function Home() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {statsData.drafts.slice(0, 6).map((draft) => (
+            {statsData.drafts.slice(0, 6).map((draft: DraftMetadata) => (
               <RecentDraftCard
-                key={draft.review_id}
+                id={draft.review_id}
                 to={`/drafts/${encodeURIComponent(draft.review_id)}`}
                 name={draft.character_name || draft.seed}
                 meta={`${draft.template_name || 'V2/V3 Card'} • ${draft.mode || 'SFW'}`}

@@ -12,6 +12,16 @@ import type {
 export type AssetDefinition = TypesAssetDefinition;
 export type Template = TypesTemplate;
 
+// Define AssetName type first to avoid circular reference
+export type AssetName =
+  | 'system_prompt'
+  | 'post_history'
+  | 'character_sheet'
+  | 'intro_scene'
+  | 'intro_page'
+  | 'a1111'
+  | 'suno';
+
 // Ordered asset names as they appear in output
 export const ASSET_ORDER: ReadonlyArray<AssetName> = [
   'system_prompt',
@@ -22,8 +32,6 @@ export const ASSET_ORDER: ReadonlyArray<AssetName> = [
   'a1111',
   'suno',
 ] as const;
-
-export type AssetName = typeof ASSET_ORDER[number];
 
 export interface ParseResult {
   assets: Record<string, string>;
@@ -100,7 +108,7 @@ export function parseBlueprintOutput(text: string, template?: TypesTemplate): Pa
   if (template && template.assets.length > 0) {
     expectedAssets = template.assets.map(a => a.name as AssetName);
   } else {
-    expectedAssets = DEFAULT_ASSET_ORDER;
+    expectedAssets = [...DEFAULT_ASSET_ORDER];
   }
 
   const expectedCount = expectedAssets.length;
@@ -207,16 +215,16 @@ export function inferCharacterDisplayNameFromAssets(
   const seen = new Set<AssetName>();
 
   for (const asset of preferredAssets) {
-    if (asset in assets && !seen.has(asset)) {
-      orderedAssetNames.push(asset);
-      seen.add(asset);
+    if (asset in assets && !seen.has(asset as AssetName)) {
+      orderedAssetNames.push(asset as AssetName);
+      seen.add(asset as AssetName);
     }
   }
 
   for (const asset of Object.keys(assets)) {
-    if (!seen.has(asset)) {
-      orderedAssetNames.push(asset);
-      seen.add(asset);
+    if (!seen.has(asset as AssetName)) {
+      orderedAssetNames.push(asset as AssetName);
+      seen.add(asset as AssetName);
     }
   }
 

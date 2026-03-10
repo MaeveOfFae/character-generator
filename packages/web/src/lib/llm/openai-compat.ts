@@ -236,12 +236,12 @@ export class OpenAICompatEngine extends BaseLLMEngine {
         headers: this.getHeaders(),
       });
 
-      const latencyMs = performance.now() - startTime;
+      const latency_ms = performance.now() - startTime;
 
       if (!response.ok) {
         return {
           success: false,
-          latencyMs,
+          latency_ms,
           error: await this.parseError(response),
         };
       }
@@ -253,16 +253,16 @@ export class OpenAICompatEngine extends BaseLLMEngine {
 
         return {
           success: true,
-          latencyMs,
-          modelInfo: {
+          latency_ms,
+          model_info: {
             name: this.config.model,
-            contextLength: undefined, // Would need model-specific lookup
+            context_length: undefined, // Would need model-specific lookup
           },
         };
       } catch {
         return {
           success: true,
-          latencyMs,
+          latency_ms,
         };
       }
     } catch (error) {

@@ -3,9 +3,16 @@
  * Handles provider detection and API key resolution.
  */
 
-import type { LLMEngine, LLMConfig, LLMProvider, ChatMessage } from './types';
-import { OpenAICompatEngine, OpenAICompatConfig } from './openai-compat';
+import type {
+  LLMEngine,
+  LLMConfig,
+  LLMProvider,
+  GenerateOptions,
+  StreamGenerateOptions,
+} from './types';
+import type { OpenAICompatConfig } from './openai-compat';
 import { detectProviderFromModel, ProviderEndpoints } from './types';
+import { listModels as listModelsFromProvider, OpenAICompatEngine } from './openai-compat';
 
 export interface CreateEngineOptions extends LLMConfig {
   apiKeys?: Record<string, string>;
@@ -24,7 +31,7 @@ function normalizeOpenAICompatModel(model: string, baseUrl: string): string {
 }
 
 /**
- * Get base URL for a provider (if not explicitly provided)
+ * Get base URL for a provider (if not explicitly provided).
  */
 function getProviderBaseUrl(provider: LLMProvider): string {
   return ProviderEndpoints[provider];
@@ -36,7 +43,7 @@ function getProviderBaseUrl(provider: LLMProvider): string {
  */
 function getApiKey(
   provider: LLMProvider,
-  options: CreateEngineOptions
+  options: Omit<CreateEngineOptions, 'provider' | 'model'>
 ): string | undefined {
   if (options.apiKeys?.[provider]) {
     return options.apiKeys[provider];
@@ -50,16 +57,16 @@ function getApiKey(
  * This is the main entry point for creating engines.
  */
 export function createEngine(options: CreateEngineOptions): LLMEngine {
-  const { model, baseUrl: explicitBaseUrl, apiKeys, defaultApiKey, ...rest } = options;
+  const { model, baseUrl: explicitBaseUrl, apiKeys, defaultApiKey, provider: explicitProvider, ...rest } = options;
 
   // Detect provider from model if not explicitly set
-  const provider = options.provider || detectProviderFromModel(model);
+  const provider = explicitProvider || detectProviderFromModel(model);
 
   // Determine base URL
   const baseUrl = explicitBaseUrl || getProviderBaseUrl(provider);
 
   // Get API key
-  const apiKey = getApiKey(provider, { ...rest, apiKeys, defaultApiKey });
+  const apiKey = getApiKey(provider, { apiKeys, defaultApiKey, ...rest });
 
   // Normalize model name
   const normalizedModel = normalizeOpenAICompatModel(model, baseUrl);
@@ -70,9 +77,7 @@ export function createEngine(options: CreateEngineOptions): LLMEngine {
     model: normalizedModel,
     apiKey: apiKey || '',
     baseUrl,
-    temperature: rest.temperature,
-    maxTokens: rest.maxTokens,
-    timeout: rest.timeout,
+    ...rest,
   };
 
   // For now, all providers use the OpenAI-compatible API
@@ -98,7 +103,7 @@ export async function listModels(
   baseUrl?: string
 ): Promise<string[]> {
   const resolvedBaseUrl = baseUrl || getProviderBaseUrl(provider);
-  return OpenAICompatEngine.listModels(resolvedBaseUrl, apiKey);
+  return listModelsFromProvider(resolvedBaseUrl, apiKey);
 }
 
 /**
@@ -109,7 +114,7 @@ export async function testConnection(
   model: string,
   apiKey?: string,
   baseUrl?: string,
-  options?: Partial<Omit<CreateEngineOptions, 'provider' | 'model'>>
+  options?: Partial<Omit<CreateEngineOptions, 'provider' | 'model' | 'apiKey' | 'baseUrl'>>
 ): Promise<{ success: boolean; latencyMs?: number; error?: string }> {
   try {
     const engine = createEngine({

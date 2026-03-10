@@ -279,7 +279,7 @@ export default function Settings() {
     key: string,
     value: string
   ) => {
-    const themeSections = (localConfig.theme ?? {}) as ThemeOverrideDraft & Record<string, Record<string, string | undefined> | undefined;
+    const themeSections = (localConfig.theme ?? {}) as ThemeOverrideDraft & Record<string, Record<string, string | undefined> | undefined>;
     const sectionValues = themeSections[section] ?? {};
     const nextTheme = {
       ...localConfig.theme,
@@ -295,7 +295,7 @@ export default function Settings() {
   };
 
   const getThemeOverrideValue = (section: 'app' | 'tokenizer' | 'tui', key: string) => {
-    const themeSections = (localConfig.theme ?? {}) as ThemeOverrideDraft & Record<string, Record<string, string | undefined> | undefined;
+    const themeSections = (localConfig.theme ?? {}) as ThemeOverrideDraft & Record<string, Record<string, string | undefined> | undefined>;
     const sectionValues = themeSections[section] as Record<string, string | undefined> | undefined;
     return sectionValues?.[key] || '';
   };

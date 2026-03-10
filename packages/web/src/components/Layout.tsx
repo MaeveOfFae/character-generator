@@ -13,12 +13,12 @@ import {
   X,
   Layers,
   BookOpen,
-  Dice,
+  Dice1,
   ShieldCheck,
   Palette,
 } from 'lucide-react';
 import { useState } from 'react';
-import { cn } from '@/utils/cn';
+import { cn } from '../utils/cn';
 import { AssistantContextProvider } from './common/AssistantContext';
 import GlobalAssistant from './common/GlobalAssistant';
 
@@ -29,7 +29,7 @@ interface LayoutProps {
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/generate', label: 'Generate', icon: Sparkles },
-  { path: '/seed-generator', label: 'Seed Generator', icon: Dice },
+  { path: '/seed-generator', label: 'Seed Generator', icon: Dice1 },
   { path: '/validation', label: 'Validation', icon: ShieldCheck },
   { path: '/batch', label: 'Batch', icon: Layers },
   { path: '/drafts', label: 'Drafts', icon: FolderOpen },

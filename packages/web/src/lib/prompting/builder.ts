@@ -34,7 +34,7 @@ export async function buildOrchestratorPrompt(
       const assetOrder = topologicalSort(templateAssets);
       const assetList = assetOrder.join(', ');
 
-      const templateOverride = `\n\n## TEMPLATE OVERRIDE\n\nUsing custom template with ${templateAssets.length} assets\n`;
+      let templateOverride = `\n\n## TEMPLATE OVERRIDE\n\nUsing custom template with ${templateAssets.length} assets\n`;
       templateOverride += `Generate these assets in order: ${assetList}\n`;
       templateOverride += 'Follow dependency order defined in template.\n';
 

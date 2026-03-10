@@ -5,10 +5,9 @@
  * It defines the contract, rules, and structure for character generation.
  */
 
-import type { Template, AssetDefinition } from '../templates';
+import type { Template, AssetDefinition } from '../types';
+import type { ContentMode } from '../types';
 import { DEFAULT_ASSET_ORDER } from '../templates';
-
-export type ContentMode = 'SFW' | 'NSFW' | 'Platform-Safe' | 'Auto';
 
 export interface OrchestratorOptions {
   /**
@@ -25,6 +24,80 @@ export interface OrchestratorOptions {
    * Additional instructions to prepend
    */
   additionalInstructions?: string;
+}
+
+/**
+ * Get the official template definition.
+ */
+export function getOfficialTemplate(): Template {
+  return {
+    name: 'V2/V3 Card',
+    version: '3.1',
+    description: 'Official character card template with 6 standard assets',
+    is_official: true,
+    assets: [
+      {
+        name: 'system_prompt',
+        required: true,
+        depends_on: [],
+        description: 'System-level behavioral instructions',
+        blueprint_file: 'system_prompt.md',
+      },
+      {
+        name: 'post_history',
+        required: true,
+        depends_on: ['system_prompt'],
+        description: 'Conversation context and relationship state',
+        blueprint_file: 'post_history.txt',
+      },
+      {
+        name: 'character_sheet',
+        required: true,
+        depends_on: ['system_prompt', 'post_history'],
+        description: 'Structured character data',
+        blueprint_file: 'character_sheet.txt',
+      },
+      {
+        name: 'intro_scene',
+        required: true,
+        depends_on: ['system_prompt', 'post_history', 'character_sheet'],
+        description: 'First interaction scenario',
+        blueprint_file: 'intro_scene.txt',
+      },
+      {
+        name: 'intro_page',
+        required: true,
+        depends_on: ['character_sheet'],
+        description: 'Visual character introduction page',
+        blueprint_file: 'intro_page.md',
+      },
+      {
+        name: 'a1111',
+        required: true,
+        depends_on: ['character_sheet'],
+        description: 'Stable Diffusion image generation prompt',
+        blueprint_file: 'a1111.txt',
+      },
+    ],
+  };
+}
+
+/**
+ * Build content mode instruction.
+ */
+function buildModeInstruction(mode?: ContentMode): string {
+  if (mode === 'SFW') {
+    return `Mode: SFW
+No explicit sexual content; fade to black if sexuality is implied.`;
+  } else if (mode === 'Platform-Safe') {
+    return `Mode: Platform-Safe
+No explicit sexual content and avoid platform-risky extremes; preserve tension through behavior, leverage, or emotional pressure instead.`;
+  } else if (mode === 'Auto') {
+    return `Mode: Auto
+Infer the content mode from the seed when obvious; otherwise default to NSFW.`;
+  }
+  return `Mode: NSFW
+Explicit sexual content is allowed only if it fits the seed.`;
 }
 
 /**
@@ -99,49 +172,6 @@ ${modeInstruction}
 If the user does not specify a mode, infer it when obvious; otherwise default to NSFW.
 If mode is included inline, such as \`Mode: SFW\`, treat it as explicitly specified.
 
-## Seed Validation
-
-Best-effort generation is mandatory.
-
-If the seed is thin, vague, or underspecified:
-
-- Infer a minimal power dynamic, emotional temperature, and tension axis.
-- Continue generation instead of refusing.
-- If inference materially strengthens the seed, emit an Adjustment Note codeblock before assets.
-
-Adjustment Note format:
-
-\`\`\`markdown
-Adjustment Note: {one-line note}
-\`\`\`
-
-## Seed Interpretation Logic
-
-Treat the seed as a compressed manifest containing:
-
-- Role or function
-- Power dynamic relative to {{user}}
-- Emotional temperature
-- Implied tension or control axis
-
-Infer and lock in following:
-
-1. Core identity
-2. Central desire
-3. Central fear
-4. Behavioral tells
-5. Relational vector toward {{user}}
-6. Sensory signature
-
-Power dynamic must be classified as one of:
-
-- Dominant
-- Submissive
-- Equal
-- Asymmetric, with direction made clear
-
-Once inferred, these elements remain stable across all outputs.
-
 ## Hierarchy Of Authority
 
 For the active template, authority flows as follows:
@@ -151,16 +181,6 @@ For the active template, authority flows as follows:
 - Later assets define how interaction begins and how they are visually framed
 
 Lower-tier assets may not override higher-tier logic.
-
-## Asset Isolation Rule
-
-Each asset may rely only on:
-
-- The seed
-- Higher-tier assets
-- The active template contract
-
-Do not introduce downstream facts that upstream assets would need in order to stay coherent.
 
 ## Format Compliance
 
@@ -172,13 +192,10 @@ You must:
 - Preserve exact section names and field names.
 - Output all required control blocks and metadata sections.
 - Keep module-specific formats module-specific.
-
-You must not:
-
 - Normalize different asset formats into one shared style.
-- Rename required fields or headers.
-- Omit required sections because they feel redundant.
-- Emit placeholder text such as \`[Name]\`, \`{TITLE}\`, \`((...))\`, or \`{PLACEHOLDER}\`.
+- Use \`{{user}}\` verbatim.
+- Never assign actions, thoughts, dialogue, emotions, sensations, decisions, or consent to \`{{user}}\`.
+- Never invent consent.
 
 Fatal failures include:
 
@@ -198,7 +215,7 @@ occupation: [occupation]
 heritage: [heritage]
 \`\`\`
 
-Follow the rest of the \`character_sheet\` blueprint exactly after that.
+Follow the rest of \`character_sheet\` blueprint exactly after that.
 
 Do not use alternate card schemas such as \`[Character]\`, \`[Profile]\`, W++, or merged attribute lines.
 
@@ -207,7 +224,6 @@ Do not use alternate card schemas such as \`[Character]\`, \`[Profile]\`, W++, o
 - Output one asset per codeblock or file.
 - Output assets in the active template order.
 - Output nothing outside of codeblocks except optional Adjustment Note codeblock.
-- Do not combine multiple assets into one codeblock.
 - Plaintext unless asset blueprint explicitly requires Markdown or another format.
 - For \`system_prompt\` and \`post_history\`, keep output paragraph-only with no headings or bullets.
 - Use \`{{user}}\` verbatim.
@@ -259,7 +275,7 @@ Every character should have:
 - Use concrete sensory anchors.
 - Prefer subtext over explanation.
 - End scenes with tension, not closure.
-- Treat {{user}} as catalyst, not audience.
+- Treat \`{{user}}\` as catalyst, not audience.
 
 ## Genre Adaptation
 
@@ -273,7 +289,7 @@ Every character should have:
 ## Issue Handling
 
 - If you detect contradictions, resolve them using hierarchy. Higher-tier logic wins.
-- If a constraint cannot be perfectly satisfied, emit an Adjustment Note and deliver the best coherent result anyway.
+- If a constraint cannot be perfectly satisfied, emit an Adjustment Note codeblock and deliver the best coherent result anyway.
 - Do not stop at an error line. Always produce usable assets.
 
 ## Final Consistency Check
@@ -291,84 +307,8 @@ You are assembling one character through multiple constrained views.
 Every asset is a different lens on the same underlying person.
 Make them align.
 
-${additionalInstructions ? `\n\n## Additional Instructions\n\n${additionalInstructions}` : ''}`;
-}
-
-/**
- * Build content mode instruction section.
- */
-function buildModeInstruction(mode?: ContentMode): string {
-  if (!mode || mode === 'Auto') {
-    return `If the user specifies a content mode, enforce it consistently across all generated assets.
-
-- SFW: no explicit sexual content; fade to black if sexuality is implied.
-- NSFW: explicit sexual content is allowed only if it fits the seed.
-- Platform-Safe: avoid explicit sexual content and avoid platform-risky extremes; preserve tension through behavior, leverage, or emotional pressure instead.
-
-If the user does not specify a mode, infer it when obvious; otherwise default to NSFW.`;
-  }
-
-  return `Content mode: ${mode}. Enforce this mode consistently across all generated assets.
-
-${mode === 'SFW' ? 'No explicit sexual content; fade to black if sexuality is implied.' :
-  mode === 'NSFW' ? 'Explicit sexual content is allowed only if it fits the seed.' :
-  'Avoid explicit sexual content and avoid platform-risky extremes; preserve tension through behavior, leverage, or emotional pressure instead.'}`;
-}
-
-/**
- * Get the official template definition.
- */
-export function getOfficialTemplate(): Template {
-  return {
-    name: 'V2/V3 Card',
-    version: '3.1',
-    description: 'Official character card template with 6 standard assets',
-    isOfficial: true,
-    assets: [
-      {
-        name: 'system_prompt',
-        required: true,
-        dependsOn: [],
-        description: 'System-level behavioral instructions',
-        blueprintFile: 'system_prompt.md',
-      },
-      {
-        name: 'post_history',
-        required: true,
-        dependsOn: ['system_prompt'],
-        description: 'Conversation context and relationship state',
-        blueprintFile: 'post_history.txt',
-      },
-      {
-        name: 'character_sheet',
-        required: true,
-        dependsOn: ['system_prompt', 'post_history'],
-        description: 'Structured character data',
-        blueprintFile: 'character_sheet.txt',
-      },
-      {
-        name: 'intro_scene',
-        required: true,
-        dependsOn: ['system_prompt', 'post_history', 'character_sheet'],
-        description: 'First interaction scenario',
-        blueprintFile: 'intro_scene.txt',
-      },
-      {
-        name: 'intro_page',
-        required: true,
-        dependsOn: ['character_sheet'],
-        description: 'Visual character introduction page',
-        blueprintFile: 'intro_page.md',
-      },
-      {
-        name: 'a1111',
-        required: true,
-        dependsOn: ['character_sheet'],
-        description: 'Stable Diffusion image generation prompt',
-        blueprintFile: 'a1111.txt',
-      },
-    ],
-  };
+${additionalInstructions ? `\n\n## Additional Instructions\n\n${additionalInstructions}` : ''}
+`;
 }
 
 /**

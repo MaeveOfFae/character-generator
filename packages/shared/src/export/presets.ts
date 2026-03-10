@@ -3,145 +3,18 @@
  * Handles loading TOML presets and applying them to character assets.
  */
 
-export interface FieldMapping {
-  asset: string;
-  target: string;
-  wrapper?: string;
-  optional?: boolean;
-}
-
-export interface ExportPreset {
-  name: string;
-  format: 'text' | 'json' | 'combined';
-  description: string;
-  fields: FieldMapping[];
-  metadata: Record<string, unknown>;
-  outputPattern: string;
-}
-
-export type ExportFormat = ExportPreset['format'];
-
-/**
- * Parse a simple TOML-like value
- */
-function parseTOMLValue(value: string): string | number | boolean {
-  const trimmed = value.trim();
-
-  // Boolean
-  if (trimmed === 'true') return true;
-  if (trimmed === 'false') return false;
-
-  // Number
-  const num = Number(trimmed);
-  if (!isNaN(num) && trimmed === String(num)) return num;
-
-  // String (remove quotes)
-  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-      (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
-    return trimmed.slice(1, -1);
-  }
-
-  return trimmed;
-}
-
-/**
- * Parse a simple TOML file
- * Note: This is a minimal parser for the preset format, not a full TOML implementation
- */
-export function parsePreset(toml: string): ExportPreset | null {
-  try {
-    const result: Record<string, any> = {};
-    const currentSection: { [key: string]: any } = {};
-    let currentField: FieldMapping | null = null;
-    const fields: FieldMapping[] = [];
-
-    const lines = toml.split('\n');
-    let inPreset = false;
-    let inFields = false;
-    let inOutput = false;
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-
-      // Skip comments and empty lines
-      if (line.startsWith('#') || line === '') continue;
-
-      // Section headers
-      if (line.startsWith('[') && line.endsWith(']')) {
-        const section = line.slice(1, -1);
-        if (section === 'preset') {
-          inPreset = true;
-          inFields = false;
-          inOutput = false;
-        } else if (section === 'fields') {
-          inPreset = false;
-          inFields = true;
-          inOutput = false;
-        } else if (section === 'output') {
-          inPreset = false;
-          inFields = false;
-          inOutput = true;
-        }
-        continue;
-      }
-
-      // Key-value pairs
-      const match = line.match(/^(\w+)\s*=\s*(.+)$/);
-      if (!match) continue;
-
-      const [, key, rawValue] = match;
-      const value = parseTOMLValue(rawValue);
-
-      if (inPreset) {
-        currentSection[key] = value;
-      } else if (inOutput) {
-        currentSection[key] = value;
-      } else if (inFields && currentField) {
-        if (key === 'asset') {
-          currentField.asset = String(value);
-        } else if (key === 'target') {
-          currentField.target = String(value);
-        } else if (key === 'wrapper') {
-          currentField.wrapper = String(value);
-        } else if (key === 'optional') {
-          currentField.optional = Boolean(value);
-        }
-      }
-
-      // Array item marker for fields (double brackets [[field]])
-      if (line.startsWith('[[') && line.endsWith(']]')) {
-        if (currentField) {
-          fields.push(currentField);
-        }
-        currentField = { asset: '', target: '' };
-      }
-    }
-
-    // Add last field
-    if (currentField) {
-      fields.push(currentField);
-    }
-
-    // Build preset
-    return {
-      name: currentSection.name || 'Unknown',
-      format: (currentSection.format as ExportFormat) || 'text',
-      description: currentSection.description || '',
-      fields,
-      metadata: {},
-      outputPattern: currentSection.filename || currentSection.directory || '{{character_name}}',
-    };
-  } catch {
-    return null;
-  }
-}
+import type {
+  FieldMapping,
+  ExportPreset as TypesExportPreset,
+  ExportFormat,
+} from '../types';
 
 /**
  * Apply an export preset to a set of assets.
  */
 export function applyPreset(
   assets: Record<string, string>,
-  preset: ExportPreset,
+  preset: TypesExportPreset,
   characterName: string = ''
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {};
@@ -193,12 +66,12 @@ export function applyPreset(
  */
 export function formatExport(
   data: Record<string, unknown>,
-  preset: ExportPreset,
+  preset: TypesExportPreset,
   characterName: string = '',
   model: string = ''
 ): { filename: string; content: string } | { directory: string; files: Array<{ filename: string; content: string }> } {
   // Apply template variables to output pattern
-  let outputName = preset.outputPattern
+  let outputName = preset.output_pattern
     .replace(/\{\{character_name\}\}/g, characterName || 'character')
     .replace(/\{\{model\}\}/g, model || 'unknown')
     .replace(/\{\{timestamp\}\}/g, '');
@@ -214,7 +87,6 @@ export function formatExport(
       let filename = key;
       // Determine file extension
       if (key.includes('.')) {
-        // Key already has an extension
         filename = key;
       } else if (key === 'intro_page' || key.includes('page')) {
         filename = `${key}.md`;
@@ -253,7 +125,7 @@ export function formatExport(
 /**
  * Validate a preset for completeness and correctness.
  */
-export function validatePreset(preset: ExportPreset): { isValid: boolean; errors: string[] } {
+export function validatePreset(preset: TypesExportPreset): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
 
   if (!preset.name) {
@@ -276,10 +148,10 @@ export function validatePreset(preset: ExportPreset): { isValid: boolean; errors
   for (const mapping of preset.fields) {
     if (!mapping.asset) {
       errors.push('Field mapping missing asset name');
-    } else if (!validAssets.has(mapping.asset)) {
+    }
+    if (!validAssets.has(mapping.asset)) {
       errors.push(`Invalid asset name: ${mapping.asset}`);
     }
-
     if (!mapping.target) {
       errors.push(`Field mapping for ${mapping.asset} missing target`);
     }
