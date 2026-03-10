@@ -1,23 +1,47 @@
 """Similarity analyzer widget for Qt6 GUI."""
 
 from pathlib import Path
-from typing import Optional, List
+from typing import List, Optional
 
-from PySide6.QtCore import Qt, Slot
-from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QComboBox,
-    QTextEdit,
-    QGroupBox,
-    QMessageBox,
-    QProgressBar,
-    QSpinBox,
-    QCheckBox,
-)
+try:
+    from PySide6.QtCore import Slot
+    from PySide6.QtWidgets import (
+        QCheckBox,
+        QComboBox,
+        QGroupBox,
+        QHBoxLayout,
+        QLabel,
+        QMessageBox,
+        QProgressBar,
+        QPushButton,
+        QSpinBox,
+        QTextEdit,
+        QVBoxLayout,
+        QWidget,
+    )
+except ImportError as exc:
+    QWidget = object
+    QVBoxLayout = None
+    QHBoxLayout = None
+    QLabel = None
+    QPushButton = None
+    QComboBox = None
+    QTextEdit = None
+    QGroupBox = None
+    QMessageBox = None
+    QProgressBar = None
+    QSpinBox = None
+    QCheckBox = None
+
+    def Slot(*args, **kwargs):
+        def decorator(func):
+            return func
+
+        return decorator
+
+    _QT_IMPORT_ERROR = exc
+else:
+    _QT_IMPORT_ERROR = None
 
 from bpui.utils.file_io.pack_io import list_drafts
 from bpui.features.similarity.engine import (
@@ -49,6 +73,8 @@ class SimilarityWidget(QWidget):
         Args:
             main_window: Reference to main window for navigation
         """
+        if _QT_IMPORT_ERROR is not None:
+            raise RuntimeError("PySide6 is required for SimilarityWidget") from _QT_IMPORT_ERROR
         super().__init__()
         self.main_window = main_window
         

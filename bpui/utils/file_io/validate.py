@@ -1,77 +1,44 @@
 """Validate directory screen for Qt6 GUI."""
 
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QLineEdit, QTextEdit, QFileDialog
-)
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
 from pathlib import Path
-import subprocess
-import sys
-from typing import Optional, Dict, Any
 
+from bpui.validate import validate_pack
 
-def _resolve_validator(repo_root: Path) -> Optional[Path]:
-    """Resolve validator path, supporting legacy and new tool layouts."""
-    candidates = [
-        repo_root / "tools" / "validate_pack.py",
-        repo_root / "tools" / "validation" / "validate_pack.py",
-    ]
-    for candidate in candidates:
-        if candidate.exists():
-            return candidate
-    return None
-
-
-def validate_pack(pack_dir: Path, repo_root: Optional[Path] = None) -> Dict[str, Any]:
-    """Validate a character pack directory using tools validator script."""
-    if repo_root is None:
-        repo_root = Path.cwd()
-
-    validator = _resolve_validator(repo_root)
-    if not validator:
-        return {
-            "output": "",
-            "errors": "Validator not found. Expected tools/validate_pack.py or tools/validation/validate_pack.py",
-            "exit_code": 1,
-            "success": False,
-        }
-
-    try:
-        result = subprocess.run(
-            [sys.executable, str(validator), str(pack_dir)],
-            capture_output=True,
-            text=True,
-            timeout=30,
-            cwd=str(repo_root),
-        )
-        return {
-            "output": result.stdout,
-            "errors": result.stderr,
-            "exit_code": result.returncode,
-            "success": result.returncode == 0,
-        }
-    except subprocess.TimeoutExpired:
-        return {
-            "output": "",
-            "errors": "Validation timed out after 30 seconds",
-            "exit_code": 124,
-            "success": False,
-        }
-    except Exception as exc:
-        return {
-            "output": "",
-            "errors": str(exc),
-            "exit_code": 1,
-            "success": False,
-        }
+try:
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QFont
+    from PySide6.QtWidgets import (
+        QFileDialog,
+        QHBoxLayout,
+        QLabel,
+        QLineEdit,
+        QPushButton,
+        QTextEdit,
+        QVBoxLayout,
+        QWidget,
+    )
+except ImportError as exc:
+    Qt = None
+    QFont = None
+    QFileDialog = None
+    QHBoxLayout = None
+    QLabel = None
+    QLineEdit = None
+    QPushButton = None
+    QTextEdit = None
+    QVBoxLayout = None
+    QWidget = object
+    _QT_IMPORT_ERROR = exc
+else:
+    _QT_IMPORT_ERROR = None
 
 
 class ValidateScreen(QWidget):
     """Validate any directory screen."""
     
     def __init__(self, parent, config):
+        if _QT_IMPORT_ERROR is not None:
+            raise RuntimeError("PySide6 is required for ValidateScreen") from _QT_IMPORT_ERROR
         super().__init__(parent)
         self.config = config
         self.parent_window = parent

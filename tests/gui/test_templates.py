@@ -2,7 +2,10 @@
 
 import pytest
 from pathlib import Path
-from PySide6.QtWidgets import QApplication
+
+QtWidgets = pytest.importorskip("PySide6.QtWidgets")
+QApplication = QtWidgets.QApplication
+
 from bpui.gui.blueprint_editor import BlueprintEditor
 from bpui.gui.template_wizard import TemplateWizard, AssetDef
 from bpui.gui.asset_designer import AssetDesignerDialog
