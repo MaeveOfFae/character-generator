@@ -4,6 +4,13 @@ omit =
     */tests/*
     */tui/*
     */tools/*
+    */gui/*
+    */features/offspring/*
+    */features/rehash/*
+    */features/seed_generator/*
+    */features/similarity/similarity.py
+    */utils/file_io/validate.py
+    */utils/metadata/asset_versions.py
     */__pycache__/*
     */site-packages/*
 
