@@ -9,8 +9,10 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '../..');
+const rootPackageJsonPath = path.join(repoRoot, 'package.json');
 const webPackageJsonPath = path.join(repoRoot, 'packages/web/package.json');
 const releaseNotesPath = path.join(repoRoot, 'packages/web/src/lib/whats-new.ts');
+const changelogPath = path.join(repoRoot, 'CHANGELOG.md');
 const execFileAsync = promisify(execFile);
 
 const CATEGORY_RULES = [
@@ -27,6 +29,8 @@ function parseArgs(argv) {
     links: [],
     dryRun: false,
     deriveFromCommits: false,
+    bump: 'patch',
+    allowDirty: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -42,6 +46,10 @@ function parseArgs(argv) {
     switch (flag) {
       case '--version':
         options.version = value;
+        if (inlineValue === undefined) index += 1;
+        break;
+      case '--bump':
+        options.bump = value;
         if (inlineValue === undefined) index += 1;
         break;
       case '--date':
@@ -85,6 +93,9 @@ function parseArgs(argv) {
         break;
       case '--dry-run':
         options.dryRun = true;
+        break;
+      case '--allow-dirty':
+        options.allowDirty = true;
         break;
       case '--help':
         options.help = true;
@@ -134,7 +145,64 @@ function formatEntry(entry) {
 }
 
 function printHelp() {
-  console.log(`Usage: pnpm release:notes [options]\n\nOptions:\n  --version <x.y.z>     Defaults to packages/web package.json version\n  --date <YYYY-MM-DD>   Defaults to today's date\n  --badge <label>       Defaults to "Current release"\n  --headline <text>     Release title\n  --summary <text>      One-paragraph summary\n  --highlights <a|b|c>  Pipe-separated highlights\n  --links <Label:/path|Label:/path>  Pipe-separated action links\n  --derive-from-commits Derive headline, summary, and highlights from git commits\n  --from-ref <ref>      Start of git range when deriving from commits\n  --to-ref <ref>        End of git range when deriving from commits (defaults to HEAD)\n  --commits <n>         Use the latest n commits when deriving without an explicit range\n  --dry-run             Print the generated entry without writing\n  --help                Show this message`);
+  console.log(`Usage: pnpm release:notes [options]\n\nOptions:\n  --version <x.y.z>     Explicit release version; overrides automatic bumping\n  --bump <type>         Version bump type: patch, minor, or major (default: patch)\n  --date <YYYY-MM-DD>   Defaults to today's date\n  --badge <label>       Defaults to "Current release"\n  --headline <text>     Release title\n  --summary <text>      One-paragraph summary\n  --highlights <a|b|c>  Pipe-separated highlights\n  --links <Label:/path|Label:/path>  Pipe-separated action links\n  --derive-from-commits Derive headline, summary, and highlights from git commits\n  --from-ref <ref>      Start of git range when deriving from commits\n  --to-ref <ref>        End of git range when deriving from commits (defaults to HEAD)\n  --commits <n>         Use the latest n commits when deriving without an explicit range\n  --allow-dirty         Permit writes when the git worktree already has changes\n  --dry-run             Print the generated entry without writing\n  --help                Show this message`);
+}
+
+function escapeMarkdown(value) {
+  return String(value).replace(/\[/g, '\\[').replace(/\]/g, '\\]');
+}
+
+function formatChangelogEntry(entry) {
+  const linksBlock = entry.links
+    .map((link) => `- [${escapeMarkdown(link.label)}](${link.to})`)
+    .join('\n');
+  const highlightsBlock = entry.highlights
+    .map((highlight) => `- ${highlight}`)
+    .join('\n');
+
+  return [
+    `## v${entry.version} - ${entry.releasedOn}`,
+    '',
+    `### ${entry.headline}`,
+    '',
+    entry.summary,
+    '',
+    '### Highlights',
+    highlightsBlock,
+    '',
+    '### Links',
+    linksBlock,
+    '',
+  ].join('\n');
+}
+
+function parseSemver(version) {
+  const match = String(version).match(/^(\d+)\.(\d+)\.(\d+)$/);
+
+  if (!match) {
+    throw new Error(`Invalid semantic version: ${version}. Expected X.Y.Z`);
+  }
+
+  return {
+    major: Number.parseInt(match[1], 10),
+    minor: Number.parseInt(match[2], 10),
+    patch: Number.parseInt(match[3], 10),
+  };
+}
+
+function bumpSemver(version, bumpType) {
+  const parsed = parseSemver(version);
+
+  switch (bumpType) {
+    case 'patch':
+      return `${parsed.major}.${parsed.minor}.${parsed.patch + 1}`;
+    case 'minor':
+      return `${parsed.major}.${parsed.minor + 1}.0`;
+    case 'major':
+      return `${parsed.major + 1}.0.0`;
+    default:
+      throw new Error(`Invalid bump type: ${bumpType}. Expected patch, minor, or major.`);
+  }
 }
 
 function normalizeCommitSubject(subject) {
@@ -300,6 +368,47 @@ function validateEntry(entry) {
   }
 }
 
+async function ensureCleanWorktree(options) {
+  if (options.dryRun || options.allowDirty) {
+    return;
+  }
+
+  const { stdout } = await execFileAsync('git', ['status', '--porcelain'], { cwd: repoRoot });
+
+  if (stdout.trim()) {
+    throw new Error('Refusing to write release notes with a dirty git worktree. Commit or stash your changes, or rerun with --allow-dirty.');
+  }
+}
+
+async function updateChangelog(entry) {
+  const header = '# Changelog\n\nGenerated release history for the browser app.\n\n';
+  let source;
+
+  try {
+    source = await fs.readFile(changelogPath, 'utf8');
+  } catch (error) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+      source = header;
+    } else {
+      throw error;
+    }
+  }
+
+  if (source.includes(`## v${entry.version}`)) {
+    throw new Error(`CHANGELOG.md already contains version ${entry.version}.`);
+  }
+
+  if (!source.startsWith('# Changelog')) {
+    source = `${header}${source.trimStart()}`;
+  }
+
+  const insertAt = source.indexOf('\n\n') + 2;
+  const prefix = source.slice(0, insertAt);
+  const suffix = source.slice(insertAt).replace(/^\n+/, '');
+
+  return `${prefix}\n${formatChangelogEntry(entry)}${suffix ? `${suffix}\n` : ''}`;
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
 
@@ -308,10 +417,12 @@ async function main() {
     return;
   }
 
+  const rootPackageJson = JSON.parse(await fs.readFile(rootPackageJsonPath, 'utf8'));
   const webPackageJson = JSON.parse(await fs.readFile(webPackageJsonPath, 'utf8'));
   const today = new Date().toISOString().slice(0, 10);
+  const targetVersion = options.version ?? bumpSemver(webPackageJson.version, options.bump);
   const defaults = {
-    version: webPackageJson.version,
+    version: targetVersion,
     date: today,
     badge: 'Current release',
     links: ['Open generation:/generate', 'Review templates:/templates'],
@@ -320,6 +431,8 @@ async function main() {
   if (options.commits !== undefined && (!Number.isInteger(options.commits) || options.commits <= 0)) {
     throw new Error('--commits must be a positive integer.');
   }
+
+  parseSemver(targetVersion);
 
   if (options.links.length === 0) {
     options.links = [...defaults.links];
@@ -367,13 +480,30 @@ async function main() {
     throw new Error('Failed to update release notes source. Expected releaseNotes array header was not found.');
   }
 
+  const updatedChangelog = await updateChangelog(entry);
+
   if (options.dryRun) {
+    console.log(`Would bump version: web ${webPackageJson.version} -> ${targetVersion}`);
+    if (rootPackageJson.version !== targetVersion) {
+      console.log(`Would sync root package version: ${rootPackageJson.version} -> ${targetVersion}`);
+    }
+    console.log(`Would update changelog: ${path.relative(repoRoot, changelogPath)}`);
     console.log(formatEntry(entry));
     return;
   }
 
+  await ensureCleanWorktree(options);
+
+  webPackageJson.version = targetVersion;
+  rootPackageJson.version = targetVersion;
+
+  await fs.writeFile(webPackageJsonPath, `${JSON.stringify(webPackageJson, null, 2)}\n`, 'utf8');
+  await fs.writeFile(rootPackageJsonPath, `${JSON.stringify(rootPackageJson, null, 2)}\n`, 'utf8');
   await fs.writeFile(releaseNotesPath, updatedSource, 'utf8');
+  await fs.writeFile(changelogPath, updatedChangelog, 'utf8');
+  console.log(`Bumped package versions to ${targetVersion}`);
   console.log(`Added release note ${entry.version} to ${path.relative(repoRoot, releaseNotesPath)}`);
+  console.log(`Updated ${path.relative(repoRoot, changelogPath)}`);
 }
 
 main().catch((error) => {
