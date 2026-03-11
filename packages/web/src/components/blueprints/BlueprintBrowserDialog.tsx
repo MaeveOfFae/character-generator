@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronRight, ChevronDown, FileText, Search, X, FolderOpen, FileJson, BookOpen, Lightbulb, Package, Check } from 'lucide-react';
-import { api, type Blueprint } from '@char-gen/shared';
+import type { Blueprint } from '@char-gen/shared';
+import { api } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '../../utils/cn';
 

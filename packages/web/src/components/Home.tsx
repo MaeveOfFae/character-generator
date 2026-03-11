@@ -1,8 +1,11 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Sparkles, FolderOpen, GitCompare, Baby, ArrowRight, Dice1, GitBranch, ShieldCheck, Zap, FileText, Layers } from 'lucide-react';
-import { api, type DraftMetadata } from '@char-gen/shared';
+import type { DraftMetadata } from '@char-gen/shared';
+import { api } from '@/lib/api';
 import { useAssistantScreenContext } from './common/AssistantContext';
+import AutomationPlaceholder from './common/AutomationPlaceholder';
+import OnboardingPlaceholder from './common/OnboardingPlaceholder';
 
 const QUICK_ACTIONS = [
   { to: '/generate', label: 'Generate', description: 'Create a new character', icon: Sparkles, color: 'from-purple-500 to-pink-500' },
@@ -154,6 +157,18 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 h-2.5 w-2.5 rounded-full bg-amber-400" />
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Browser-Only Mode</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              This workspace runs fully client-side. Drafts, templates, theme presets, and blueprint edits stay in the browser instead of syncing through a local API server.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Stats Grid */}
       <section>
         <div className="flex items-center gap-3 mb-6">
@@ -194,6 +209,25 @@ export default function Home() {
           {QUICK_ACTIONS.map((action) => (
             <ActionCard key={action.to} {...action} />
           ))}
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-dashed border-border/60 bg-card/40 p-6">
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">Planned Guided Workflows</h3>
+              <p className="text-sm text-muted-foreground">
+                First-run help and queued automations are scaffolded here so they stay visible from the home screen.
+              </p>
+            </div>
+            <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+              Planned
+            </span>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <OnboardingPlaceholder templateName={templatesData?.[0]?.name} />
+            <AutomationPlaceholder workflowName="draft validation queue" />
+          </div>
         </div>
       </section>
 

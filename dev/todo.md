@@ -4,6 +4,9 @@ This file tracks possible future product and workflow additions.
 
 It is intentionally scoped to new capabilities, UX improvements, and longer-term enhancements, not bug fixes or maintenance tasks.
 
+Execution ownership for these backlog sections now lives in `packages/web/src/lib/roadmap.ts`.
+Grouped placeholder modules have been added under existing feature directories so new work can start from real integration points instead of new top-level routes.
+
 ## Generation Workflow
 
 - [ ] Asset-by-asset approval workflow before downstream generation continues

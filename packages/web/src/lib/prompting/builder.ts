@@ -7,6 +7,7 @@ import type {
   ChatMessage,
   ContentMode,
 } from '@char-gen/shared';
+import { buildSeedGeneratorSystemPrompt } from '../seed-generator.js';
 import type {
   Blueprint,
   TemplateAsset,
@@ -94,11 +95,9 @@ export async function buildAssetPrompt(
  * Build seed generation prompt
  */
 export async function buildSeedGenPrompt(
-  genreLines: string,
-  baseUrl?: string
+  genreLines: string
 ): Promise<[system: string, user: string]> {
-  // Load seed generator blueprint
-  const systemPrompt = await loadBlueprint('seed-gen', baseUrl);
+  const systemPrompt = buildSeedGeneratorSystemPrompt();
 
   return [systemPrompt, genreLines];
 }

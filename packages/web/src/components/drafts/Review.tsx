@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Star, Download, Trash2, Edit3, Check, X, ShieldCheck } from 'lucide-react';
-import { api } from '@char-gen/shared';
+import { api } from '@/lib/api';
 import ExportModal from '../common/ExportModal';
 import ChatPanel from '../common/ChatPanel';
 import { useAssistantScreenContext } from '../common/AssistantContext';

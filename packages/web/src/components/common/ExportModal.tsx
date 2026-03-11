@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, Download, FileText, FileJson, FileCode } from 'lucide-react';
-import { api, type ExportPresetSummary } from '@char-gen/shared';
+import type { ExportPresetSummary } from '@char-gen/shared';
+import { api } from '@/lib/api';
 import { saveDownload } from '../../utils/download';
+import ExportPreviewPlaceholder from './ExportPreviewPlaceholder';
+import PublishingPlaceholder from './PublishingPlaceholder';
 
 type ExportPresetOption = ExportPresetSummary & {
   format?: 'text' | 'json' | 'combined';
@@ -138,6 +141,25 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
               Include metadata (creation date, model, tags)
             </label>
           </div>
+
+          <section className="rounded-lg border border-dashed border-border bg-card/50 p-4">
+            <div className="mb-3 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-semibold">Planned Export Extras</h3>
+                <p className="text-xs text-muted-foreground">
+                  Preview and publishing hooks stay visible here until those flows are implemented.
+                </p>
+              </div>
+              <span className="rounded-full bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                Planned
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              <ExportPreviewPlaceholder draftId={draftId} presetName={selectedPreset || undefined} />
+              <PublishingPlaceholder draftId={draftId} />
+            </div>
+          </section>
 
           {errorMessage && (
             <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">

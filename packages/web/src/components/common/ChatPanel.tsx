@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { MessageCircle, Send, Loader2, X, Check, RefreshCw } from 'lucide-react';
-import { api, type ChatMessage } from '@char-gen/shared';
+import type { ChatMessage } from '@char-gen/shared';
+import { api } from '@/lib/api';
 
 interface ChatPanelProps {
   draftId: string;

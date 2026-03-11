@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { GitCompare, Loader2, Users, AlertCircle, CheckCircle } from 'lucide-react';
-import { api, type SimilarityResult } from '@char-gen/shared';
+import type { SimilarityResult } from '@char-gen/shared';
+import { api } from '@/lib/api';
 import { useAssistantScreenContext } from '../common/AssistantContext';
 
 export default function Similarity() {
@@ -105,7 +106,7 @@ export default function Similarity() {
           >
             <option value="">Select a character...</option>
             {draftsData?.drafts.map((draft) => (
-              <option key={draft.seed} value={draft.seed}>
+              <option key={draft.review_id} value={draft.review_id}>
                 {draft.character_name || draft.seed}
               </option>
             ))}
@@ -122,7 +123,7 @@ export default function Similarity() {
           >
             <option value="">Select a character...</option>
             {draftsData?.drafts.map((draft) => (
-              <option key={draft.seed} value={draft.seed}>
+              <option key={draft.review_id} value={draft.review_id}>
                 {draft.character_name || draft.seed}
               </option>
             ))}
@@ -244,6 +245,47 @@ export default function Similarity() {
                   <li key={i} className="text-sm text-muted-foreground">• {item}</li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {result.llm_analysis && (
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="rounded-lg border border-border bg-card p-6">
+                <h3 className="font-semibold mb-4">LLM Relationship Read</h3>
+                <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                  {result.llm_analysis.relationship_potential}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+                <div>
+                  <h3 className="font-semibold mb-2">Story Hooks</h3>
+                  <ul className="space-y-2">
+                    {result.llm_analysis.story_hooks.map((item, i) => (
+                      <li key={i} className="text-sm text-muted-foreground">• {item}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">Conflict Areas</h4>
+                    <ul className="space-y-1">
+                      {result.llm_analysis.conflict_areas.map((item, i) => (
+                        <li key={i} className="text-sm text-muted-foreground">• {item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">Synergy Areas</h4>
+                    <ul className="space-y-1">
+                      {result.llm_analysis.synergy_areas.map((item, i) => (
+                        <li key={i} className="text-sm text-muted-foreground">• {item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>

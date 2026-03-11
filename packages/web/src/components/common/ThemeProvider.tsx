@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { api, type ThemeOverride, type ThemePreset } from '@char-gen/shared';
+import type { ThemeOverride, ThemePreset } from '@char-gen/shared';
+import { api } from '@/lib/api';
 import { applyThemeToDocument, resolveThemeColors } from '../../theme/theme';
 
 interface ThemePreviewState {

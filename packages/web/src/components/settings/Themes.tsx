@@ -15,7 +15,8 @@ import {
   Upload,
   Wand2,
 } from 'lucide-react';
-import { api, type ThemeColors, type ThemePreset } from '@char-gen/shared';
+import type { ThemeColors, ThemePreset } from '@char-gen/shared';
+import { api } from '@/lib/api';
 import { EDITABLE_THEME_SECTIONS, resolveThemeColors } from '../../theme/theme';
 import { saveDownload } from '../../utils/download';
 

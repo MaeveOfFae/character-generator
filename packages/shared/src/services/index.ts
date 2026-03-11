@@ -1,2 +1,2 @@
 export { CharacterGeneratorAPI, GenerationStream, APIError, api } from './api';
-export type { GenerationEventType, GenerationEvent } from './api';
+export type { DownloadResponse, GenerationEventType, GenerationEvent } from './api';

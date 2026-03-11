@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { CheckCircle2, Circle, Loader2, XCircle, FileText, Clock, RotateCcw, Save } from 'lucide-react';
-import { api, type GenerationComplete, type Template } from '@char-gen/shared';
+import type { GenerationComplete, Template } from '@char-gen/shared';
 import { GenerationService, type GenerationProgress as GenProgress } from '../../lib/services/generation.js';
+import { configManager } from '../../lib/config/manager.js';
+import { inferCharacterDisplayNameForTemplate } from '../../lib/templates/browser.js';
 
 interface GenerationProgressProps {
   seed: string;
@@ -239,10 +241,7 @@ export default function GenerationProgress({
       // Generate review ID
       const reviewId = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
-      // Extract character name from character_sheet if available
-      const characterSheetContent = approved.character_sheet || '';
-      const nameMatch = characterSheetContent.match(/Name:\s*(.+)/i);
-      const characterName = nameMatch ? nameMatch[1].trim() : undefined;
+      const characterName = inferCharacterDisplayNameForTemplate(approved, template);
 
       const draft = {
         path: reviewId,
@@ -250,7 +249,7 @@ export default function GenerationProgress({
           review_id: reviewId,
           seed,
           mode: mode as 'SFW' | 'NSFW' | 'Platform-Safe',
-          model: undefined, // Will use current config model
+          model: configManager.getConfig().model,
           created: new Date().toISOString(),
           modified: new Date().toISOString(),
           favorite: false,

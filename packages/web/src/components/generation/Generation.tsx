@@ -2,9 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Sparkles, Zap, BookOpen, XCircle, Loader2 } from 'lucide-react';
-import { api, type ContentMode, type GenerationComplete, type Template } from '@char-gen/shared';
+import type { ContentMode, GenerationComplete, Template } from '@char-gen/shared';
+import { api } from '@/lib/api';
 import { useAssistantScreenContext } from '../common/AssistantContext';
 import GenerationProgress from './GenerationProgress';
+import ApprovalWorkflowPlaceholder from './ApprovalWorkflowPlaceholder';
+import CheckpointSessionPlaceholder from './CheckpointSessionPlaceholder';
 
 export default function Generation() {
   const location = useLocation();
@@ -25,6 +28,8 @@ export default function Generation() {
       setTemplate(templates[0].name);
     }
   }, [template, templates]);
+
+  const selectedTemplate = templates.find((availableTemplate: Template) => availableTemplate.name === template);
 
   useAssistantScreenContext({
     seed_preview: seed.slice(0, 200),
@@ -108,7 +113,7 @@ export default function Generation() {
                 value={seed}
                 onChange={(e) => setSeed(e.target.value)}
                 placeholder="e.g., a lonely space pirate searching for redemption"
-                className="mt-1.5 min-h-32 w-full rounded-xl border border-border bg-background/50 px-4 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-primary/20 resize-none"
+                className="mt-1.5 min-h-32 w-full rounded-xl border border-border bg-background/50 px-4 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
               />
               <div className="flex items-center gap-2">
                 <Link
@@ -182,7 +187,7 @@ export default function Generation() {
                   value={template}
                   onChange={(e) => setTemplate(e.target.value)}
                   disabled={templatesLoading || templates.length === 0 || isGenerating}
-                  className="w-full rounded-xl border border-border bg-background/50 px-4 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full rounded-xl border border-border bg-background/50 px-4 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {templates.length === 0 ? (
                     <option value="">No templates available</option>
@@ -215,6 +220,31 @@ export default function Generation() {
           </div>
         </section>
       </div>
+
+      <section className="rounded-2xl border border-dashed border-border/60 bg-card/40 p-6">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">Planned Workflow Upgrades</h2>
+            <p className="text-sm text-muted-foreground">
+              These hooks mark where approval and checkpoint tooling will attach to the generation flow.
+            </p>
+          </div>
+          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            Planned
+          </span>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ApprovalWorkflowPlaceholder
+            templateName={selectedTemplate?.name || template || undefined}
+            assetCount={selectedTemplate?.assets.length}
+          />
+          <CheckpointSessionPlaceholder
+            reviewId={undefined}
+            resumeFromAsset={selectedTemplate?.assets[0]?.name}
+          />
+        </div>
+      </section>
 
       {/* Progress Overlay */}
       {isGenerating && (

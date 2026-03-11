@@ -5,10 +5,11 @@
 export * from './types';
 
 // ============================================================================
-// API (Mock - to be replaced with client-side services)
+// API
 // ============================================================================
 
-export { api } from './api';
+export { api, APIError, CharacterGeneratorAPI, GenerationStream } from './services';
+export type { DownloadResponse, GenerationEvent, GenerationEventType } from './services';
 
 // ============================================================================
 // LLM Engine (Direct client-side calls)

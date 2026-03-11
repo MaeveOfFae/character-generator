@@ -1,7 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { FolderOpen, Star, Clock } from 'lucide-react';
-import { api } from '@char-gen/shared';
+import { api } from '@/lib/api';
+import DraftComparisonPlaceholder from './DraftComparisonPlaceholder';
+import LibraryCollectionsPlaceholder from './LibraryCollectionsPlaceholder';
+import ReviewChecklistPlaceholder from './ReviewChecklistPlaceholder';
+import VersionHistoryPlaceholder from './VersionHistoryPlaceholder';
 
 export default function Drafts() {
   const { data, isLoading, error } = useQuery({
@@ -54,6 +58,32 @@ export default function Drafts() {
         </div>
       )}
 
+      <section className="rounded-lg border border-dashed border-border bg-card/50 p-5">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">Planned Draft Workflows</h2>
+            <p className="text-sm text-muted-foreground">
+              Disabled cards for comparison, review, collections, and version history live here until the full flows are wired.
+            </p>
+          </div>
+          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            Planned
+          </span>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <LibraryCollectionsPlaceholder
+            collectionName={data?.drafts.length ? 'all drafts' : 'empty library'}
+          />
+          <DraftComparisonPlaceholder
+            leftDraftId={data?.drafts[0]?.review_id}
+            rightDraftId={data?.drafts[1]?.review_id}
+          />
+          <ReviewChecklistPlaceholder draftId={data?.drafts[0]?.review_id} />
+          <VersionHistoryPlaceholder draftId={data?.drafts[0]?.review_id} />
+        </div>
+      </section>
+
       {/* Draft List */}
       <div className="space-y-2">
         {data?.drafts.length === 0 ? (
@@ -63,6 +93,9 @@ export default function Drafts() {
             <p className="text-muted-foreground">
               Generate your first character to get started
             </p>
+            <div className="mt-6 text-left">
+              <LibraryCollectionsPlaceholder collectionName="first-run library" />
+            </div>
             <Link
               to="/generate"
               className="mt-4 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"

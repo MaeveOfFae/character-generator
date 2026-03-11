@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Loader2, MessageCircle, Send, X } from 'lucide-react';
-import { api, type ChatMessage } from '@char-gen/shared';
+import type { ChatMessage } from '@char-gen/shared';
+import { api } from '@/lib/api';
 import { useAssistantContext } from './AssistantContext';
 
 const screenTitles: Record<string, string> = {

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, ChevronLeft, ChevronRight, Loader2, CheckCircle2 } from 'lucide-react';
-import { api, type CreateTemplateRequest, type AssetDefinition, type Template } from '@char-gen/shared';
+import type { CreateTemplateRequest, AssetDefinition, Template } from '@char-gen/shared';
+import { api } from '@/lib/api';
 import BasicInfoStep from './wizard/BasicInfoStep';
 import AssetSelectionStep from './wizard/AssetSelectionStep';
 import DependenciesStep from './wizard/DependenciesStep';

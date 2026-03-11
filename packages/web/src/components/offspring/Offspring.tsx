@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Baby, Loader2, Users, CheckCircle } from 'lucide-react';
-import { api, type ContentMode } from '@char-gen/shared';
+import type { ContentMode } from '@char-gen/shared';
+import { api } from '@/lib/api';
 import { useAssistantScreenContext } from '../common/AssistantContext';
 
 export default function Offspring() {

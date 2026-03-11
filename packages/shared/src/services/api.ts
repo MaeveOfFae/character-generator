@@ -301,6 +301,10 @@ export class CharacterGeneratorAPI {
     return this.request<Template[]>('/templates');
   }
 
+  async listTemplates(): Promise<Template[]> {
+    return this.getTemplates();
+  }
+
   async getTemplate(name: string): Promise<Template> {
     return this.request<Template>(`/templates/${encodeURIComponent(name)}`);
   }
@@ -443,6 +447,10 @@ export class CharacterGeneratorAPI {
     }
     const query = params.toString();
     return this.request<DraftListResponse>(`/drafts${query ? `?${query}` : ''}`);
+  }
+
+  async listDrafts(filters?: DraftFilters): Promise<DraftListResponse> {
+    return this.getDrafts(filters);
   }
 
   async getDraft(draftId: string): Promise<Draft> {

@@ -8,6 +8,7 @@ import type {
   Draft,
   DraftMetadata,
 } from '@char-gen/shared';
+import { inferCharacterDisplayNameForTemplate } from '../templates/browser.js';
 
 /**
  * Draft entity for IndexedDB
@@ -75,13 +76,23 @@ export class DraftStorage {
    */
   static async saveDraft(draft: Draft): Promise<void> {
     const now = Date.now();
+    const inferredCharacterName = inferCharacterDisplayNameForTemplate(
+      draft.assets,
+      draft.metadata.template_name
+    );
+    const nextMetadata: DraftMetadata = {
+      ...draft.metadata,
+      character_name: draft.metadata.character_name || inferredCharacterName,
+      created: draft.metadata.created || new Date(now).toISOString(),
+      modified: draft.metadata.modified || new Date(now).toISOString(),
+    };
 
     const entity: DraftEntity = {
       reviewId: draft.metadata.review_id,
-      metadata: draft.metadata,
+      metadata: nextMetadata,
       assets: draft.assets,
-      createdAt: draft.metadata.created ? new Date(draft.metadata.created).getTime() : now,
-      updatedAt: draft.metadata.modified ? new Date(draft.metadata.modified).getTime() : now,
+      createdAt: nextMetadata.created ? new Date(nextMetadata.created).getTime() : now,
+      updatedAt: nextMetadata.modified ? new Date(nextMetadata.modified).getTime() : now,
     };
 
     // Check if draft exists
@@ -180,7 +191,11 @@ export class DraftStorage {
     }
 
     const now = Date.now();
-    existing.metadata = { ...existing.metadata, ...updates };
+    existing.metadata = {
+      ...existing.metadata,
+      ...updates,
+      modified: new Date(now).toISOString(),
+    };
     existing.updatedAt = now;
 
     await db.drafts.put(existing);
@@ -211,6 +226,11 @@ export class DraftStorage {
 
     existing.assets[assetName] = content;
     existing.updatedAt = Date.now();
+    existing.metadata = {
+      ...existing.metadata,
+      modified: new Date(existing.updatedAt).toISOString(),
+      character_name: inferCharacterDisplayNameForTemplate(existing.assets, existing.metadata.template_name) || existing.metadata.character_name,
+    };
 
     await db.drafts.put(existing);
 

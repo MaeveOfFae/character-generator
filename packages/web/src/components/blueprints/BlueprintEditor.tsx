@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Save, FileText, Eye, Edit3, X } from 'lucide-react';
-import { api, type Blueprint } from '@char-gen/shared';
+import type { Blueprint } from '@char-gen/shared';
+import { api } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
 
 interface BlueprintFormData {

@@ -6,14 +6,14 @@
 import type {
   ContentMode,
   Draft,
-  DraftMetadata,
-  Template,
   GenerateRequest,
   GenerateAssetRequest,
   OffspringRequest,
+  SeedGenerationRequest,
   ChatMessage,
   LLMProvider,
 } from '@char-gen/shared';
+import { parseBlueprintOutput as parseGeneratedBlueprintOutput } from '@char-gen/shared';
 import { createEngine } from '../llm/factory.js';
 import { configManager } from '../config/manager.js';
 import { DraftStorage } from '../storage/draft-db.js';
@@ -25,10 +25,16 @@ import {
   buildOffspringPrompt,
   formatMessages,
 } from '../prompting/builder.js';
-import type {
-  TemplateAsset,
-} from '../prompting/blueprint.js';
-import { templateToAssets, topologicalSort } from '../prompting/blueprint.js';
+import {
+  inferCharacterDisplayNameForTemplate,
+  resolveTemplateAssets,
+  resolveTemplateBlueprintContent,
+  resolveTemplateDefinition,
+} from '../templates/browser.js';
+import {
+  parseSeedGenerationResponse,
+  resolveSeedGenerationInput,
+} from '../seed-generator.js';
 
 /**
  * Progress callback for generation
@@ -72,12 +78,8 @@ export class GenerationService {
     });
 
     // Get template assets
-    let templateAssets: TemplateAsset[] | undefined;
-    if (template) {
-      // Would load template from storage
-      // For now, use default asset order
-      templateAssets = undefined;
-    }
+    const templateAssets = resolveTemplateAssets(template);
+    const templateDefinition = template ? resolveTemplateDefinition(template) : undefined;
 
     yield { type: 'status', stage: 'building_prompt' };
 
@@ -115,12 +117,20 @@ export class GenerationService {
     yield { type: 'status', stage: 'parsing' };
 
     // Parse the response into assets
-    const assets = this.parseBlueprintOutput(fullContent);
+    let assets: Record<string, string>;
+    try {
+      assets = templateDefinition
+        ? parseGeneratedBlueprintOutput(fullContent, templateDefinition).assets
+        : this.parseBlueprintOutput(fullContent);
+    } catch {
+      assets = this.parseBlueprintOutput(fullContent);
+    }
 
     yield { type: 'status', stage: 'saving' };
 
     // Save draft
     const reviewId = this.generateReviewId();
+    const characterName = inferCharacterDisplayNameForTemplate(assets, template);
     const draft: Draft = {
       path: reviewId,
       metadata: {
@@ -132,6 +142,7 @@ export class GenerationService {
         modified: new Date().toISOString(),
         favorite: false,
         template_name: template,
+        character_name: characterName,
       },
       assets,
     };
@@ -174,12 +185,15 @@ export class GenerationService {
 
     yield { type: 'status', stage: 'building_prompt' };
 
+    const blueprintContent = resolveTemplateBlueprintContent(template, asset_name);
+
     // Build asset prompt
     const [systemPrompt, userPrompt] = await buildAssetPrompt(
       asset_name,
       seed,
       mode,
-      prior_assets
+      prior_assets,
+      blueprintContent
     );
 
     yield { type: 'status', stage: 'generating', asset: asset_name };
@@ -277,17 +291,26 @@ export class GenerationService {
     const [orchestratorSystem, orchestratorUser] = await buildOrchestratorPrompt(
       offspringSeed,
       mode,
-      template ? templateToAssets(template as unknown as Template) : undefined
+      resolveTemplateAssets(template)
     );
 
     const orchestratorMessages = formatMessages(orchestratorSystem, orchestratorUser);
     const orchestratorResult = await engine.generate(orchestratorMessages);
-    const assets = this.parseBlueprintOutput(orchestratorResult.content);
+    let assets: Record<string, string>;
+    const templateDefinition = template ? resolveTemplateDefinition(template) : undefined;
+    try {
+      assets = templateDefinition
+        ? parseGeneratedBlueprintOutput(orchestratorResult.content, templateDefinition).assets
+        : this.parseBlueprintOutput(orchestratorResult.content);
+    } catch {
+      assets = this.parseBlueprintOutput(orchestratorResult.content);
+    }
 
     yield { type: 'status', stage: 'saving' };
 
     // Save draft
     const reviewId = this.generateReviewId();
+    const characterName = inferCharacterDisplayNameForTemplate(assets, template);
     const draft: Draft = {
       path: reviewId,
       metadata: {
@@ -301,6 +324,7 @@ export class GenerationService {
         template_name: template,
         parent_drafts: [parent1_id, parent2_id],
         offspring_type: 'offspring',
+        character_name: characterName,
       },
       assets,
     };
@@ -316,8 +340,13 @@ export class GenerationService {
   /**
    * Generate seeds from genre lines
    */
-  static async *generateSeeds(genreLines: string): AsyncIterable<GenerationProgress> {
+  static async *generateSeeds(request: SeedGenerationRequest | string): AsyncIterable<GenerationProgress> {
     yield { type: 'status', stage: 'initializing' };
+
+    const resolvedRequest = typeof request === 'string'
+      ? { genre_lines: request }
+      : request;
+    const { genreLines } = resolveSeedGenerationInput(resolvedRequest);
 
     // Get API keys and config
     const apiKeys = configManager.getApiKeys();
@@ -348,10 +377,7 @@ export class GenerationService {
     const result = await engine.generate(messages);
 
     // Parse seeds (one per line)
-    const seeds = result.content
-      .split('\n')
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
+    const seeds = parseSeedGenerationResponse(result.content);
 
     yield {
       type: 'complete',

@@ -15,7 +15,8 @@ import {
   Lock,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { api, type Config, type ThemeOverride, type ThemePreset } from '@char-gen/shared';
+import type { Config, ThemeOverride, ThemePreset } from '@char-gen/shared';
+import { api } from '@/lib/api';
 import { useThemePreview } from '../common/ThemeProvider';
 import {
   EDITABLE_THEME_SECTIONS,
@@ -371,6 +372,13 @@ export default function Settings() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* API Keys Section */}
         <section className="lg:col-span-2 space-y-4">
+
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
+          <div className="font-semibold text-foreground">Browser-only persistence</div>
+          <p className="mt-1 text-muted-foreground">
+            Settings, API keys, drafts, templates, themes, and blueprint overrides are stored locally in this browser profile. No backend service is required for the web app runtime.
+          </p>
+        </div>
           <div className="rounded-2xl border border-border/50 bg-card/50 p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 rounded-xl bg-gradient-to-br from-primary to-accent">
@@ -416,7 +424,7 @@ export default function Settings() {
                       value={localConfig.api_keys?.[provider] || ''}
                       onChange={(e) => handleApiKeyChange(provider, e.target.value)}
                       placeholder={`Enter your ${provider} API key`}
-                      className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 pr-10 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-primary/20"
+                      className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 pr-10 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
                     <button
                       type="button"
@@ -461,7 +469,7 @@ export default function Settings() {
                 <select
                   value={selectedProvider}
                   onChange={(e) => setSelectedProvider(e.target.value as Provider)}
-                  className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-primary/20"
+                  className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {ALL_PROVIDERS.map((provider) => (
                     <option key={provider} value={provider}>
@@ -476,7 +484,7 @@ export default function Settings() {
                 <select
                   value={currentModel}
                   onChange={(e) => handleModelSelect(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-primary/20"
+                  className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <option value="">Select a model...</option>
                   {modelSuggestions.map((model: string) => (
@@ -494,7 +502,7 @@ export default function Settings() {
                   value={currentModel}
                   onChange={(e) => handleModelSelect(e.target.value)}
                   placeholder="e.g., openrouter/openai/gpt-4o-mini"
-                  className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-primary/20"
+                  className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   Use format: provider/model-name

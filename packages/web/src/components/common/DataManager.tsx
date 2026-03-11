@@ -3,7 +3,7 @@
  * Import/Export drafts and configuration
  */
 
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Download,
   Upload,
@@ -32,10 +32,9 @@ export default function DataManager() {
   const [isClearing, setIsClearing] = useState(false);
   const [showConfirmClear, setShowConfirmClear] = useState(false);
 
-  // Load stats on mount
-  useState(() => {
-    loadStats();
-  });
+  useEffect(() => {
+    void loadStats();
+  }, []);
 
   async function loadStats() {
     try {
@@ -101,8 +100,7 @@ export default function DataManager() {
       link.click();
       URL.revokeObjectURL(url);
 
-      setNotice({ type: 'success', message: 'API keys exported successfully' });
-      setNotice({ type: 'success', message: 'Warning: API keys are sensitive - handle with care' });
+      setNotice({ type: 'success', message: 'API keys exported successfully. Warning: API keys are sensitive - handle with care.' });
     } catch (error) {
       setNotice({ type: 'error', message: error instanceof Error ? error.message : 'Export failed' });
     }

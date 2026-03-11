@@ -1,10 +1,12 @@
 import { lazy, Suspense, useState, type ChangeEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FileText, Plus, Star, Trash2, ChevronDown, ChevronUp, ShieldCheck, Copy, Download, Pencil, Upload, Loader2 } from 'lucide-react';
-import { api } from '@char-gen/shared';
 import type { CreateTemplateRequest, Template, AssetDefinition } from '@char-gen/shared';
+import { api } from '@/lib/api';
 import { useAssistantScreenContext } from '../common/AssistantContext';
 import { saveDownload } from '../../utils/download';
+import TemplateComparisonPlaceholder from './TemplateComparisonPlaceholder';
+import TemplateMigrationPlaceholder from './TemplateMigrationPlaceholder';
 
 const TemplateWizard = lazy(() => import('./TemplateWizard'));
 
@@ -98,12 +100,9 @@ export default function Templates() {
   const handleExport = async (name: string) => {
     try {
       const download = await api.exportTemplate(name);
-      // Convert string content to Blob for download
-      const blob = new Blob([download], { type: 'application/zip' });
-      const downloadResponse = { blob, filename: `${name}.zip`, contentType: 'application/zip' } as const;
       const result = await saveDownload(
-        downloadResponse,
-        `${name.toLowerCase().replace(/[^a-z0-9]+/gi, '_')}.zip`
+        download,
+        `${name.toLowerCase().replace(/[^a-z0-9]+/gi, '_')}.json`
       );
 
       if (result.saved) {
@@ -209,11 +208,36 @@ export default function Templates() {
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-accent">
             <Upload className="h-4 w-4" />
             Import Template
-            <input type="file" accept=".zip" className="hidden" onChange={handleImportChange} />
+            <input type="file" accept=".json,.zip" className="hidden" onChange={handleImportChange} />
           </label>
           <button
             onClick={() => {
               setEditingTemplate(null);
+
+      <section className="rounded-lg border border-dashed border-border bg-card/50 p-5">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">Planned Template Tooling</h2>
+            <p className="text-sm text-muted-foreground">
+              These disabled cards keep migration and comparison work discoverable without adding new routes.
+            </p>
+          </div>
+          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            Planned
+          </span>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <TemplateMigrationPlaceholder
+            templateName={templates?.[0]?.name}
+            draftId={undefined}
+          />
+          <TemplateComparisonPlaceholder
+            leftTemplate={templates?.[0]?.name}
+            rightTemplate={templates?.[1]?.name}
+          />
+        </div>
+      </section>
               setShowWizard(true);
             }}
             className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
@@ -392,6 +416,9 @@ export default function Templates() {
           <p className="text-muted-foreground">
             Create your first template to customize character generation
           </p>
+          <div className="mt-6 text-left">
+            <TemplateMigrationPlaceholder templateName="first template" />
+          </div>
         </div>
       )}
       </div>

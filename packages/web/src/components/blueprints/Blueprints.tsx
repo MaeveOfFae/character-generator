@@ -2,8 +2,11 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { BookOpen, FileJson, Lightbulb, Package, Search, ArrowRight } from 'lucide-react';
-import { api, type Blueprint } from '@char-gen/shared';
+import type { Blueprint } from '@char-gen/shared';
+import { api } from '@/lib/api';
 import { useAssistantScreenContext } from '../common/AssistantContext';
+import BlueprintLintPlaceholder from './BlueprintLintPlaceholder';
+import BlueprintSandboxPlaceholder from './BlueprintSandboxPlaceholder';
 
 type Section = {
   title: string;
@@ -52,6 +55,8 @@ export default function Blueprints() {
     }))
     .filter((section) => section.blueprints.length > 0);
 
+  const highlightedBlueprint = filteredSections[0]?.blueprints[0] ?? sections[0]?.blueprints[0];
+
   useAssistantScreenContext({
     search_query: query,
     visible_sections: filteredSections.map((section) => section.title),
@@ -92,6 +97,28 @@ export default function Blueprints() {
           className="w-full rounded-md border border-input bg-background py-2 pl-10 pr-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
       </div>
+
+      <section className="rounded-lg border border-dashed border-border bg-card/50 p-5">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">Planned Blueprint Tools</h2>
+            <p className="text-sm text-muted-foreground">
+              Linting and sandbox runs will attach here once the blueprint tooling moves past placeholder state.
+            </p>
+          </div>
+          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            Planned
+          </span>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <BlueprintLintPlaceholder blueprintPath={highlightedBlueprint?.path} />
+          <BlueprintSandboxPlaceholder
+            blueprintPath={highlightedBlueprint?.path}
+            seed={normalizedQuery || 'preview seed'}
+          />
+        </div>
+      </section>
 
       {filteredSections.length === 0 ? (
         <div className="rounded-lg border border-border bg-card p-8 text-center text-muted-foreground">

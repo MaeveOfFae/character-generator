@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { GitBranch, Loader2, RefreshCw, ArrowRight, Users } from 'lucide-react';
-import { api, type LineageNode } from '@char-gen/shared';
+import type { LineageNode } from '@char-gen/shared';
+import { api } from '@/lib/api';
 import { useAssistantScreenContext } from '../common/AssistantContext';
 
 function NodeCard({
