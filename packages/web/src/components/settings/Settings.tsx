@@ -809,7 +809,7 @@ export default function Settings() {
                 >
                   <div className="flex items-center justify-between mb-3 rounded-lg px-3 py-2"
                     style={{ backgroundColor: resolvedTheme.surface }}>
-                    <span className="font-semibold">Character Generator</span>
+                    <span className="font-semibold">Eidolon Simulacra</span>
                     <span
                       className="rounded-full px-2 py-0.5 text-xs font-medium"
                       style={{ backgroundColor: resolvedTheme.accent, color: resolvedTheme.button_text }}

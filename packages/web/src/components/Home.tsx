@@ -8,7 +8,7 @@ import AutomationPlaceholder from './common/AutomationPlaceholder';
 import OnboardingPlaceholder from './common/OnboardingPlaceholder';
 
 const QUICK_ACTIONS = [
-  { to: '/generate', label: 'Generate', description: 'Create a new character', icon: Sparkles, color: 'from-purple-500 to-pink-500' },
+  { to: '/generate', label: 'Generate', description: 'Create a new simulacrum', icon: Sparkles, color: 'from-purple-500 to-pink-500' },
   { to: '/seed-generator', label: 'Seeds', description: 'Brainstorm concepts', icon: Dice1, color: 'from-blue-500 to-cyan-500' },
   { to: '/drafts', label: 'Drafts', description: 'Browse saved drafts', icon: FolderOpen, color: 'from-amber-500 to-orange-500' },
   { to: '/similarity', label: 'Compare', description: 'Analyze similarities', icon: GitCompare, color: 'from-emerald-500 to-teal-500' },
@@ -136,13 +136,13 @@ export default function Home() {
           <div className="mb-4">
             <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-gradient-to-r from-primary to-accent shadow-2xl shadow-primary/20">
               <Sparkles className="h-8 w-8 text-white animate-pulse" />
-              <span className="text-4xl font-bold text-white">Character Generator</span>
+              <span className="text-4xl font-bold text-white">Eidolon Simulacra</span>
             </div>
           </div>
 
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Generate template-aware character drafts with blueprint templates, validation, and export.
-            <span className="block mt-2 text-primary">Start from one seed and build a consistent set of assets.</span>
+            Generate template-aware simulacra with blueprint templates, validation, and export.
+            <span className="block mt-2 text-primary">Start from one seed and compile a consistent set of assets.</span>
           </p>
 
           <div className="mt-8 flex items-center justify-center gap-2">

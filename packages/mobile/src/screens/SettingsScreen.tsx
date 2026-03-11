@@ -326,10 +326,10 @@ export default function SettingsScreen() {
         <Text style={styles.sectionTitle}>About</Text>
         <View style={styles.aboutCard}>
           <Cog6ToothIcon color="#7c3aed" size={32} />
-          <Text style={styles.aboutTitle}>Character Generator</Text>
+          <Text style={styles.aboutTitle}>Eidolon Simulacra</Text>
           <Text style={styles.aboutVersion}>Version 2.0.0</Text>
           <Text style={styles.aboutText}>
-            Mobile companion app for the Character Generator system.
+            Mobile companion app for the Eidolon Simulacra system.
             Configure API keys through the web interface.
           </Text>
         </View>

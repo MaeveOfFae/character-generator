@@ -335,7 +335,7 @@ export async function buildRefinementSystemPrompt(
 
   const prompt = `You are an expert assistant helping refine a character asset: **${label}**.
 
-The user is working on a character generation project using the Character Generator blueprint system. You have access to:
+The user is working on an Eidolon Simulacra project using the blueprint system. You have access to:
 1. The blueprint specification for this asset
 2. The current asset content
 3. The character sheet (for maintaining consistency)

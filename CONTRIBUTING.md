@@ -1,6 +1,6 @@
-# Contributing to Character Generator
+# Contributing to Eidolon Simulacra
 
-Character Generator currently ships as a TypeScript monorepo with a browser-first web app and shared generation utilities. Keep changes narrow, verifiable, and aligned with the current repo shape rather than older Python or desktop workflows.
+Eidolon Simulacra currently ships as a TypeScript monorepo with a browser-first web app and shared generation utilities. Keep changes narrow, verifiable, and aligned with the current repo shape rather than older Python or desktop workflows.
 
 ## Setup
 

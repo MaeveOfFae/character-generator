@@ -1,7 +1,7 @@
 {
-  "name": "Character Generator",
-  "short_name": "CharGen",
-  "description": "Create rich, consistent characters with AI-powered generation",
+  "name": "Eidolon Simulacra",
+  "short_name": "Eidolon",
+  "description": "Forge rich, consistent character simulacra with AI-guided generation",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f0f0f",
@@ -61,16 +61,16 @@
   "screenshots": [],
   "shortcuts": [
     {
-      "name": "Generate Character",
+      "name": "Generate Simulacrum",
       "short_name": "Generate",
-      "description": "Create a new character",
+      "description": "Create a new simulacrum",
       "url": "/generate",
       "icons": [{ "src": "/icons/generate-icon.png", "sizes": "96x96" }]
     },
     {
       "name": "Browse Drafts",
       "short_name": "Drafts",
-      "description": "View saved characters",
+      "description": "View saved simulacra",
       "url": "/drafts",
       "icons": [{ "src": "/icons/drafts-icon.png", "sizes": "96x96" }]
     }

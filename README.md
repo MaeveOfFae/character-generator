@@ -1,6 +1,6 @@
-# Character Generator
+# Eidolon Simulacra
 
-Character Generator is a pnpm monorepo for template-aware character generation. The current product surface is a browser-first React app backed by shared TypeScript generation, parsing, export, and template utilities.
+Eidolon Simulacra is a pnpm monorepo for template-aware character generation. The current product surface is a browser-first React app backed by shared TypeScript generation, parsing, export, and template utilities.
 
 The repo is centered on a strict blueprint contract: start from one seed, generate assets in dependency order, keep asset formats module-specific, and do not leak downstream facts upstream.
 

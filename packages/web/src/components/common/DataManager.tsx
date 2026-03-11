@@ -62,7 +62,7 @@ export default function DataManager() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `character-generator-drafts-${new Date().toISOString().split('T')[0]}.json`;
+      link.download = `eidolon-simulacra-drafts-${new Date().toISOString().split('T')[0]}.json`;
       link.click();
       URL.revokeObjectURL(url);
 
@@ -79,7 +79,7 @@ export default function DataManager() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `character-generator-config-${new Date().toISOString().split('T')[0]}.json`;
+      link.download = `eidolon-simulacra-config-${new Date().toISOString().split('T')[0]}.json`;
       link.click();
       URL.revokeObjectURL(url);
 
@@ -96,7 +96,7 @@ export default function DataManager() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `character-generator-api-keys-${new Date().toISOString().split('T')[0]}.json`;
+      link.download = `eidolon-simulacra-api-keys-${new Date().toISOString().split('T')[0]}.json`;
       link.click();
       URL.revokeObjectURL(url);
 

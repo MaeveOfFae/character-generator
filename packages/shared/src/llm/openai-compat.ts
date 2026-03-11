@@ -263,7 +263,7 @@ export class OpenAICompatEngine implements LLMEngine {
     // OpenRouter-specific headers
     if (this.config.baseUrl.includes("openrouter.ai")) {
       headers["HTTP-Referer"] = "https://github.com/maeveoffae/character-generator";
-      headers["X-OpenRouter-Title"] = "Blueprint Character Generator";
+      headers["X-OpenRouter-Title"] = "Eidolon Simulacra";
     }
 
     return headers;
@@ -308,7 +308,7 @@ export async function listModels(baseUrl: string, apiKey?: string): Promise<stri
   // OpenRouter-specific headers
   if (baseUrl.includes("openrouter.ai")) {
     headers["HTTP-Referer"] = "https://github.com/maeveoffae/character-generator";
-    headers["X-OpenRouter-Title"] = "Blueprint Character Generator";
+    headers["X-OpenRouter-Title"] = "Eidolon Simulacra";
   }
 
   const response = await fetch(baseUrl + "/models", {

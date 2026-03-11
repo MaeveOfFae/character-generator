@@ -16,8 +16,8 @@ export default function HomeScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.title}>Character Generator</Text>
-        <Text style={styles.subtitle}>Create rich, consistent characters with AI</Text>
+        <Text style={styles.title}>Eidolon Simulacra</Text>
+        <Text style={styles.subtitle}>Create rich, consistent simulacra with AI</Text>
       </View>
 
       {/* Quick Actions */}
@@ -28,7 +28,7 @@ export default function HomeScreen() {
         >
           <SparklesIcon color="#7c3aed" size={32} />
           <Text style={styles.actionTitle}>Generate</Text>
-          <Text style={styles.actionDesc}>Create a new character</Text>
+          <Text style={styles.actionDesc}>Create a new simulacrum</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -37,7 +37,7 @@ export default function HomeScreen() {
         >
           <FolderIcon color="#7c3aed" size={32} />
           <Text style={styles.actionTitle}>Drafts</Text>
-          <Text style={styles.actionDesc}>Browse saved characters</Text>
+          <Text style={styles.actionDesc}>Browse saved simulacra</Text>
         </TouchableOpacity>
       </View>
 
@@ -101,7 +101,7 @@ export default function HomeScreen() {
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{statsData?.stats?.total_drafts ?? '--'}</Text>
-            <Text style={styles.statLabel}>Characters</Text>
+            <Text style={styles.statLabel}>Simulacra</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{statsData?.stats?.favorites ?? '--'}</Text>

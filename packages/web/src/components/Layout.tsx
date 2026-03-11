@@ -154,7 +154,7 @@ export default function Layout({ children }: LayoutProps) {
             <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-accent transition-colors">
               <Menu className="h-6 w-6" />
             </button>
-            <span className="font-semibold text-lg">Character Generator</span>
+            <span className="font-semibold text-lg">Eidolon Simulacra</span>
           </header>
 
           {/* Page content */}

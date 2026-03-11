@@ -44,4 +44,4 @@ We will acknowledge receipt within 48 hours and provide a timeline for remediati
 
 ---
 
-Thank you for helping keep Character Generator secure.
+Thank you for helping keep Eidolon Simulacra secure.
