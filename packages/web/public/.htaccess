@@ -9,6 +9,7 @@ DirectoryIndex index.html
 	RewriteBase /
 
 	RewriteRule ^index\.html$ - [L]
+	RewriteRule \.(?:js|mjs|css|map|json|txt|xml|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|eot)$ - [L]
 	RewriteCond %{REQUEST_FILENAME} !-f
 	RewriteCond %{REQUEST_FILENAME} !-d
 	RewriteRule . /index.html [L]
