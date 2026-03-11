@@ -19,6 +19,33 @@ export interface Blueprint {
   path: string;
 }
 
+const BLUEPRINT_PATH_ALIASES: Record<string, string> = {
+  rpbotgenerator: 'system/rpbotgenerator.md',
+  offspring_generator: 'system/offspring_generator.md',
+  system_prompt: 'templates/official_v2v3/assets/system_prompt.md',
+  post_history: 'templates/official_v2v3/assets/post_history.md',
+  character_sheet: 'templates/official_v2v3/assets/character_sheet.md',
+  intro_scene: 'templates/official_v2v3/assets/intro_scene.md',
+  intro_page: 'templates/official_v2v3/assets/intro_page.md',
+  a1111: 'templates/official_v2v3/assets/a1111.md',
+  char_basic_info: 'templates/official_aksho/assets/char_basic_info.md',
+  char_physical: 'templates/official_aksho/assets/char_physical.md',
+  char_clothing: 'templates/official_aksho/assets/char_clothing.md',
+  char_personality: 'templates/official_aksho/assets/char_personality.md',
+  char_background: 'templates/official_aksho/assets/char_background.md',
+  initial_message: 'templates/official_aksho/assets/initial_message.md',
+};
+
+function resolveBlueprintPath(nameOrPath: string): string {
+  const normalized = nameOrPath.replace(/^\/+/, '');
+
+  if (normalized.endsWith('.md')) {
+    return normalized;
+  }
+
+  return BLUEPRINT_PATH_ALIASES[normalized] ?? `${normalized}.md`;
+}
+
 /**
  * Blueprint repository URL
  * Can be configured to point to a CDN or local folder
@@ -29,12 +56,13 @@ const BLUEPRINT_REPO_URL = '/blueprints';
  * Load a blueprint from the repository
  */
 export async function loadBlueprint(name: string, baseUrl: string = BLUEPRINT_REPO_URL): Promise<string> {
-  const url = `${baseUrl}/${name}.md`;
+  const resolvedPath = resolveBlueprintPath(name);
+  const url = `${baseUrl}/${resolvedPath}`;
 
   try {
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error(`Blueprint not found: ${name}`);
+      throw new Error(`Blueprint not found: ${resolvedPath}`);
     }
     return await response.text();
   } catch (error) {
@@ -102,25 +130,24 @@ export function parseBlueprintFrontmatter(content: string): {
  * Get all available blueprints
  */
 export async function listBlueprints(baseUrl: string = BLUEPRINT_REPO_URL): Promise<Blueprint[]> {
-  // In production, this would be a static list or fetched from an index
-  // For now, return the core orchestrator blueprint
-  const coreBlueprints = [
+  const systemBlueprints = [
     'rpbotgenerator',
     'offspring_generator',
   ];
 
   const blueprints: Blueprint[] = [];
 
-  for (const name of coreBlueprints) {
+  for (const name of systemBlueprints) {
     try {
       const content = await loadBlueprint(name, baseUrl);
       const metadata = parseBlueprintFrontmatter(content);
+      const resolvedPath = resolveBlueprintPath(name);
 
       blueprints.push({
         ...metadata,
-        category: 'core',
+        category: 'system',
         content,
-        path: `${baseUrl}/${name}.md`,
+        path: `${baseUrl}/${resolvedPath}`,
       });
     } catch {
       // Skip failed blueprints

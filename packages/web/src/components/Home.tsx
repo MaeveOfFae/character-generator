@@ -141,7 +141,7 @@ export default function Home() {
           </div>
 
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Generate template-aware character drafts with shared blueprints, validation, and export.
+            Generate template-aware character drafts with blueprint templates, validation, and export.
             <span className="block mt-2 text-primary">Start from one seed and build a consistent set of assets.</span>
           </p>
 
