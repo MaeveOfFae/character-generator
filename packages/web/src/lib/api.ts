@@ -90,7 +90,8 @@ type BlueprintPreviewResponse = GenerateAssetResponse & {
   user_prompt: string;
 };
 
-const CUSTOM_THEMES_STORAGE_KEY = 'bpui.web.themes.custom';
+const CUSTOM_THEMES_STORAGE_KEY = 'eidolon.web.themes.custom';
+const LEGACY_CUSTOM_THEMES_STORAGE_KEYS = ['bpui.web.themes.custom'];
 const MODEL_CACHE_TTL_MS = 5 * 60 * 1000;
 
 type CachedModelsEntry = {
@@ -335,28 +336,43 @@ export class APIError extends Error {
   }
 }
 
-function readStorage<T>(key: string, fallback: T): T {
+function readStorage<T>(keys: string | readonly string[], fallback: T): T {
   if (typeof window === 'undefined') {
     return fallback;
   }
 
+  const keyList = Array.isArray(keys) ? [...keys] : [keys];
+  const [currentKey, ...legacyKeys] = keyList;
+
   try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) {
-      return fallback;
+    for (const key of keyList) {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) {
+        continue;
+      }
+
+      const parsed = JSON.parse(raw) as T;
+      if (key !== currentKey) {
+        window.localStorage.setItem(currentKey, JSON.stringify(parsed));
+        legacyKeys.forEach((legacyKey) => window.localStorage.removeItem(legacyKey));
+      }
+
+      return parsed;
     }
-    return JSON.parse(raw) as T;
   } catch {
     return fallback;
   }
+
+  return fallback;
 }
 
-function writeStorage<T>(key: string, value: T): void {
+function writeStorage<T>(key: string, legacyKeys: readonly string[], value: T): void {
   if (typeof window === 'undefined') {
     return;
   }
 
   window.localStorage.setItem(key, JSON.stringify(value));
+  legacyKeys.forEach((legacyKey) => window.localStorage.removeItem(legacyKey));
 }
 
 function slugifyFileName(value: string): string {
@@ -394,11 +410,11 @@ function resolveProviderApiKey(provider: string, apiKeys: ApiKeys): string | und
 }
 
 function getCustomThemes(): ThemePreset[] {
-  return readStorage<ThemePreset[]>(CUSTOM_THEMES_STORAGE_KEY, []);
+  return readStorage<ThemePreset[]>([CUSTOM_THEMES_STORAGE_KEY, ...LEGACY_CUSTOM_THEMES_STORAGE_KEYS], []);
 }
 
 function saveCustomThemes(themes: ThemePreset[]): void {
-  writeStorage(CUSTOM_THEMES_STORAGE_KEY, themes);
+  writeStorage(CUSTOM_THEMES_STORAGE_KEY, LEGACY_CUSTOM_THEMES_STORAGE_KEYS, themes);
 }
 
 function getAllThemes(): ThemePreset[] {

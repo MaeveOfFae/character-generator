@@ -1,5 +1,5 @@
 /**
- * API Client for Character Generator
+ * API Client for Eidolon Simulacra
  * Isomorphic - works in browser and Node.js
  */
 
@@ -57,7 +57,8 @@ interface BrowserStorageLike {
 
 type HeaderInput = ConstructorParameters<typeof Headers>[0];
 
-const API_KEYS_STORAGE_KEY = 'bpui.web.apiKeys';
+const API_KEYS_STORAGE_KEY = 'eidolon.web.apiKeys';
+const LEGACY_API_KEYS_STORAGE_KEYS = ['bpui.web.apiKeys'];
 const API_KEYS_HEADER = 'X-BPUI-API-KEYS';
 
 function getBrowserStorage(): BrowserStorageLike | null {
@@ -81,26 +82,30 @@ function getBrowserApiKeysHeader(): Record<string, string> {
   }
 
   try {
-    const raw = storage.getItem(API_KEYS_STORAGE_KEY);
-    if (!raw) {
-      return {};
+    for (const key of [API_KEYS_STORAGE_KEY, ...LEGACY_API_KEYS_STORAGE_KEYS]) {
+      const raw = storage.getItem(key);
+      if (!raw) {
+        continue;
+      }
+
+      const parsed = JSON.parse(raw) as Record<string, string>;
+      const keys = Object.fromEntries(
+        Object.entries(parsed).filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
+      );
+
+      if (Object.keys(keys).length === 0) {
+        return {};
+      }
+
+      return {
+        [API_KEYS_HEADER]: encodeBase64(JSON.stringify(keys)),
+      };
     }
-
-    const parsed = JSON.parse(raw) as Record<string, string>;
-    const keys = Object.fromEntries(
-      Object.entries(parsed).filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
-    );
-
-    if (Object.keys(keys).length === 0) {
-      return {};
-    }
-
-    return {
-      [API_KEYS_HEADER]: encodeBase64(JSON.stringify(keys)),
-    };
   } catch {
     return {};
   }
+
+  return {};
 }
 
 export class CharacterGeneratorAPI {

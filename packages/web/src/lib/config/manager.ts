@@ -8,9 +8,12 @@ import type {
   Config,
 } from '@char-gen/shared';
 
-const CONFIG_STORAGE_KEY = 'bpui.web.config';
-const API_KEYS_STORAGE_KEY = 'bpui.web.apiKeys';
-const API_KEYS_PERSISTENCE_KEY = 'bpui.web.apiKeys.persist';
+const CONFIG_STORAGE_KEY = 'eidolon.web.config';
+const LEGACY_CONFIG_STORAGE_KEYS = ['bpui.web.config'];
+const API_KEYS_STORAGE_KEY = 'eidolon.web.apiKeys';
+const LEGACY_API_KEYS_STORAGE_KEYS = ['bpui.web.apiKeys'];
+const API_KEYS_PERSISTENCE_KEY = 'eidolon.web.apiKeys.persist';
+const LEGACY_API_KEYS_PERSISTENCE_KEYS = ['bpui.web.apiKeys.persist'];
 
 /**
  * In-memory API keys storage (cleared on page refresh by default)
@@ -47,6 +50,36 @@ export function isInvalidApiKeyValue(value: string): boolean {
   }
 
   return CORRUPTED_API_KEY_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+function readStoredValue(keys: readonly string[]): { value: string; sourceKey: string } | null {
+  for (const key of keys) {
+    const value = localStorage.getItem(key);
+    if (value !== null) {
+      return { value, sourceKey: key };
+    }
+  }
+
+  return null;
+}
+
+function clearLegacyKeys(currentKey: string, legacyKeys: readonly string[]): void {
+  for (const key of legacyKeys) {
+    if (key !== currentKey) {
+      localStorage.removeItem(key);
+    }
+  }
+}
+
+function writeStoredValue(currentKey: string, legacyKeys: readonly string[], value: string): void {
+  localStorage.setItem(currentKey, value);
+  clearLegacyKeys(currentKey, legacyKeys);
+}
+
+function removeStoredValues(keys: readonly string[]): void {
+  for (const key of keys) {
+    localStorage.removeItem(key);
+  }
 }
 
 function normalizeApiKeys(keys: ApiKeys): ApiKeys {
@@ -89,11 +122,15 @@ export class ConfigManager {
 
   private loadPersistPreference(defaultValue: boolean): boolean {
     try {
-      const stored = localStorage.getItem(API_KEYS_PERSISTENCE_KEY);
-      if (stored === 'true') {
+      const stored = readStoredValue([API_KEYS_PERSISTENCE_KEY, ...LEGACY_API_KEYS_PERSISTENCE_KEYS]);
+      if (stored?.sourceKey !== API_KEYS_PERSISTENCE_KEY) {
+        writeStoredValue(API_KEYS_PERSISTENCE_KEY, LEGACY_API_KEYS_PERSISTENCE_KEYS, stored.value);
+      }
+
+      if (stored?.value === 'true') {
         return true;
       }
-      if (stored === 'false') {
+      if (stored?.value === 'false') {
         return false;
       }
     } catch {
@@ -105,7 +142,7 @@ export class ConfigManager {
 
   private savePersistPreference(value: boolean): void {
     try {
-      localStorage.setItem(API_KEYS_PERSISTENCE_KEY, String(value));
+      writeStoredValue(API_KEYS_PERSISTENCE_KEY, LEGACY_API_KEYS_PERSISTENCE_KEYS, String(value));
     } catch (error) {
       console.warn('Failed to save API key persistence preference:', error);
     }
@@ -113,9 +150,13 @@ export class ConfigManager {
 
   private loadConfig(): Config {
     try {
-      const stored = localStorage.getItem(CONFIG_STORAGE_KEY);
+      const stored = readStoredValue([CONFIG_STORAGE_KEY, ...LEGACY_CONFIG_STORAGE_KEYS]);
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored.value) as Config;
+        if (stored.sourceKey !== CONFIG_STORAGE_KEY) {
+          writeStoredValue(CONFIG_STORAGE_KEY, LEGACY_CONFIG_STORAGE_KEYS, JSON.stringify(parsed));
+        }
+        return parsed;
       }
     } catch {
       // Ignore parse errors
@@ -126,7 +167,7 @@ export class ConfigManager {
 
   private saveConfig(): void {
     try {
-      localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(this.config));
+      writeStoredValue(CONFIG_STORAGE_KEY, LEGACY_CONFIG_STORAGE_KEYS, JSON.stringify(this.config));
     } catch (error) {
       console.warn('Failed to save config to localStorage:', error);
     }
@@ -218,9 +259,13 @@ export class ConfigManager {
     }
 
     try {
-      const stored = localStorage.getItem(API_KEYS_STORAGE_KEY);
+      const stored = readStoredValue([API_KEYS_STORAGE_KEY, ...LEGACY_API_KEYS_STORAGE_KEYS]);
       if (stored) {
-        sessionApiKeys = normalizeApiKeys(JSON.parse(stored) as ApiKeys);
+        const parsed = normalizeApiKeys(JSON.parse(stored.value) as ApiKeys);
+        sessionApiKeys = parsed;
+        if (stored.sourceKey !== API_KEYS_STORAGE_KEY) {
+          writeStoredValue(API_KEYS_STORAGE_KEY, LEGACY_API_KEYS_STORAGE_KEYS, JSON.stringify(parsed));
+        }
       }
     } catch {
       // Ignore parse errors
@@ -233,7 +278,11 @@ export class ConfigManager {
   private persistApiKeysIfNeeded(): void {
     if (persistKeys) {
       try {
-        localStorage.setItem(API_KEYS_STORAGE_KEY, JSON.stringify(normalizeApiKeys(sessionApiKeys)));
+        writeStoredValue(
+          API_KEYS_STORAGE_KEY,
+          LEGACY_API_KEYS_STORAGE_KEYS,
+          JSON.stringify(normalizeApiKeys(sessionApiKeys))
+        );
       } catch (error) {
         console.warn('Failed to persist API keys:', error);
       }
@@ -252,7 +301,7 @@ export class ConfigManager {
     } else {
       // Clear persisted keys if disabling persistence
       try {
-        localStorage.removeItem(API_KEYS_STORAGE_KEY);
+        removeStoredValues([API_KEYS_STORAGE_KEY, ...LEGACY_API_KEYS_STORAGE_KEYS]);
       } catch {
         // Ignore errors
       }
@@ -337,9 +386,9 @@ export class ConfigManager {
     sessionApiKeys = {};
     persistKeys = false;
     try {
-      localStorage.removeItem(CONFIG_STORAGE_KEY);
-      localStorage.removeItem(API_KEYS_STORAGE_KEY);
-      localStorage.removeItem(API_KEYS_PERSISTENCE_KEY);
+      removeStoredValues([CONFIG_STORAGE_KEY, ...LEGACY_CONFIG_STORAGE_KEYS]);
+      removeStoredValues([API_KEYS_STORAGE_KEY, ...LEGACY_API_KEYS_STORAGE_KEYS]);
+      removeStoredValues([API_KEYS_PERSISTENCE_KEY, ...LEGACY_API_KEYS_PERSISTENCE_KEYS]);
     } catch {
       // Ignore errors
     }

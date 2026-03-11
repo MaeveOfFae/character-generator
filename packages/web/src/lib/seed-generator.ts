@@ -35,33 +35,50 @@ export interface FavoriteSeedRecord {
   lastUsedAt?: string;
 }
 
-const SEED_HISTORY_STORAGE_KEY = 'bpui.web.seedGenerator.history';
-const SEED_FAVORITES_STORAGE_KEY = 'bpui.web.seedGenerator.favorites';
+const SEED_HISTORY_STORAGE_KEY = 'eidolon.web.seedGenerator.history';
+const LEGACY_SEED_HISTORY_STORAGE_KEYS = ['bpui.web.seedGenerator.history'];
+const SEED_FAVORITES_STORAGE_KEY = 'eidolon.web.seedGenerator.favorites';
+const LEGACY_SEED_FAVORITES_STORAGE_KEYS = ['bpui.web.seedGenerator.favorites'];
 const MAX_SEED_HISTORY = 12;
 export const DEFAULT_SEED_COUNT = 12;
 
-function readStorage<T>(key: string, fallback: T): T {
+function readStorage<T>(keys: string | readonly string[], fallback: T): T {
   if (typeof window === 'undefined') {
     return fallback;
   }
 
+  const keyList = Array.isArray(keys) ? [...keys] : [keys];
+  const [currentKey, ...legacyKeys] = keyList;
+
   try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) {
-      return fallback;
+    for (const key of keyList) {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) {
+        continue;
+      }
+
+      const parsed = JSON.parse(raw) as T;
+      if (key !== currentKey) {
+        window.localStorage.setItem(currentKey, JSON.stringify(parsed));
+        legacyKeys.forEach((legacyKey) => window.localStorage.removeItem(legacyKey));
+      }
+
+      return parsed;
     }
-    return JSON.parse(raw) as T;
   } catch {
     return fallback;
   }
+
+  return fallback;
 }
 
-function writeStorage<T>(key: string, value: T): void {
+function writeStorage<T>(key: string, legacyKeys: readonly string[], value: T): void {
   if (typeof window === 'undefined') {
     return;
   }
 
   window.localStorage.setItem(key, JSON.stringify(value));
+  legacyKeys.forEach((legacyKey) => window.localStorage.removeItem(legacyKey));
 }
 
 const SURPRISE_PRESETS: SeedSuggestionPreset[] = [
@@ -167,7 +184,7 @@ export function parseSeedGenerationResponse(content: string): string[] {
 }
 
 export function getSeedRunHistory(): SeedRunRecord[] {
-  return readStorage<SeedRunRecord[]>(SEED_HISTORY_STORAGE_KEY, []);
+  return readStorage<SeedRunRecord[]>([SEED_HISTORY_STORAGE_KEY, ...LEGACY_SEED_HISTORY_STORAGE_KEYS], []);
 }
 
 export function saveSeedRun(record: Omit<SeedRunRecord, 'id' | 'createdAt'>): SeedRunRecord[] {
@@ -178,12 +195,12 @@ export function saveSeedRun(record: Omit<SeedRunRecord, 'id' | 'createdAt'>): Se
   };
 
   const history = [nextEntry, ...getSeedRunHistory()].slice(0, MAX_SEED_HISTORY);
-  writeStorage(SEED_HISTORY_STORAGE_KEY, history);
+  writeStorage(SEED_HISTORY_STORAGE_KEY, LEGACY_SEED_HISTORY_STORAGE_KEYS, history);
   return history;
 }
 
 export function getFavoriteSeeds(): FavoriteSeedRecord[] {
-  return readStorage<FavoriteSeedRecord[]>(SEED_FAVORITES_STORAGE_KEY, []);
+  return readStorage<FavoriteSeedRecord[]>([SEED_FAVORITES_STORAGE_KEY, ...LEGACY_SEED_FAVORITES_STORAGE_KEYS], []);
 }
 
 export function isFavoriteSeed(seed: string): boolean {
@@ -196,7 +213,7 @@ export function toggleFavoriteSeed(seed: string): FavoriteSeedRecord[] {
 
   if (index >= 0) {
     const nextFavorites = favorites.filter((entry) => entry.seed !== seed);
-    writeStorage(SEED_FAVORITES_STORAGE_KEY, nextFavorites);
+    writeStorage(SEED_FAVORITES_STORAGE_KEY, LEGACY_SEED_FAVORITES_STORAGE_KEYS, nextFavorites);
     return nextFavorites;
   }
 
@@ -207,7 +224,7 @@ export function toggleFavoriteSeed(seed: string): FavoriteSeedRecord[] {
     },
     ...favorites,
   ];
-  writeStorage(SEED_FAVORITES_STORAGE_KEY, nextFavorites);
+  writeStorage(SEED_FAVORITES_STORAGE_KEY, LEGACY_SEED_FAVORITES_STORAGE_KEYS, nextFavorites);
   return nextFavorites;
 }
 
@@ -217,6 +234,6 @@ export function markSeedUsed(seed: string): FavoriteSeedRecord[] {
   const nextFavorites = favorites.map((entry) => (
     entry.seed === seed ? { ...entry, lastUsedAt: now } : entry
   ));
-  writeStorage(SEED_FAVORITES_STORAGE_KEY, nextFavorites);
+  writeStorage(SEED_FAVORITES_STORAGE_KEY, LEGACY_SEED_FAVORITES_STORAGE_KEYS, nextFavorites);
   return nextFavorites;
 }

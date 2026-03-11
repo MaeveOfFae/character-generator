@@ -6,8 +6,10 @@ import {
 } from '@char-gen/shared';
 import { parseBlueprintFrontmatter, type TemplateAsset, templateToAssets } from '../prompting/blueprint.js';
 
-const CUSTOM_TEMPLATES_STORAGE_KEY = 'bpui.web.templates.custom';
-const BLUEPRINT_OVERRIDES_STORAGE_KEY = 'bpui.web.blueprints.overrides';
+const CUSTOM_TEMPLATES_STORAGE_KEY = 'eidolon.web.templates.custom';
+const LEGACY_CUSTOM_TEMPLATES_STORAGE_KEYS = ['bpui.web.templates.custom'];
+const BLUEPRINT_OVERRIDES_STORAGE_KEY = 'eidolon.web.blueprints.overrides';
+const LEGACY_BLUEPRINT_OVERRIDES_STORAGE_KEYS = ['bpui.web.blueprints.overrides'];
 
 const blueprintModules = import.meta.glob('../../../../../blueprints/**/*.md', {
   query: '?raw',
@@ -36,28 +38,43 @@ function getAssetBlueprintKey(asset: { name: string; blueprint_file?: string }):
   return asset.blueprint_file ?? `${asset.name}.md`;
 }
 
-function readStorage<T>(key: string, fallback: T): T {
+function readStorage<T>(keys: string | readonly string[], fallback: T): T {
   if (typeof window === 'undefined') {
     return fallback;
   }
 
+  const keyList = Array.isArray(keys) ? [...keys] : [keys];
+  const [currentKey, ...legacyKeys] = keyList;
+
   try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) {
-      return fallback;
+    for (const key of keyList) {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) {
+        continue;
+      }
+
+      const parsed = JSON.parse(raw) as T;
+      if (key !== currentKey) {
+        window.localStorage.setItem(currentKey, JSON.stringify(parsed));
+        legacyKeys.forEach((legacyKey) => window.localStorage.removeItem(legacyKey));
+      }
+
+      return parsed;
     }
-    return JSON.parse(raw) as T;
   } catch {
     return fallback;
   }
+
+  return fallback;
 }
 
-function writeStorage<T>(key: string, value: T): void {
+function writeStorage<T>(key: string, legacyKeys: readonly string[], value: T): void {
   if (typeof window === 'undefined') {
     return;
   }
 
   window.localStorage.setItem(key, JSON.stringify(value));
+  legacyKeys.forEach((legacyKey) => window.localStorage.removeItem(legacyKey));
 }
 
 function buildDefaultBlueprintCatalog(): Map<string, BrowserBlueprint> {
@@ -96,11 +113,14 @@ function buildDefaultBlueprintCatalog(): Map<string, BrowserBlueprint> {
 }
 
 export function getBlueprintOverrides(): Record<string, string> {
-  return readStorage<Record<string, string>>(BLUEPRINT_OVERRIDES_STORAGE_KEY, {});
+  return readStorage<Record<string, string>>(
+    [BLUEPRINT_OVERRIDES_STORAGE_KEY, ...LEGACY_BLUEPRINT_OVERRIDES_STORAGE_KEYS],
+    {}
+  );
 }
 
 export function saveBlueprintOverrides(overrides: Record<string, string>): void {
-  writeStorage(BLUEPRINT_OVERRIDES_STORAGE_KEY, overrides);
+  writeStorage(BLUEPRINT_OVERRIDES_STORAGE_KEY, LEGACY_BLUEPRINT_OVERRIDES_STORAGE_KEYS, overrides);
 }
 
 export function getBlueprintCatalog(): Map<string, BrowserBlueprint> {
@@ -220,18 +240,25 @@ function getDefaultTemplateStorageRecord(): StoredTemplateRecord {
 }
 
 export function getStoredTemplates(): StoredTemplateRecord[] {
-  const stored = readStorage<StoredTemplateRecord[]>(CUSTOM_TEMPLATES_STORAGE_KEY, []);
+  const stored = readStorage<StoredTemplateRecord[]>(
+    [CUSTOM_TEMPLATES_STORAGE_KEY, ...LEGACY_CUSTOM_TEMPLATES_STORAGE_KEYS],
+    []
+  );
   const normalized = stored.map(normalizeTemplateRecord);
 
   if (JSON.stringify(stored) !== JSON.stringify(normalized)) {
-    writeStorage(CUSTOM_TEMPLATES_STORAGE_KEY, normalized);
+    writeStorage(CUSTOM_TEMPLATES_STORAGE_KEY, LEGACY_CUSTOM_TEMPLATES_STORAGE_KEYS, normalized);
   }
 
   return normalized;
 }
 
 export function saveStoredTemplates(records: StoredTemplateRecord[]): void {
-  writeStorage(CUSTOM_TEMPLATES_STORAGE_KEY, records.map(normalizeTemplateRecord));
+  writeStorage(
+    CUSTOM_TEMPLATES_STORAGE_KEY,
+    LEGACY_CUSTOM_TEMPLATES_STORAGE_KEYS,
+    records.map(normalizeTemplateRecord)
+  );
 }
 
 export function getAllTemplateRecords(): StoredTemplateRecord[] {
