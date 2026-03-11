@@ -2,31 +2,22 @@
 
 This directory contains theme-related repository assets.
 
-Today that means a mix of:
-
-- theme metadata `.toml` files tracked with the repo
+Today that means a curated library of theme metadata `.toml` files tracked with the repo.
 
 These files are useful reference material and may be reused by future surfaces, but the current browser app does not load them directly at runtime.
 
 Note: `midnight.toml` is maintained in the same TOML format as the other theme metadata files and should be treated as a reference asset, not a runtime-loaded preset.
 
-## Built-in Themes
+## Catalog Scope
 
-- `dark.toml`: Dark reference theme metadata
-- `light.toml`: Light reference theme metadata
-- `nyx.toml`: High-contrast signature theme metadata
-- `midnight.toml`: Deep blue ocean theme metadata
-- `ember.toml`: Warm theme metadata
-- `mono.toml`: Clean grayscale theme metadata
-- `forest.toml`: Natural green theme metadata
-- `solarized_dark.toml`: Solarized Dark theme metadata
-- `blood_for_the_blood_god.toml`: Aggressive red-accent theme metadata
+- 27 tracked theme metadata files currently live in this directory.
+- Core utility palettes cover dark, light, editorial, grayscale, solarized, forest, ember, midnight, and support-focused options.
+- The expanded faction-inspired set leans into gothic sci-fi palettes such as `blood_for_the_blood_god.toml`, `silent_king.toml`, `ultramar.toml`, `imperial_fists.toml`, `raven_guard.toml`, `salamanders.toml`, `iron_warriors.toml`, `mechanicus_brass.toml`, `sororitas_rose.toml`, `cadia_stands.toml`, `krieg_ash.toml`, `thousand_sons.toml`, `drukhari_raid.toml`, `ork_waaagh.toml`, `tau_sept.toml`, `tyranid_hive.toml`, `genestealer_cult.toml`, and `golden_throne.toml`.
 
-Additional theme metadata files also exist, including `silent_king.toml` and `trans.toml`.
-
-## Current Runtime Status
+## Runtime Relationship
 
 - Browser theme presets currently live in code and browser storage.
+- The web app now mirrors this broader palette catalog as built-in presets, but it still does so from code rather than by loading these TOML files directly.
 - This directory is not automatically watched or imported by the web app.
 - If you want these files to become runtime inputs again, wire that behavior into the app explicitly.
 

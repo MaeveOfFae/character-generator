@@ -14,6 +14,7 @@ Important distinction:
 
 - The browser app currently uses built-in theme presets defined in code plus browser-stored custom themes.
 - The files under `resources/themes/` are repository assets and references; they are not the live source of truth for the current browser runtime.
+- The theme reference library is intentionally broad and includes both utility palettes and faction-inspired presets mirrored by the current web app.
 
 ## Usage Guidelines
 

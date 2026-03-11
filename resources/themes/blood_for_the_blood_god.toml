@@ -1,7 +1,8 @@
 name = "blood_for_the_blood_god"
 display_name = "Blood for the Blood God"
 description = "A blood red theme with bronze accents."
-is_builtin = false
+author = "Eidolon Simulacra"
+is_builtin = true
 
 [colors]
 background = "#200000"

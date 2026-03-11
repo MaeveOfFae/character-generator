@@ -1,7 +1,8 @@
 name = "silent_king"
 display_name = "Silent King"
-description = "A deep green/near black theme with glowing green accents."
-is_builtin = false
+description = "A near-black theme with tomb-world green glow."
+author = "Eidolon Simulacra"
+is_builtin = true
 
 [colors]
 background = "#010a01"
