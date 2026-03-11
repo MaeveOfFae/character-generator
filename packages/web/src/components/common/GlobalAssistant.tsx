@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { Loader2, MessageCircle, Send, X } from 'lucide-react';
 import type { ChatMessage } from '@char-gen/shared';
 import { api } from '@/lib/api';
-import { useAssistantContext } from './AssistantContext';
+import { useAssistantContext } from './useAssistantContext';
 
 const screenTitles: Record<string, string> = {
   '/': 'Home',
