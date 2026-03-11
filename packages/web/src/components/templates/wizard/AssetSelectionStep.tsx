@@ -19,6 +19,10 @@ interface AssetSelectionStepProps {
   onBlueprintContentsChange: (blueprintContents: Record<string, string>) => void;
 }
 
+function getBlueprintContentKey(asset: Pick<AssetDefinition, 'name' | 'blueprint_file'>): string {
+  return asset.blueprint_file ?? `${asset.name}.md`;
+}
+
 function SortableAsset({ asset, onEdit, onRemove }: {
   asset: AssetDefinition;
   onEdit: (asset: AssetDefinition) => void;
@@ -117,6 +121,8 @@ export default function AssetSelectionStep({
 
   const handleSaveAsset = (newAsset: AssetDefinition, blueprintContent: string) => {
     const previousName = editingAsset?.name;
+    const previousKey = editingAsset ? getBlueprintContentKey(editingAsset) : undefined;
+    const nextKey = getBlueprintContentKey(newAsset);
     const existingIndex = previousName
       ? assets.findIndex(a => a.name === previousName)
       : assets.findIndex(a => a.name === newAsset.name);
@@ -130,10 +136,15 @@ export default function AssetSelectionStep({
     }
 
     const nextBlueprintContents = { ...blueprintContents };
+    if (previousKey) {
+      delete nextBlueprintContents[previousKey];
+    }
     if (previousName && previousName !== newAsset.name) {
       delete nextBlueprintContents[previousName];
     }
-    nextBlueprintContents[newAsset.name] = blueprintContent;
+    if (blueprintContent.trim()) {
+      nextBlueprintContents[nextKey] = blueprintContent;
+    }
     onBlueprintContentsChange(nextBlueprintContents);
 
     setShowAssetDesigner(false);
@@ -146,8 +157,12 @@ export default function AssetSelectionStep({
   };
 
   const handleRemoveAsset = (assetName: string) => {
+    const asset = assets.find((candidate) => candidate.name === assetName);
     onChange(assets.filter(a => a.name !== assetName));
     const nextBlueprintContents = { ...blueprintContents };
+    if (asset) {
+      delete nextBlueprintContents[getBlueprintContentKey(asset)];
+    }
     delete nextBlueprintContents[assetName];
     onBlueprintContentsChange(nextBlueprintContents);
   };
@@ -162,7 +177,7 @@ export default function AssetSelectionStep({
         }}
         onSave={handleSaveAsset}
         asset={editingAsset}
-        blueprintContent={editingAsset ? blueprintContents[editingAsset.name] ?? '' : ''}
+        blueprintContent={editingAsset ? blueprintContents[getBlueprintContentKey(editingAsset)] ?? blueprintContents[editingAsset.name] ?? '' : ''}
         existingAssets={assets.map(a => a.name)}
       />
 

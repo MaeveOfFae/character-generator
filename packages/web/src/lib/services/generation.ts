@@ -4,7 +4,9 @@
  */
 
 import type {
+  ApiKeys,
   ContentMode,
+  Config,
   Draft,
   GenerateRequest,
   GenerateAssetRequest,
@@ -13,7 +15,10 @@ import type {
   ChatMessage,
   LLMProvider,
 } from '@char-gen/shared';
-import { parseBlueprintOutput as parseGeneratedBlueprintOutput } from '@char-gen/shared';
+import {
+  detectProviderFromModel,
+  parseBlueprintOutput as parseGeneratedBlueprintOutput,
+} from '@char-gen/shared';
 import { createEngine } from '../llm/factory.js';
 import { configManager } from '../config/manager.js';
 import { DraftStorage } from '../storage/draft-db.js';
@@ -54,17 +59,30 @@ export interface GenerationProgress {
  * Generation Service
  */
 export class GenerationService {
+  private static resolveConfiguredProvider(config: Config): LLMProvider | undefined {
+    if (config.engine_mode === 'explicit' && config.engine !== 'auto' && config.engine !== 'openai_compatible') {
+      return config.engine as LLMProvider;
+    }
+
+    return config.model ? detectProviderFromModel(config.model) : undefined;
+  }
+
+  private static getFallbackApiKey(apiKeys: ApiKeys): string | undefined {
+    return Object.values(apiKeys).find(
+      (value): value is string => typeof value === 'string' && value.trim().length > 0
+    );
+  }
+
   private static createConfiguredEngine() {
     const apiKeys = configManager.getApiKeys();
     const config = configManager.getConfig();
-    const provider = config.engine_mode === 'explicit'
-      ? config.engine
-      : config.model;
+    const provider = this.resolveConfiguredProvider(config);
 
     return createEngine({
       model: config.model,
-      apiKey: apiKeys.openai || apiKeys.openrouter || apiKeys.google,
-      provider: provider === 'openai_compatible' ? undefined : provider as LLMProvider,
+      apiKey: provider ? apiKeys[provider] : this.getFallbackApiKey(apiKeys),
+      apiKeys,
+      provider,
       baseUrl: config.base_url,
       temperature: config.temperature,
       maxTokens: config.max_tokens,
@@ -271,13 +289,12 @@ export class GenerationService {
     const config = configManager.getConfig();
 
     // Create engine
-    const provider = config.engine_mode === 'explicit'
-      ? config.engine
-      : config.model;
+    const provider = this.resolveConfiguredProvider(config);
     const engine = createEngine({
       model: config.model,
-      apiKey: apiKeys.openai || apiKeys.openrouter || apiKeys.google,
-      provider: provider === 'openai_compatible' ? undefined : provider as LLMProvider,
+      apiKey: provider ? apiKeys[provider] : this.getFallbackApiKey(apiKeys),
+      apiKeys,
+      provider,
       baseUrl: config.base_url,
       temperature: config.temperature,
       maxTokens: config.max_tokens,
@@ -367,13 +384,12 @@ export class GenerationService {
     const config = configManager.getConfig();
 
     // Create engine
-    const provider = config.engine_mode === 'explicit'
-      ? config.engine
-      : config.model;
+    const provider = this.resolveConfiguredProvider(config);
     const engine = createEngine({
       model: config.model,
-      apiKey: apiKeys.openai || apiKeys.openrouter || apiKeys.google,
-      provider: provider === 'openai_compatible' ? undefined : provider as LLMProvider,
+      apiKey: provider ? apiKeys[provider] : this.getFallbackApiKey(apiKeys),
+      apiKeys,
+      provider,
       baseUrl: config.base_url,
       temperature: config.temperature,
       maxTokens: config.max_tokens,
@@ -414,13 +430,12 @@ export class GenerationService {
     const config = configManager.getConfig();
 
     // Create engine
-    const provider = config.engine_mode === 'explicit'
-      ? config.engine
-      : config.model;
+    const provider = this.resolveConfiguredProvider(config);
     const engine = createEngine({
       model: config.model,
-      apiKey: apiKeys.openai || apiKeys.openrouter || apiKeys.google,
-      provider: provider === 'openai_compatible' ? undefined : provider as LLMProvider,
+      apiKey: provider ? apiKeys[provider] : this.getFallbackApiKey(apiKeys),
+      apiKeys,
+      provider,
       baseUrl: config.base_url,
       temperature: config.temperature,
       maxTokens: config.max_tokens,
@@ -480,13 +495,12 @@ export class GenerationService {
     const config = configManager.getConfig();
 
     // Create engine
-    const provider = config.engine_mode === 'explicit'
-      ? config.engine
-      : config.model;
+    const provider = this.resolveConfiguredProvider(config);
     const engine = createEngine({
       model: config.model,
-      apiKey: apiKeys.openai || apiKeys.openrouter || apiKeys.google,
-      provider: provider === 'openai_compatible' ? undefined : provider as LLMProvider,
+      apiKey: provider ? apiKeys[provider] : this.getFallbackApiKey(apiKeys),
+      apiKeys,
+      provider,
       baseUrl: config.base_url,
       temperature: config.temperature,
       maxTokens: config.max_tokens,

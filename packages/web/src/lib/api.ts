@@ -1,7 +1,9 @@
 import {
   OFFICIAL_TEMPLATE,
+  detectProviderFromModel,
   validateTemplate as validateTemplateDefinition,
   getOrderedAssets,
+  type ApiKeys,
   type Blueprint,
   type BlueprintList,
   type ChatMessage,
@@ -55,6 +57,7 @@ import {
   getAllTemplateRecords,
   getBlueprintCatalog,
   getBlueprintOverrides,
+  getStoredTemplateRecord,
   getStoredTemplates,
   getTemplateRecord,
   inferCharacterDisplayNameForTemplate,
@@ -347,6 +350,20 @@ function getBrowserConfig(): Config {
   };
 }
 
+function resolveConfiguredProvider(config: Config): LLMProvider | undefined {
+  if (config.engine_mode === 'explicit' && config.engine !== 'auto' && config.engine !== 'openai_compatible') {
+    return config.engine as LLMProvider;
+  }
+
+  return config.model ? detectProviderFromModel(config.model) : undefined;
+}
+
+function getFallbackApiKey(apiKeys: ApiKeys): string | undefined {
+  return Object.values(apiKeys).find(
+    (value): value is string => typeof value === 'string' && value.trim().length > 0
+  );
+}
+
 function getBuiltinTheme(name: string): ThemePreset | undefined {
   return builtinThemes.find((theme) => theme.name === name);
 }
@@ -619,11 +636,12 @@ function createDownload(content: string, filename: string, type: string): Downlo
 async function generateWithCurrentConfig(messages: ChatMessage[]): Promise<AsyncIterable<{ content?: string; done?: boolean }>> {
   const config = configManager.getConfig();
   const apiKeys = configManager.getApiKeys();
-  const provider = config.engine_mode === 'explicit' ? config.engine : config.model;
+  const provider = resolveConfiguredProvider(config);
   const engine = createEngine({
     model: config.model,
-    apiKey: apiKeys.openai || apiKeys.openrouter || apiKeys.google || apiKeys.deepseek || apiKeys.zai || apiKeys.moonshot,
-    provider: provider === 'openai_compatible' ? undefined : provider,
+    apiKey: provider ? apiKeys[provider] : getFallbackApiKey(apiKeys),
+    apiKeys,
+    provider,
     baseUrl: config.base_url,
     temperature: config.temperature,
     maxTokens: config.max_tokens,
@@ -658,6 +676,7 @@ export class CharacterGeneratorAPI {
       apiKey,
       provider: request.provider as never,
       baseUrl: request.base_url,
+      engineMode: 'explicit',
     });
 
     return engine.testConnection();
@@ -889,7 +908,7 @@ export class CharacterGeneratorAPI {
   }
 
   async exportTemplate(name: string): Promise<DownloadResponse> {
-    const record = getTemplateRecord(name);
+    const record = getStoredTemplateRecord(name) ?? getTemplateRecord(name);
     if (!record) {
       throw new APIError(404, `Template ${name} not found`);
     }

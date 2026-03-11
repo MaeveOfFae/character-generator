@@ -6,13 +6,11 @@
 import type {
   ApiKeys,
   Config,
-  EngineMode,
-  EngineType,
 } from '@char-gen/shared';
 
 const CONFIG_STORAGE_KEY = 'bpui.web.config';
 const API_KEYS_STORAGE_KEY = 'bpui.web.apiKeys';
-const API_KEYS_SESSION_KEY = 'bpui.web.apiKeys.session';
+const API_KEYS_PERSISTENCE_KEY = 'bpui.web.apiKeys.persist';
 
 /**
  * In-memory API keys storage (cleared on page refresh by default)
@@ -42,10 +40,35 @@ export class ConfigManager {
       ...options,
     };
 
-    persistKeys = this.options.persistApiKeys || false;
+    persistKeys = this.loadPersistPreference(this.options.persistApiKeys || false);
 
     // Load config from localStorage or use defaults
     this.config = this.loadConfig();
+    this.loadPersistedApiKeys();
+  }
+
+  private loadPersistPreference(defaultValue: boolean): boolean {
+    try {
+      const stored = localStorage.getItem(API_KEYS_PERSISTENCE_KEY);
+      if (stored === 'true') {
+        return true;
+      }
+      if (stored === 'false') {
+        return false;
+      }
+    } catch {
+      // Ignore parse errors
+    }
+
+    return defaultValue;
+  }
+
+  private savePersistPreference(value: boolean): void {
+    try {
+      localStorage.setItem(API_KEYS_PERSISTENCE_KEY, String(value));
+    } catch (error) {
+      console.warn('Failed to save API key persistence preference:', error);
+    }
   }
 
   private loadConfig(): Config {
@@ -141,6 +164,10 @@ export class ConfigManager {
    * Load API keys from localStorage (for persistence mode)
    */
   private loadPersistedApiKeys(): void {
+    if (!persistKeys) {
+      return;
+    }
+
     try {
       const stored = localStorage.getItem(API_KEYS_STORAGE_KEY);
       if (stored) {
@@ -169,6 +196,7 @@ export class ConfigManager {
    */
   setPersistApiKeys(persist: boolean): void {
     persistKeys = persist;
+    this.savePersistPreference(persist);
 
     if (persist) {
       this.persistApiKeysIfNeeded();
@@ -258,9 +286,11 @@ export class ConfigManager {
   clearAll(): void {
     this.config = this.getDefaultConfig();
     sessionApiKeys = {};
+    persistKeys = false;
     try {
       localStorage.removeItem(CONFIG_STORAGE_KEY);
       localStorage.removeItem(API_KEYS_STORAGE_KEY);
+      localStorage.removeItem(API_KEYS_PERSISTENCE_KEY);
     } catch {
       // Ignore errors
     }
@@ -269,18 +299,6 @@ export class ConfigManager {
 
 // Global instance
 export const configManager = new ConfigManager();
-
-// Load persisted keys if enabled on startup
-if (configManager.isPersistingApiKeys()) {
-  try {
-    const stored = localStorage.getItem(API_KEYS_STORAGE_KEY);
-    if (stored) {
-      sessionApiKeys = JSON.parse(stored);
-    }
-  } catch {
-    // Ignore errors
-  }
-}
 
 /**
  * Get API keys for use in API headers (base64 encoded)

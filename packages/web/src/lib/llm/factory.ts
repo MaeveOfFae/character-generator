@@ -3,7 +3,7 @@
  * Creates appropriate LLM engines based on model name and configuration
  */
 
-import type { LLMConfig, LLMProvider } from '@char-gen/shared';
+import type { ApiKeys, LLMConfig, LLMProvider } from '@char-gen/shared';
 import { detectProviderFromModel } from '@char-gen/shared';
 import { OpenAICompatEngine } from './openai-compat.js';
 import { GoogleEngine } from './google.js';
@@ -12,11 +12,27 @@ import { AnthropicEngine } from './anthropic.js';
 export interface CreateEngineOptions {
   model: string;
   apiKey?: string;
+  apiKeys?: ApiKeys;
   provider?: LLMProvider;
   baseUrl?: string;
   temperature?: number;
   maxTokens?: number;
   engineMode?: 'auto' | 'explicit';
+}
+
+function resolveApiKey(provider: LLMProvider, apiKey?: string, apiKeys?: ApiKeys): string | undefined {
+  if (typeof apiKey === 'string' && apiKey.trim().length > 0) {
+    return apiKey;
+  }
+
+  const providerKey = apiKeys?.[provider];
+  if (typeof providerKey === 'string' && providerKey.trim().length > 0) {
+    return providerKey;
+  }
+
+  return Object.values(apiKeys ?? {}).find(
+    (value): value is string => typeof value === 'string' && value.trim().length > 0
+  );
 }
 
 /**
@@ -26,25 +42,19 @@ export function createEngine(options: CreateEngineOptions) {
   const {
     model,
     apiKey,
+    apiKeys,
     provider: explicitProvider,
     baseUrl,
     temperature,
     maxTokens,
-    engineMode = 'auto',
   } = options;
 
-  // Determine provider based on engine mode
-  let provider: LLMProvider;
-  if (engineMode === 'explicit' && explicitProvider) {
-    provider = explicitProvider;
-  } else {
-    provider = detectProviderFromModel(model);
-  }
+  const provider = explicitProvider ?? detectProviderFromModel(model);
 
   const config: LLMConfig = {
     provider,
     model,
-    apiKey,
+    apiKey: resolveApiKey(provider, apiKey, apiKeys),
     baseUrl,
     temperature,
     maxTokens,
@@ -78,6 +88,9 @@ export function getProviderForModel(
   explicitProvider?: LLMProvider
 ): LLMProvider {
   if (engineMode === 'explicit' && explicitProvider) {
+    return explicitProvider;
+  }
+  if (explicitProvider) {
     return explicitProvider;
   }
   return detectProviderFromModel(model);

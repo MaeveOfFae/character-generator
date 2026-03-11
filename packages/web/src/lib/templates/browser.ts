@@ -32,6 +32,10 @@ interface BrowserBlueprint {
   category: BlueprintCategory;
 }
 
+function getAssetBlueprintKey(asset: { name: string; blueprint_file?: string }): string {
+  return asset.blueprint_file ?? `${asset.name}.md`;
+}
+
 function readStorage<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') {
     return fallback;
@@ -125,39 +129,129 @@ export function findBlueprintContent(fileName?: string): string {
     return '';
   }
 
-  const targetBase = fileName.replace(/\.(txt|md)$/i, '');
+  const normalizedFileName = fileName.replace(/^\.?\//, '');
+  const targetBase = normalizedFileName.replace(/\.(txt|md)$/i, '');
   const match = [...getBlueprintCatalog().values()].find((blueprint) => (
-    blueprint.path.endsWith(`/${targetBase}.md`) || blueprint.path.endsWith(`/${fileName}`)
+    blueprint.path === normalizedFileName
+      || blueprint.path.endsWith(`/${normalizedFileName}`)
+      || blueprint.path.endsWith(`/${targetBase}.md`)
   ));
 
   return match?.content ?? '';
 }
 
-function getDefaultTemplateRecord(): StoredTemplateRecord {
+function getLegacyBlueprintContent(
+  blueprintContents: Record<string, string>,
+  asset: { name: string; blueprint_file?: string }
+): string | undefined {
+  const blueprintKey = getAssetBlueprintKey(asset);
+  const shortFileName = blueprintKey.split('/').pop() ?? blueprintKey;
+
+  return blueprintContents[blueprintKey]
+    ?? blueprintContents[shortFileName]
+    ?? blueprintContents[asset.name];
+}
+
+function normalizeTemplateRecord(record: StoredTemplateRecord): StoredTemplateRecord {
+  const normalizedContents: Record<string, string> = {};
+
+  record.template.assets.forEach((asset) => {
+    const blueprintKey = getAssetBlueprintKey(asset);
+    const content = getLegacyBlueprintContent(record.blueprint_contents, asset);
+    if (!content?.trim()) {
+      return;
+    }
+
+    const builtinContent = findBlueprintContent(blueprintKey);
+    if (builtinContent && builtinContent === content) {
+      return;
+    }
+
+    normalizedContents[blueprintKey] = content;
+  });
+
+  Object.entries(record.blueprint_contents).forEach(([key, content]) => {
+    if (!content?.trim() || normalizedContents[key]) {
+      return;
+    }
+
+    const builtinContent = findBlueprintContent(key);
+    if (builtinContent && builtinContent === content) {
+      return;
+    }
+
+    normalizedContents[key] = content;
+  });
+
+  return {
+    template: record.template,
+    blueprint_contents: normalizedContents,
+  };
+}
+
+function hydrateTemplateRecord(record: StoredTemplateRecord): StoredTemplateRecord {
+  const normalized = normalizeTemplateRecord(record);
+  const blueprintContents = { ...normalized.blueprint_contents };
+
+  normalized.template.assets.forEach((asset) => {
+    const blueprintKey = getAssetBlueprintKey(asset);
+    if (!blueprintContents[blueprintKey]) {
+      const builtinContent = findBlueprintContent(blueprintKey);
+      if (builtinContent) {
+        blueprintContents[blueprintKey] = builtinContent;
+      }
+    }
+  });
+
+  return {
+    template: normalized.template,
+    blueprint_contents: blueprintContents,
+  };
+}
+
+function getDefaultTemplateStorageRecord(): StoredTemplateRecord {
   return {
     template: {
       ...OFFICIAL_TEMPLATE,
       is_default: true,
     },
-    blueprint_contents: Object.fromEntries(
-      OFFICIAL_TEMPLATE.assets.map((asset) => [
-        asset.blueprint_file ?? `${asset.name}.md`,
-        findBlueprintContent(asset.blueprint_file ?? `${asset.name}.md`),
-      ])
-    ),
+    blueprint_contents: {},
   };
 }
 
 export function getStoredTemplates(): StoredTemplateRecord[] {
-  return readStorage<StoredTemplateRecord[]>(CUSTOM_TEMPLATES_STORAGE_KEY, []);
+  const stored = readStorage<StoredTemplateRecord[]>(CUSTOM_TEMPLATES_STORAGE_KEY, []);
+  const normalized = stored.map(normalizeTemplateRecord);
+
+  if (JSON.stringify(stored) !== JSON.stringify(normalized)) {
+    writeStorage(CUSTOM_TEMPLATES_STORAGE_KEY, normalized);
+  }
+
+  return normalized;
 }
 
 export function saveStoredTemplates(records: StoredTemplateRecord[]): void {
-  writeStorage(CUSTOM_TEMPLATES_STORAGE_KEY, records);
+  writeStorage(CUSTOM_TEMPLATES_STORAGE_KEY, records.map(normalizeTemplateRecord));
 }
 
 export function getAllTemplateRecords(): StoredTemplateRecord[] {
-  return [getDefaultTemplateRecord(), ...getStoredTemplates()];
+  return [
+    hydrateTemplateRecord(getDefaultTemplateStorageRecord()),
+    ...getStoredTemplates().map(hydrateTemplateRecord),
+  ];
+}
+
+export function getStoredTemplateRecord(name?: string): StoredTemplateRecord | undefined {
+  if (!name) {
+    return undefined;
+  }
+
+  const defaultRecord = getDefaultTemplateStorageRecord();
+  if (defaultRecord.template.name === name) {
+    return defaultRecord;
+  }
+
+  return getStoredTemplates().find((record) => record.template.name === name);
 }
 
 export function getTemplateRecord(name?: string): StoredTemplateRecord | undefined {
@@ -188,7 +282,7 @@ export function resolveTemplateBlueprintContent(templateName: string | undefined
     return undefined;
   }
 
-  const blueprintFile = asset.blueprint_file ?? `${asset.name}.md`;
+  const blueprintFile = getAssetBlueprintKey(asset);
   return record.blueprint_contents[blueprintFile] || findBlueprintContent(blueprintFile) || undefined;
 }
 

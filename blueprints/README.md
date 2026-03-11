@@ -1,21 +1,29 @@
 # Blueprints
 
-This directory contains the official orchestrator, shared asset blueprints, example blueprints, and template manifests used by the template system.
+This directory contains the official orchestrators, template manifests, template-local asset blueprints, and example blueprints used by the template system.
 
 ## Layout
 
 ```text
 blueprints/
-├── rpbotgenerator.md          # Official orchestrator blueprint
-├── system_prompt.md           # Shared system_prompt blueprint
-├── post_history.md            # Shared post_history blueprint
-├── character_sheet.md         # Shared character_sheet blueprint
-├── intro_scene.md             # Shared intro_scene blueprint
-├── intro_page.md              # Shared intro_page blueprint
-├── a1111.md                   # Shared A1111 blueprint
-├── examples/                  # Alternate/example blueprints
-└── templates/                 # Template manifests and template-local blueprints
+├── system/                    # Orchestrator blueprints
+│   ├── rpbotgenerator.md
+│   └── offspring_generator.md
+├── templates/                 # Template manifests and template-local blueprints
+│   ├── official_v2v3/
+│   │   ├── template.toml
+│   │   └── assets/
+│   └── official_aksho/
+│       ├── template.toml
+│       └── assets/
+└── examples/                  # Alternate/example blueprints
 ```
+
+Official asset blueprints now live under their template directories, for example:
+
+- `blueprints/templates/official_v2v3/assets/`
+- `blueprints/templates/official_aksho/assets/`
+- `blueprints/system/` for orchestrators like `rpbotgenerator.md`
 
 ## Official Default
 
@@ -32,14 +40,14 @@ The built-in official template exposed by `TemplateManager` is `V2/V3 Card`. Its
 
 ## Template Manifests
 
-Each template directory contains a `template.toml` manifest describing:
+Each template directory under `blueprints/templates/` contains a `template.toml` manifest describing:
 
 - template name and version
 - asset names
 - dependency order via `depends_on`
 - optional template-local blueprint files
 
-The official example template under `templates/example_minimal/` mirrors the current default card flow.
+The built-in templates currently live under `blueprints/templates/official_v2v3/` and `blueprints/templates/official_aksho/`.
 
 ## Resolution Order
 
@@ -47,7 +55,7 @@ When a template references blueprint files, resolution happens in this order:
 
 1. Template-local path declared in `template.toml`
 2. Relative path from the template directory
-3. Shared blueprint under `blueprints/`
+3. Another blueprint under `blueprints/`
 4. Example blueprint under `blueprints/examples/`
 
 ## Editing Rules
@@ -61,5 +69,5 @@ When a template references blueprint files, resolution happens in this order:
 
 1. Create `blueprints/templates/<template_name>/template.toml`
 2. Declare assets and `depends_on` edges explicitly
-3. Add template-local blueprint files only when the shared blueprint is not suitable
+3. Add template-local blueprint files under `blueprints/templates/<template_name>/assets/`
 4. Keep filenames and output formats aligned with the validator and export flow

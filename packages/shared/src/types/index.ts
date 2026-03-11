@@ -7,7 +7,16 @@
 // Configuration Types
 // ============================================================================
 
-export type EngineType = 'openai' | 'google' | 'openai_compatible' | 'auto';
+export type EngineType =
+  | 'openai'
+  | 'google'
+  | 'openrouter'
+  | 'anthropic'
+  | 'deepseek'
+  | 'zai'
+  | 'moonshot'
+  | 'openai_compatible'
+  | 'auto';
 export type EngineMode = 'auto' | 'explicit';
 export type ContentMode = 'SFW' | 'NSFW' | 'Platform-Safe' | 'Auto';
 
@@ -15,6 +24,7 @@ export interface ApiKeys {
   openai?: string;
   google?: string;
   openrouter?: string;
+  anthropic?: string;
   deepseek?: string;
   zai?: string;
   moonshot?: string;

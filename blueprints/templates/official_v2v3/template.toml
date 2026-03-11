@@ -1,0 +1,59 @@
+[template]
+name = "Official V2/V3"
+version = "3.1"
+description = "Official V2/V3 card template with the shared six-asset flow"
+
+[[assets]]
+name = "system_prompt"
+required = true
+depends_on = []
+description = "System-level behavioral instructions"
+blueprint_file = "assets/system_prompt.md"
+
+[[assets]]
+name = "post_history"
+required = true
+depends_on = [
+    "system_prompt",
+]
+description = "Conversation context and relationship state"
+blueprint_file = "assets/post_history.md"
+
+[[assets]]
+name = "character_sheet"
+required = true
+depends_on = [
+    "system_prompt",
+    "post_history",
+]
+description = "Structured character data"
+blueprint_file = "assets/character_sheet.md"
+
+[[assets]]
+name = "intro_scene"
+required = true
+depends_on = [
+    "system_prompt",
+    "post_history",
+    "character_sheet",
+]
+description = "First interaction scenario"
+blueprint_file = "assets/intro_scene.md"
+
+[[assets]]
+name = "intro_page"
+required = true
+depends_on = [
+    "character_sheet",
+]
+description = "Visual character introduction page"
+blueprint_file = "assets/intro_page.md"
+
+[[assets]]
+name = "a1111"
+required = true
+depends_on = [
+    "character_sheet",
+]
+description = "Stable Diffusion image generation prompt"
+blueprint_file = "assets/a1111.md"

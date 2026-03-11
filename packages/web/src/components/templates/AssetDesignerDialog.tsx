@@ -266,7 +266,7 @@ export default function AssetDesignerDialog({
                     type="text"
                     value={customBlueprint}
                     onChange={(e) => setCustomBlueprint(e.target.value)}
-                    placeholder="e.g., blueprints/core/character_sheet.md"
+                    placeholder="e.g., assets/character_sheet.md"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring mt-2"
                   />
                 )}

@@ -76,8 +76,10 @@ cd packages/desktop/src-tauri && cargo check
 
 Relevant locations:
 
-- official shared blueprints: `blueprints/`
+- orchestrators and blueprint sources: `blueprints/`
 - project templates: `blueprints/templates/`
+- official orchestrators: `blueprints/system/`
+- official template assets: `blueprints/templates/official_v2v3/` and `blueprints/templates/official_aksho/`
 - user custom templates: `~/.config/bpui/templates/custom/`
 
 ## Pull Requests

@@ -88,7 +88,7 @@ export default function SettingsScreen() {
     );
   }
 
-  const providers = ['openai', 'google', 'openrouter', 'deepseek', 'zai', 'moonshot'];
+  const providers = ['openai', 'google', 'openrouter', 'anthropic', 'deepseek', 'zai', 'moonshot'];
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>

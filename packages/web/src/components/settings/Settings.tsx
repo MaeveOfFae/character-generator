@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Save,
   CheckCircle2,
@@ -16,7 +15,6 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Config, ThemeOverride, ThemePreset } from '@char-gen/shared';
-import { api } from '@/lib/api';
 import { useThemePreview } from '../common/ThemeProvider';
 import {
   EDITABLE_THEME_SECTIONS,
@@ -25,31 +23,8 @@ import {
 import { configManager } from '../../lib/config/manager.js';
 import { createEngine, MODEL_SUGGESTIONS } from '../../lib/llm/factory.js';
 
-const ALL_PROVIDERS = ['openai', 'google', 'openrouter', 'deepseek', 'zai', 'moonshot'] as const;
+const ALL_PROVIDERS = ['openai', 'google', 'openrouter', 'anthropic', 'deepseek', 'zai', 'moonshot'] as const;
 type Provider = typeof ALL_PROVIDERS[number];
-const API_KEYS_STORAGE_KEY = 'bpui.web.apiKeys';
-
-function loadBrowserApiKeys(): Record<string, string> {
-  if (typeof window === 'undefined') return {};
-  try {
-    const raw = window.localStorage.getItem(API_KEYS_STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as Record<string, string>;
-    return Object.fromEntries(
-      Object.entries(parsed).filter(([, value]) => typeof value === 'string')
-    );
-  } catch {
-    return {};
-  }
-}
-
-function saveBrowserApiKeys(apiKeys: Record<string, string | undefined>): void {
-  if (typeof window === 'undefined') return;
-  const cleaned = Object.fromEntries(
-    Object.entries(apiKeys).filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
-  );
-  window.localStorage.setItem(API_KEYS_STORAGE_KEY, JSON.stringify(cleaned));
-}
 
 type ThemeImportPayload = {
   version?: number;
@@ -111,6 +86,7 @@ const PROVIDER_COLORS: Record<Provider, string> = {
   openai: 'from-emerald-500 to-green-500',
   google: 'from-blue-500 to-cyan-500',
   openrouter: 'from-violet-500 to-purple-500',
+  anthropic: 'from-orange-500 to-red-500',
   deepseek: 'from-cyan-500 to-teal-500',
   zai: 'from-pink-500 to-rose-500',
   moonshot: 'from-orange-500 to-amber-500',
@@ -135,11 +111,16 @@ export default function Settings() {
     setLocalConfig({ ...config, api_keys: apiKeys });
     setPersistKeys(configManager.isPersistingApiKeys());
 
+    if (config.engine_mode === 'explicit' && config.engine && ALL_PROVIDERS.includes(config.engine as Provider)) {
+      setSelectedProvider(config.engine as Provider);
+      return;
+    }
+
     const model = config.model || '';
     for (const provider of ALL_PROVIDERS) {
       if (model.startsWith(provider + '/') || model.includes(provider)) {
         setSelectedProvider(provider);
-        break;
+        return;
       }
     }
   }, []);
@@ -194,6 +175,7 @@ export default function Settings() {
         model,
         apiKey,
         provider: provider as Provider,
+        engineMode: 'explicit',
       });
 
       const startTime = performance.now();
@@ -240,11 +222,14 @@ export default function Settings() {
 
   const handleApiKeyChange = (provider: Provider, value: string) => {
     setLocalConfig((previous) => {
-      const nextApiKeys = {
-        ...(previous.api_keys || {}),
-        [provider]: value,
-      };
-      configManager.setApiKey(provider, value);
+      const nextApiKeys = { ...(previous.api_keys || {}) };
+      if (value.trim()) {
+        nextApiKeys[provider] = value;
+        configManager.setApiKey(provider, value);
+      } else {
+        delete nextApiKeys[provider];
+        configManager.clearApiKey(provider);
+      }
       return {
         ...previous,
         api_keys: nextApiKeys,
@@ -252,8 +237,25 @@ export default function Settings() {
     });
   };
 
+  const handleProviderSelect = (provider: Provider) => {
+    setSelectedProvider(provider);
+    setLocalConfig((previous) => ({
+      ...previous,
+      engine: provider,
+      engine_mode: 'explicit',
+      model: previous.engine === provider
+        ? previous.model
+        : (MODEL_SUGGESTIONS[provider][0] ?? previous.model),
+    }));
+  };
+
   const handleModelSelect = (modelId: string) => {
-    setLocalConfig((previous) => ({ ...previous, model: modelId }));
+    setLocalConfig((previous) => ({
+      ...previous,
+      engine: selectedProvider,
+      engine_mode: 'explicit',
+      model: modelId,
+    }));
   };
 
   const handlePersistKeysToggle = (checked: boolean) => {
@@ -424,8 +426,19 @@ export default function Settings() {
                       value={localConfig.api_keys?.[provider] || ''}
                       onChange={(e) => handleApiKeyChange(provider, e.target.value)}
                       placeholder={`Enter your ${provider} API key`}
-                      className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 pr-10 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 pr-20 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
+                    <button
+                      type="button"
+                      onClick={() => toggleShowKey(provider)}
+                      className="absolute right-11 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-accent transition-colors"
+                    >
+                      {showKeys[provider] ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleTest(provider)}
@@ -468,7 +481,7 @@ export default function Settings() {
                 <label className="text-sm font-medium">Provider</label>
                 <select
                   value={selectedProvider}
-                  onChange={(e) => setSelectedProvider(e.target.value as Provider)}
+                  onChange={(e) => handleProviderSelect(e.target.value as Provider)}
                   className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {ALL_PROVIDERS.map((provider) => (
