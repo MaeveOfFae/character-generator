@@ -1,6 +1,6 @@
 # Blueprints
 
-This directory contains the official orchestrators, template manifests, template-local asset blueprints, and example blueprints used by the template system.
+This directory contains the official orchestrators, template manifests, template-local asset blueprints, and example blueprints used by the current template system.
 
 ## Layout
 
@@ -25,9 +25,13 @@ Official asset blueprints now live under their template directories, for example
 - `blueprints/templates/official_aksho/assets/`
 - `blueprints/system/` for orchestrators like `rpbotgenerator.md`
 
-## Official Default
+## Official Templates
 
-The built-in official template exposed by `TemplateManager` is `V2/V3 Card`. Its default asset set is:
+The repo currently carries two official template families.
+
+### V2/V3 Card
+
+This remains the default official template used by the browser generation flow. Its asset set is:
 
 1. `system_prompt`
 2. `post_history`
@@ -38,6 +42,21 @@ The built-in official template exposed by `TemplateManager` is `V2/V3 Card`. Its
 
 `suno` is not part of the current official default.
 
+### Official Aksho
+
+Aksho uses a split eight-asset flow with a different dependency graph and different output files:
+
+1. `system_prompt`
+2. `char_basic_info`
+3. `char_physical`
+4. `char_clothing`
+5. `char_personality`
+6. `char_background`
+7. `post_history`
+8. `initial_message`
+
+Do not describe Aksho as a minor variant of the six-asset contract. It is template-specific by design.
+
 ## Template Manifests
 
 Each template directory under `blueprints/templates/` contains a `template.toml` manifest describing:
@@ -45,7 +64,7 @@ Each template directory under `blueprints/templates/` contains a `template.toml`
 - template name and version
 - asset names
 - dependency order via `depends_on`
-- optional template-local blueprint files
+- template-local blueprint files
 
 The built-in templates currently live under `blueprints/templates/official_v2v3/` and `blueprints/templates/official_aksho/`.
 
@@ -64,6 +83,8 @@ When a template references blueprint files, resolution happens in this order:
 - Respect the dependency chain; downstream assets should not introduce facts upstream assets would need
 - Replace placeholders in generated output, but keep placeholder syntax inside blueprint source when the blueprint expects substitution later
 - Treat the orchestrator and template manifests as part of the generation contract
+- Check `rules/60_blueprint_hard_rules.md` before changing official blueprint formats
+- The browser app is currently client-side, but the blueprint contract still needs to stay strict because shared parsing and validation code depends on it
 
 ## Adding a Template
 

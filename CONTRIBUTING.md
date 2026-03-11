@@ -1,106 +1,109 @@
 # Contributing to Character Generator
 
-This repository spans a Python backend, web app, Tauri desktop shell, shared TypeScript packages, and legacy Python-native interfaces. Keep changes small, verifiable, and aligned with the current architecture.
+Character Generator currently ships as a TypeScript monorepo with a browser-first web app and shared generation utilities. Keep changes narrow, verifiable, and aligned with the current repo shape rather than older Python or desktop workflows.
 
 ## Setup
 
+Requirements:
+
+- Node.js 20+
+- pnpm 9+
+
+Install dependencies:
+
 ```bash
 pnpm install
-
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
-pip install -e .
 ```
 
-Common launch commands:
+Common local commands:
 
 ```bash
-# backend
-python -m uvicorn bpui.api.main:app --reload
-
-# web
+# web app
 pnpm dev:web
 
-# desktop
-./run_desktop.sh
+# shared package build
+pnpm build:shared
 
-# Textual TUI
-./run_bpui.sh tui
+# web production build
+pnpm build:web
+
+# repo lint
+pnpm lint
+
+# formatting
+pnpm format
 ```
 
-## Testing
+There is no checked-in Python backend, Tauri desktop shell, or Textual launcher in the current workspace. Do not add doc references to those paths unless they actually land in the repo.
 
-- Add tests for changed behavior when practical
-- Normal pytest runs enforce the repo-wide coverage gate
-- Use `--no-cov` for narrow local validation runs
-- Rebuild `@char-gen/shared` before validating the web app if you changed shared types or the API client
+## Validation
 
-Useful checks:
+Run the smallest relevant checks for the area you changed.
+
+Useful commands:
 
 ```bash
-pytest -m "not slow"
-pytest --no-cov tests/unit/test_cli.py
 pnpm --filter @char-gen/shared build
-pnpm --filter @char-gen/web exec tsc --noEmit
 pnpm --filter @char-gen/web build
-cd packages/desktop/src-tauri && cargo check
+pnpm --filter @char-gen/web exec tsc --noEmit
+pnpm lint
 ```
+
+Notes:
+
+- CI currently covers lint plus the shared and web builds.
+- `@char-gen/shared` publishes from `dist/`, so rebuild it before validating web changes that depend on updated shared exports.
+- The root Turbo pipeline includes a `test` task, but package-level automated test tasks are not currently checked in.
+- `packages/mobile` is present as a scaffold and should not be assumed to participate in CI unless you wire it up explicitly.
 
 ## Change Guidelines
 
-### Python
+### TypeScript and React
 
-- Follow the style of the touched module
-- Use type hints for new or changed public interfaces
-- Prefer focused fixes over broad refactors
-
-### TypeScript / React
-
-- Preserve package boundaries between `shared`, `web`, `desktop`, and `mobile`
-- Keep API shapes centralized in `packages/shared` when possible
+- Preserve package boundaries between `packages/shared`, `packages/web`, and `packages/mobile`.
+- Keep shared types, parsing helpers, export logic, and cross-surface contracts in `packages/shared` when possible.
+- Avoid documenting API-server behavior as current product behavior unless the implementation exists in this repo.
 
 ### Documentation
 
-- Update docs when commands, defaults, workflows, or contracts change
-- Treat `docs/archive/` as historical context, not current behavior
+- Update docs whenever commands, defaults, workflows, storage behavior, or blueprint contracts change.
+- Prefer describing the current shipping path over historical or aspirational architecture.
+- If a feature is scaffolded but not wired into the build, say that directly.
 
-## Blueprint and Template Rules
+### Blueprints and Templates
 
-- Do not break the generation contract
-- Keep asset formats asset-specific
-- Respect dependency order between assets
-- Do not reintroduce retired official assets into the default template contract
-- Keep placeholders and validator expectations explicit
+- Do not break the generation contract.
+- Keep asset formats asset-specific.
+- Respect dependency order between assets.
+- Do not move downstream facts into upstream assets.
+- Keep placeholder and control-block requirements explicit.
 
 Relevant locations:
 
-- orchestrators and blueprint sources: `blueprints/`
-- project templates: `blueprints/templates/`
-- official orchestrators: `blueprints/system/`
-- official template assets: `blueprints/templates/official_v2v3/` and `blueprints/templates/official_aksho/`
-- user custom templates: `~/.config/bpui/templates/custom/`
+- `blueprints/system/` for orchestrators
+- `blueprints/templates/` for template manifests and template-local asset blueprints
+- `rules/` for repo constraints and workflow guidance
+- `presets/` for export preset definitions
 
 ## Pull Requests
 
 Before opening a PR:
 
-1. Run the smallest relevant validation set and record it.
-2. Update docs for user-visible changes.
-3. Call out migrations, breaking changes, or blueprint/template contract changes.
-4. Keep the title and commits specific.
+1. Run the smallest relevant validation set and note what you ran.
+2. Update docs for user-visible behavior, commands, or workflow changes.
+3. Call out blueprint/template contract changes explicitly.
+4. Keep titles and commits focused.
 
 Preferred commit prefixes: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `chore`.
 
 ## Good Contribution Targets
 
-- stale docs and broken command references
-- API/web/shared parity issues
-- template/export regressions
-- validator edge cases
-- desktop launcher or Tauri integration bugs
+- stale documentation and broken command references
+- web/shared contract drift
+- template, blueprint, parser, or export regressions
+- validation and placeholder edge cases
+- mobile scaffold cleanup or integration work that is clearly scoped
 
 ## Questions
 
-If a change may affect blueprint validity, export compatibility, or validator behavior, document the assumption in the PR instead of guessing.
+If a change affects blueprint validity, export compatibility, or parser expectations, document the assumption in the PR instead of guessing.

@@ -1,23 +1,24 @@
 # Resources Directory
 
-This directory contains non-code assets for the Character Generator project.
+This directory contains repo-tracked non-code assets and reference files.
 
 ## Subdirectories
 
-- **themes/** - UI themes and styling resources for TUI (Textual CSS files)
-  - See `themes/README.md` for theme customization guide
-  - Built-in themes: `dark.tcss`, `light.tcss`, `nyx.tcss`
-  - Custom themes can be added by dropping `.tcss` files here
-- **icons/** - Icons and graphical assets for GUI (future)
-- **assets/** - Static assets and resources (future)
+- **themes/** - theme-related files tracked in the repo, including legacy Textual `.tcss` files and theme metadata `.toml` files
 
 ## Current State
 
-The `themes/` directory is active and contains the TUI theme system. Other subdirectories are planned for future expansion.
+The only active subdirectory in the current workspace is `themes/`.
+
+Important distinction:
+
+- The browser app currently uses built-in theme presets defined in code plus browser-stored custom themes.
+- The files under `resources/themes/` are repository assets and references; they are not the live source of truth for the current browser runtime.
 
 ## Usage Guidelines
 
 When adding resources to this directory:
+
 1. Follow the existing naming conventions
 2. Include a README file in each subdirectory explaining the resource's purpose
 3. Ensure resources are appropriately licensed
