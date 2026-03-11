@@ -119,6 +119,36 @@ export default function About() {
           <Link to="/data" className="text-primary hover:underline">Data Manager</Link>
         </div>
       </section>
+
+      <section className="grid gap-4 md:grid-cols-[0.85fr_1.15fr]">
+        <div className="rounded-3xl border border-border/60 bg-card/70 p-6 backdrop-blur-sm">
+          <div className="flex items-center gap-2 text-foreground">
+            <Sparkles className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-semibold">Support the Project</h2>
+          </div>
+          <div className="mt-5 space-y-4 text-sm leading-7 text-muted-foreground">
+            <p>
+              If Eidolon Simulacra is useful to you, Ko-fi is the cleanest way to back ongoing blueprint work, browser tooling, and release upkeep.
+            </p>
+            <p>
+              Support helps fund template updates, validation improvements, UI polish, and the less glamorous maintenance work that keeps the compiler stack stable.
+            </p>
+            <p>
+              The full Ko-fi panel lives here instead of the sidebar so it has enough room to stay usable without crushing navigation.
+            </p>
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-3xl border border-border/60 bg-card/70 p-3 backdrop-blur-sm">
+          <iframe
+            id="kofiframe"
+            src="https://ko-fi.com/maeveoffae/?hidefeed=true&widget=true&embed=true&preview=true"
+            className="block w-full border-0 bg-[#f9f9f9]"
+            height="712"
+            title="maeveoffae"
+          />
+        </div>
+      </section>
     </DocumentPage>
   );
 }

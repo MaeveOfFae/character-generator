@@ -23,6 +23,7 @@ import { useState } from 'react';
 import { cn } from '../utils/cn';
 import { AssistantContextProvider } from './common/AssistantContext';
 import GlobalAssistant from './common/GlobalAssistant';
+import KoFiButtonWidget from './common/KoFiButtonWidget';
 
 interface LayoutProps {
   children: ReactNode;
@@ -150,14 +151,8 @@ export default function Layout({ children }: LayoutProps) {
                   Back Eidolon Simulacra on Ko-fi.
                 </p>
               </div>
-              <div className="overflow-hidden rounded-xl border border-border/60 bg-background/80 shadow-sm">
-                <iframe
-                  id="kofiframe"
-                  src="https://ko-fi.com/maeveoffae/?hidefeed=true&widget=true&embed=true&preview=true"
-                  className="block w-full border-0 bg-[#f9f9f9]"
-                  height="420"
-                  title="maeveoffae"
-                />
+              <div className="rounded-xl border border-border/60 bg-background/80 p-3 shadow-sm">
+                <KoFiButtonWidget />
               </div>
             </div>
 
