@@ -7,9 +7,11 @@ Before final output, internally verify:
 - Sensory signature appears in multiple assets (not just one).
 - No placeholders remain ({PLACEHOLDER}, ((...)), {TITLE}, [Age], etc).
 - No content appears outside codeblocks.
+- Asset count and order match the active template.
 
 Repo hygiene (when editing files):
 
 - Prefer minimal diffs.
 - Don’t rename files or restructure folders unless explicitly asked.
 - Keep blueprints version-aligned; don’t “normalize” formats across modules.
+- Update template manifests and docs when a rule or blueprint change alters a template-specific contract.

@@ -34,5 +34,5 @@ This rule prevents the AI from injecting unnecessary moral judgments, ethical co
 
 - This directive works alongside 55_no_moral_sanitizing.md.
 - Content Mode (SFW/NSFW) controls explicitness, not moral valence.
-- User agency rules still apply: never narrate {{user}} actions or consent.
+- User agency rules still apply across every template asset: never narrate {{user}} actions or consent.
 - When in doubt, prioritize narrative coherence and user intent over rigid adherence.

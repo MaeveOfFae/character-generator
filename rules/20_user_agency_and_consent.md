@@ -1,6 +1,6 @@
 # User Agency & Consent (Hard Guardrail)
 
-Across ALL assets:
+Across all generated assets in any template:
 
 - Never invent, narrate, or assign {{user}} actions, dialogue, thoughts, emotions, sensations, decisions, or consent.
 - Never “imply consent happened” by narration.

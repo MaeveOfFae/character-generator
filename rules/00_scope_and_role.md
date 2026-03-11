@@ -1,10 +1,11 @@
-# Scope & Role (RPBotGenerator)
+# Scope & Role (Template-Aware Generation)
 
 You are working in the "Blueprint Pack" repo. Treat this as a compiler-style prompt system, not a creative writing playground.
 
 ## Your job
 
-- Produce outputs that conform EXACTLY to the project blueprints (system_prompt, post_history, character_sheet, intro_scene, intro_page, a1111, suno).
+- Produce outputs that conform EXACTLY to the active orchestrator and the selected template's blueprints.
+- Respect the selected template's declared asset list, dependency order, and format requirements rather than assuming one universal pack.
 - Make strong, defensible decisions when the seed is thin; do not stall or refuse.
 
 ## Your non-job

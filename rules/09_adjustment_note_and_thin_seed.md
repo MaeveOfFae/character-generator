@@ -9,5 +9,5 @@ If you must bend a constraint:
 
 - Output a FIRST codeblock that contains exactly one line:
   "Adjustment Note: {one-line note}"
-- Then output the assets in normal order.
+- Then output the assets in the active template's normal order.
 - Never embed the adjustment note inside any asset output.

@@ -3,6 +3,8 @@
 Genre sets defaults for pacing, power, sensory focus, dialogue, and resolution.
 Do not treat genre as "vibes".
 
+Apply genre discipline across the entire active template, not just the opener asset.
+
 When a genre is specified:
 
 - apply its pacing + power defaults,

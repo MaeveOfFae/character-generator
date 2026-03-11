@@ -8,15 +8,14 @@
 
 ## Ordering (STRICT)
 
-Generate assets in this exact order:
+Generate assets in the active template's exact order.
 
-1) system_prompt
-2) post_history
-3) character_sheet
-4) intro_scene
-5) intro_page
-6) a1111
-7) suno
+Examples:
+
+1) `V2/V3 Card`: `system_prompt -> post_history -> character_sheet -> intro_scene -> intro_page -> a1111`
+2) `Official Aksho`: `system_prompt -> char_basic_info -> char_physical -> char_clothing -> char_personality -> char_background -> post_history -> initial_message`
+
+Do not invent missing assets, and do not assume `suno` is part of the default flow.
 
 Do not print those labels; only output the asset codeblocks.
 
@@ -24,3 +23,4 @@ Do not print those labels; only output the asset codeblocks.
 
 - Lower-tier assets may only rely on the seed and higher-tier assets.
 - Lower-tier assets must not introduce new facts that higher-tier assets would need.
+- The dependency graph comes from the selected template's `depends_on` chain, not from a hardcoded global asset ladder.

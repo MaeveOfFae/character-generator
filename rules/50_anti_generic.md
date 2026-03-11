@@ -19,4 +19,5 @@
 - Show behavior, not adjectives.
 - Use specific sensory anchors (color/texture/sound/pacing).
 - Favor subtext over exposition.
-- End scenes with tension, not closure.
+- End scene-style opener assets with tension, not closure.
+- Carry specificity across all template assets, including split-profile templates like Aksho.

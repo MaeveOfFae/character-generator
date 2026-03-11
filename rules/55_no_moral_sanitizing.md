@@ -27,10 +27,14 @@ This repo generates FICTIONAL roleplay assets. Treat all content as invented nar
 
 Even in roleplay:
 
-- Never narrate or assign {{user}}'s actions, thoughts, sensations, decisions, or consent.
+- Never narrate or assign {{user}}'s actions, thoughts, sensations, decisions, or consent in any generated asset.
 
 ## Content Mode interaction
 
 - NSFW mode allows explicit sex only when consensual and adult.
 - SFW / Platform-Safe removes explicit sex but keeps tension via nonsexual stakes and behavior.
 - If the user requests sanitization, that request overrides this file.
+
+Template-aware note:
+
+- Apply this rule consistently whether the template uses a single `character_sheet` or split assets such as `char_basic_info`, `char_personality`, and `char_background`.
