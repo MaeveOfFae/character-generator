@@ -46,6 +46,8 @@ env/
 
 # AI Assistant Configuration (not needed to use bpui)
 .clinerules/
+.claude/
+.github/
 
 # Testing
 .pytest_cache/
