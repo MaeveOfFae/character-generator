@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { FolderOpen, Star, Clock } from 'lucide-react';
@@ -8,10 +9,29 @@ import ReviewChecklistPlaceholder from './ReviewChecklistPlaceholder';
 import VersionHistoryPlaceholder from './VersionHistoryPlaceholder';
 
 export default function Drafts() {
+  const [leftDraftId, setLeftDraftId] = useState<string>('');
+  const [rightDraftId, setRightDraftId] = useState<string>('');
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['drafts'],
     queryFn: () => api.getDrafts(),
   });
+
+  useEffect(() => {
+    if (!data?.drafts.length) {
+      setLeftDraftId('');
+      setRightDraftId('');
+      return;
+    }
+
+    setLeftDraftId((previous) => previous || data.drafts[0]?.review_id || '');
+    setRightDraftId((previous) => {
+      if (previous) {
+        return previous;
+      }
+      return data.drafts[1]?.review_id || data.drafts[0]?.review_id || '';
+    });
+  }, [data?.drafts]);
 
   if (isLoading) {
     return (
@@ -61,13 +81,13 @@ export default function Drafts() {
       <section className="rounded-lg border border-dashed border-border bg-card/50 p-5">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold">Planned Draft Workflows</h2>
+            <h2 className="text-lg font-semibold">Draft Workbench</h2>
             <p className="text-sm text-muted-foreground">
-              Disabled cards for comparison, review, collections, and version history live here until the full flows are wired.
+              Comparison and review checks are available now. Collections and version history remain staged for later workflow work.
             </p>
           </div>
           <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-            Planned
+            Mixed
           </span>
         </div>
 
@@ -76,10 +96,11 @@ export default function Drafts() {
             collectionName={data?.drafts.length ? 'all drafts' : 'empty library'}
           />
           <DraftComparisonPlaceholder
-            leftDraftId={data?.drafts[0]?.review_id}
-            rightDraftId={data?.drafts[1]?.review_id}
+            leftDraftId={leftDraftId}
+            rightDraftId={rightDraftId}
+            draftOptions={data?.drafts}
           />
-          <ReviewChecklistPlaceholder draftId={data?.drafts[0]?.review_id} />
+          <ReviewChecklistPlaceholder draftId={leftDraftId || data?.drafts[0]?.review_id} />
           <VersionHistoryPlaceholder draftId={data?.drafts[0]?.review_id} />
         </div>
       </section>

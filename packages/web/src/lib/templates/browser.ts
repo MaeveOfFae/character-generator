@@ -61,6 +61,11 @@ function buildDefaultBlueprintCatalog(): Map<string, BrowserBlueprint> {
 
   Object.entries(blueprintModules).forEach(([modulePath, content]) => {
     const normalizedPath = modulePath.replace(/^.*\/blueprints\//, 'blueprints/');
+    const fileName = normalizedPath.split('/').pop()?.toLowerCase();
+    if (fileName === 'readme.md') {
+      return;
+    }
+
     const metadata = parseBlueprintFrontmatter(content);
 
     let category: BlueprintCategory = 'core';

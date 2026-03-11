@@ -46,12 +46,31 @@ export interface GenerationProgress {
   content?: string;
   progress?: number;
   error?: string;
+  systemPrompt?: string;
+  userPrompt?: string;
 }
 
 /**
  * Generation Service
  */
 export class GenerationService {
+  private static createConfiguredEngine() {
+    const apiKeys = configManager.getApiKeys();
+    const config = configManager.getConfig();
+    const provider = config.engine_mode === 'explicit'
+      ? config.engine
+      : config.model;
+
+    return createEngine({
+      model: config.model,
+      apiKey: apiKeys.openai || apiKeys.openrouter || apiKeys.google,
+      provider: provider === 'openai_compatible' ? undefined : provider as LLMProvider,
+      baseUrl: config.base_url,
+      temperature: config.temperature,
+      maxTokens: config.max_tokens,
+    });
+  }
+
   /**
    * Generate a full character from a seed
    */
@@ -60,22 +79,8 @@ export class GenerationService {
 
     yield { type: 'status', stage: 'initializing' };
 
-    // Get API keys from config
-    const apiKeys = configManager.getApiKeys();
     const config = configManager.getConfig();
-
-    // Determine provider and create engine
-    const provider = config.engine_mode === 'explicit'
-      ? config.engine
-      : config.model;
-    const engine = createEngine({
-      model: config.model,
-      apiKey: apiKeys.openai || apiKeys.openrouter || apiKeys.google,
-      provider: provider === 'openai_compatible' ? undefined : provider as LLMProvider,
-      baseUrl: config.base_url,
-      temperature: config.temperature,
-      maxTokens: config.max_tokens,
-    });
+    const engine = this.createConfiguredEngine();
 
     // Get template assets
     const templateAssets = resolveTemplateAssets(template);
@@ -162,30 +167,29 @@ export class GenerationService {
     request: GenerateAssetRequest,
     stream: boolean = true
   ): AsyncIterable<GenerationProgress> {
-    const { seed, template, mode = 'Auto', asset_name, prior_assets } = request;
+    const blueprintContent = resolveTemplateBlueprintContent(request.template, request.asset_name);
+    yield* this.generateAssetWithBlueprint(request, blueprintContent, stream);
+  }
+
+  static async *previewBlueprint(
+    request: GenerateAssetRequest & { blueprint_content: string },
+    stream: boolean = true
+  ): AsyncIterable<GenerationProgress> {
+    yield* this.generateAssetWithBlueprint(request, request.blueprint_content, stream);
+  }
+
+  private static async *generateAssetWithBlueprint(
+    request: GenerateAssetRequest,
+    blueprintContent: string | undefined,
+    stream: boolean
+  ): AsyncIterable<GenerationProgress> {
+    const { seed, mode = 'Auto', asset_name, prior_assets } = request;
 
     yield { type: 'status', stage: 'initializing' };
 
-    // Get API keys and config
-    const apiKeys = configManager.getApiKeys();
-    const config = configManager.getConfig();
-
-    // Create engine
-    const provider = config.engine_mode === 'explicit'
-      ? config.engine
-      : config.model;
-    const engine = createEngine({
-      model: config.model,
-      apiKey: apiKeys.openai || apiKeys.openrouter || apiKeys.google,
-      provider: provider === 'openai_compatible' ? undefined : provider as LLMProvider,
-      baseUrl: config.base_url,
-      temperature: config.temperature,
-      maxTokens: config.max_tokens,
-    });
+    const engine = this.createConfiguredEngine();
 
     yield { type: 'status', stage: 'building_prompt' };
-
-    const blueprintContent = resolveTemplateBlueprintContent(template, asset_name);
 
     // Build asset prompt
     const [systemPrompt, userPrompt] = await buildAssetPrompt(
@@ -195,6 +199,14 @@ export class GenerationService {
       prior_assets,
       blueprintContent
     );
+
+    yield {
+      type: 'status',
+      stage: 'prompt_ready',
+      asset: asset_name,
+      systemPrompt,
+      userPrompt,
+    };
 
     yield { type: 'status', stage: 'generating', asset: asset_name };
 
@@ -225,6 +237,8 @@ export class GenerationService {
       type: 'asset',
       asset: asset_name,
       content: fullContent,
+      systemPrompt,
+      userPrompt,
     };
   }
 

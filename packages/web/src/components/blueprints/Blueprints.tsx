@@ -101,13 +101,13 @@ export default function Blueprints() {
       <section className="rounded-lg border border-dashed border-border bg-card/50 p-5">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold">Planned Blueprint Tools</h2>
+            <h2 className="text-lg font-semibold">Blueprint Tools</h2>
             <p className="text-sm text-muted-foreground">
-              Linting and sandbox runs will attach here once the blueprint tooling moves past placeholder state.
+              Linting and sandbox preview are available now for fast browser-only blueprint checks.
             </p>
           </div>
-          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-            Planned
+          <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+            Live
           </span>
         </div>
 

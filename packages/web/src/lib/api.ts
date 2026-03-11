@@ -78,6 +78,15 @@ type StreamEvent = {
 
 type StreamReader = (event: StreamEvent) => void;
 
+type BlueprintPreviewRequest = GenerateAssetRequest & {
+  blueprint_content: string;
+};
+
+type BlueprintPreviewResponse = GenerateAssetResponse & {
+  system_prompt: string;
+  user_prompt: string;
+};
+
 const CUSTOM_THEMES_STORAGE_KEY = 'bpui.web.themes.custom';
 
 const EXPORT_PRESETS: ExportPresetSummary[] = [
@@ -1004,6 +1013,30 @@ export class CharacterGeneratorAPI {
         }
         if (progress.type === 'error') {
           emit('error', { error: progress.error || 'Asset generation failed' });
+        }
+      }
+    });
+  }
+
+  previewBlueprint(request: BlueprintPreviewRequest): BrowserStream {
+    return new BrowserStream(async ({ emit, signal }) => {
+      for await (const progress of GenerationService.previewBlueprint(request)) {
+        if (signal.aborted) {
+          return;
+        }
+        if (progress.type === 'chunk') {
+          emit('chunk', { content: progress.content || '' });
+        }
+        if (progress.type === 'asset') {
+          emit('complete', {
+            asset_name: request.asset_name,
+            content: progress.content || '',
+            system_prompt: progress.systemPrompt || '',
+            user_prompt: progress.userPrompt || '',
+          } satisfies BlueprintPreviewResponse);
+        }
+        if (progress.type === 'error') {
+          emit('error', { error: progress.error || 'Blueprint preview failed' });
         }
       }
     });

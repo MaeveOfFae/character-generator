@@ -55,9 +55,15 @@ export function parseBlueprintFrontmatter(content: string): {
   const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
 
   if (!frontmatterMatch) {
+    const headingMatch = content.match(/^#\s+(.+)$/m);
+    const paragraphMatch = content
+      .split('\n')
+      .map((line) => line.trim())
+      .find((line) => line.length > 0 && !line.startsWith('#') && !line.startsWith('```'));
+
     return {
-      name: 'unknown',
-      description: '',
+      name: headingMatch?.[1]?.trim() || 'Untitled Blueprint',
+      description: paragraphMatch || 'No description',
       invokable: false,
       version: '1.0',
     };
