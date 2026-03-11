@@ -141,6 +141,26 @@ export default function Layout({ children }: LayoutProps) {
               })}
             </nav>
 
+            <div className="border-t border-border/50 px-4 py-4">
+              <div className="mb-3">
+                <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                  Support
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Back Eidolon Simulacra on Ko-fi.
+                </p>
+              </div>
+              <div className="overflow-hidden rounded-xl border border-border/60 bg-background/80 shadow-sm">
+                <iframe
+                  id="kofiframe"
+                  src="https://ko-fi.com/maeveoffae/?hidefeed=true&widget=true&embed=true&preview=true"
+                  className="block w-full border-0 bg-[#f9f9f9]"
+                  height="420"
+                  title="maeveoffae"
+                />
+              </div>
+            </div>
+
             {/* Footer */}
             <div className="border-t border-border/50 p-4">
               <div className="flex items-center justify-between">
