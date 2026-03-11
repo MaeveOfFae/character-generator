@@ -47,7 +47,11 @@ env/
 # AI Assistant Configuration (not needed to use bpui)
 .clinerules/
 .claude/
-.github/
+.github/ISSUE_TEMPLATE/
+.github/PULL_REQUEST_TEMPLATE.md
+.github/prompts/
+.github/copilot-instructions.md
+.github/dependabot.yml
 
 # Testing
 .pytest_cache/
