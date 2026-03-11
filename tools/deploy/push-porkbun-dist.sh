@@ -28,6 +28,34 @@ source_dir="packages/web/dist"
 commit_message="Publish web dist build"
 run_build=false
 
+sync_branch_worktrees() {
+  local branch_ref="refs/heads/$branch"
+  local worktree_path=""
+  local worktree_branch=""
+
+  while IFS= read -r line; do
+    case "$line" in
+      worktree\ *)
+        worktree_path="${line#worktree }"
+        worktree_branch=""
+        ;;
+      branch\ *)
+        worktree_branch="${line#branch }"
+
+        if [[ "$worktree_branch" == "$branch_ref" && -n "$worktree_path" && "$worktree_path" != "$temp_dir" ]]; then
+          echo "Syncing local deploy worktree: $worktree_path"
+          git -C "$worktree_path" fetch "$remote" "$branch" >/dev/null 2>&1 || true
+
+          if ! git -C "$worktree_path" merge --ff-only "$remote/$branch" >/dev/null 2>&1; then
+            echo "Warning: could not fast-forward $worktree_path to $remote/$branch." >&2
+            echo "Warning: run git -C \"$worktree_path\" reset --hard \"$remote/$branch\" if you want to force it into sync." >&2
+          fi
+        fi
+        ;;
+    esac
+  done < <(git -C "$repo_root" worktree list --porcelain)
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --build)
@@ -107,6 +135,7 @@ fi
 git -C "$temp_dir" add -A
 
 if git -C "$temp_dir" diff --cached --quiet; then
+  sync_branch_worktrees
   echo "No deploy changes detected. $branch already matches $source_dir."
   exit 0
 fi
@@ -115,5 +144,7 @@ git -C "$temp_dir" commit -m "$commit_message" >/dev/null
 
 echo "Pushing $source_dir to $remote/$branch..."
 git -C "$temp_dir" push --force-with-lease "$remote" "HEAD:refs/heads/$branch"
+
+sync_branch_worktrees
 
 echo "Done. Published $source_dir to $remote/$branch."
