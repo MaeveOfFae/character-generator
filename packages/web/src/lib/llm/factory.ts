@@ -8,6 +8,7 @@ import { detectProviderFromModel } from '@char-gen/shared';
 import { OpenAICompatEngine } from './openai-compat.js';
 import { GoogleEngine } from './google.js';
 import { AnthropicEngine } from './anthropic.js';
+import { isInvalidApiKeyValue, normalizeApiKeyValue } from '../config/manager.js';
 
 export interface ProviderHeaderOptions {
   accept?: string;
@@ -129,17 +130,23 @@ export function buildProviderHeaders(
     headers.Accept = options.accept;
   }
 
-  if (apiKey) {
+  const normalizedApiKey = typeof apiKey === 'string' ? normalizeApiKeyValue(apiKey) : undefined;
+
+  if (normalizedApiKey) {
+    if (isInvalidApiKeyValue(normalizedApiKey)) {
+      throw new Error('Configured API key is invalid or corrupted. Re-enter it in Settings and try again.');
+    }
+
     switch (provider) {
       case 'anthropic':
-        headers['x-api-key'] = apiKey;
+        headers['x-api-key'] = normalizedApiKey;
         headers['anthropic-version'] = '2023-06-01';
         break;
       case 'google':
-        headers['x-goog-api-key'] = apiKey;
+        headers['x-goog-api-key'] = normalizedApiKey;
         break;
       default:
-        headers.Authorization = `Bearer ${apiKey}`;
+        headers.Authorization = `Bearer ${normalizedApiKey}`;
         break;
     }
   }

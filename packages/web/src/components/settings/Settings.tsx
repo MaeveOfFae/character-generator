@@ -21,7 +21,7 @@ import {
   resolveThemeColors,
 } from '../../theme/theme';
 import { api } from '../../lib/api.js';
-import { configManager } from '../../lib/config/manager.js';
+import { configManager, isInvalidApiKeyValue, normalizeApiKeyValue } from '../../lib/config/manager.js';
 import { createEngine, MODEL_SUGGESTIONS } from '../../lib/llm/factory.js';
 
 const ALL_PROVIDERS = ['openai', 'google', 'openrouter', 'anthropic', 'deepseek', 'zai', 'moonshot'] as const;
@@ -262,11 +262,13 @@ export default function Settings() {
   };
 
   const handleApiKeyChange = (provider: Provider, value: string) => {
+    const normalizedValue = normalizeApiKeyValue(value);
+
     setLocalConfig((previous) => {
       const nextApiKeys = { ...(previous.api_keys || {}) };
-      if (value.trim()) {
-        nextApiKeys[provider] = value;
-        configManager.setApiKey(provider, value);
+      if (normalizedValue && !isInvalidApiKeyValue(normalizedValue)) {
+        nextApiKeys[provider] = normalizedValue;
+        configManager.setApiKey(provider, normalizedValue);
       } else {
         delete nextApiKeys[provider];
         configManager.clearApiKey(provider);

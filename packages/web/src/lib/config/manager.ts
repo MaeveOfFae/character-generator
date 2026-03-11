@@ -18,7 +18,13 @@ const API_KEYS_PERSISTENCE_KEY = 'bpui.web.apiKeys.persist';
  */
 let sessionApiKeys: ApiKeys = {};
 
-function normalizeApiKeyValue(value: string): string {
+const CORRUPTED_API_KEY_PATTERNS = [
+  /^window\.fetch:/i,
+  /cannot convert value in record<bytestring/i,
+  /^bearer\s+window\.fetch:/i,
+];
+
+export function normalizeApiKeyValue(value: string): string {
   return value
     .replace(/[\u2018\u2019]/g, "'")
     .replace(/[\u201C\u201D]/g, '"')
@@ -27,10 +33,27 @@ function normalizeApiKeyValue(value: string): string {
     .replace(/^['"]+|['"]+$/g, '');
 }
 
+export function isInvalidApiKeyValue(value: string): boolean {
+  if (!value) {
+    return true;
+  }
+
+  if (/[^\x20-\x7E]/.test(value)) {
+    return true;
+  }
+
+  if (/\r|\n/.test(value)) {
+    return true;
+  }
+
+  return CORRUPTED_API_KEY_PATTERNS.some((pattern) => pattern.test(value));
+}
+
 function normalizeApiKeys(keys: ApiKeys): ApiKeys {
   return Object.fromEntries(
     Object.entries(keys)
       .map(([provider, key]) => [provider, typeof key === 'string' ? normalizeApiKeyValue(key) : key])
+      .filter(([, key]) => typeof key === 'string' && !isInvalidApiKeyValue(key))
       .filter(([, key]) => typeof key === 'string' && key.length > 0)
   );
 }
