@@ -146,7 +146,7 @@ export function buildProviderHeaders(
 
   if (provider === 'openrouter') {
     headers['HTTP-Referer'] = typeof window !== 'undefined' ? window.location.origin : 'https://char-gen.app';
-    headers['X-Title'] = 'Character Generator';
+    headers['X-OpenRouter-Title'] = 'Character Generator';
   }
 
   return headers;
