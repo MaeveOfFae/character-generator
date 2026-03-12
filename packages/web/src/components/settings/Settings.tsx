@@ -23,6 +23,7 @@ import {
 import { api } from '../../lib/api.js';
 import { configManager, isInvalidApiKeyValue, normalizeApiKeyValue } from '../../lib/config/manager.js';
 import { createEngine, MODEL_SUGGESTIONS } from '../../lib/llm/factory.js';
+import { saveBlobDownload } from '../../utils/download';
 
 const ALL_PROVIDERS = ['openai', 'google', 'openrouter', 'anthropic', 'deepseek', 'zai', 'moonshot'] as const;
 type Provider = typeof ALL_PROVIDERS[number];
@@ -336,7 +337,7 @@ export default function Settings() {
     setThemeError(null);
   };
 
-  const handleExportTheme = () => {
+  const handleExportTheme = async () => {
     const payload = {
       version: 1,
       exported_at: new Date().toISOString(),
@@ -345,12 +346,7 @@ export default function Settings() {
     };
 
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${selectedThemeName.replace(/[^a-z0-9_-]/gi, '_')}_theme.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+    await saveBlobDownload(blob, `${selectedThemeName.replace(/[^a-z0-9_-]/gi, '_')}_theme.json`);
 
     setThemeNotice('Theme JSON exported.');
     setThemeError(null);

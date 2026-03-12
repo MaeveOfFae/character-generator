@@ -89,7 +89,7 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <AssistantContextProvider>
-      <div className="flex h-screen overflow-hidden bg-background">
+      <div className="flex min-h-dvh bg-background lg:h-screen">
         {/* Mobile sidebar backdrop */}
         {sidebarOpen && (
           <div
@@ -101,11 +101,11 @@ export default function Layout({ children }: LayoutProps) {
         {/* Sidebar */}
         <aside
           className={cn(
-            'fixed inset-y-0 left-0 z-50 w-72 bg-card/80 backdrop-blur-md border-r border-border transition-transform duration-300 ease-out lg:static lg:translate-x-0',
+            'fixed inset-y-0 left-0 z-50 w-[min(20rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] bg-card/80 backdrop-blur-md border-r border-border transition-transform duration-300 ease-out lg:static lg:w-72 lg:max-w-none lg:translate-x-0',
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           )}
         >
-          <div className="flex h-full flex-col">
+          <div className="flex h-dvh flex-col lg:h-full">
             {/* Logo */}
             <div className="flex h-16 items-center justify-between px-4 border-b border-border/50">
               <Link to="/" className="flex items-center gap-2" onClick={() => setSidebarOpen(false)}>
@@ -193,13 +193,13 @@ export default function Layout({ children }: LayoutProps) {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 overflow-auto">
+        <main className="min-w-0 flex-1 overflow-auto">
           {/* Mobile header */}
           <header className="flex h-16 items-center gap-3 border-b border-border/50 bg-card/50 backdrop-blur-md px-4 lg:hidden sticky top-0 z-30">
             <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-accent transition-colors">
               <Menu className="h-6 w-6" />
             </button>
-            <span className="font-semibold text-lg">Eidolon Simulacra</span>
+            <span className="min-w-0 truncate font-semibold text-base sm:text-lg">Eidolon Simulacra</span>
           </header>
 
           {/* Page content */}

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { DraftStorage } from '../../lib/storage/draft-db.js';
 import { configManager } from '../../lib/config/manager.js';
+import { saveBlobDownload } from '../../utils/download';
 
 interface DataStats {
   drafts: number;
@@ -59,12 +60,7 @@ export default function DataManager() {
     try {
       const data = await DraftStorage.exportAll();
       const blob = new Blob([data], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `eidolon-simulacra-drafts-${new Date().toISOString().split('T')[0]}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
+      await saveBlobDownload(blob, `eidolon-simulacra-drafts-${new Date().toISOString().split('T')[0]}.json`);
 
       setNotice({ type: 'success', message: 'Drafts exported successfully' });
     } catch (error) {
@@ -76,12 +72,7 @@ export default function DataManager() {
     try {
       const data = configManager.exportConfig();
       const blob = new Blob([data], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `eidolon-simulacra-config-${new Date().toISOString().split('T')[0]}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
+      await saveBlobDownload(blob, `eidolon-simulacra-config-${new Date().toISOString().split('T')[0]}.json`);
 
       setNotice({ type: 'success', message: 'Configuration exported successfully' });
     } catch (error) {
@@ -93,12 +84,7 @@ export default function DataManager() {
     try {
       const data = configManager.exportApiKeys();
       const blob = new Blob([data], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `eidolon-simulacra-api-keys-${new Date().toISOString().split('T')[0]}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
+      await saveBlobDownload(blob, `eidolon-simulacra-api-keys-${new Date().toISOString().split('T')[0]}.json`);
 
       setNotice({ type: 'success', message: 'API keys exported successfully. Warning: API keys are sensitive - handle with care.' });
     } catch (error) {
