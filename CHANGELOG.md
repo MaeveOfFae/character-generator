@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v2.0.10 - 2026-03-12
+
+### Documentation and platform update
+
+This release packages 12 recent commits focused on documentation, platform, and templates.
+
+### Highlights
+- Add data attribute for global assistant root in ChatPanel component
+- Update version to 2.0.9; enhance changelog and release notes with recent documentation, platform updates, and new links
+- Add modal open state handling for ExportModal and GlobalAssistant components
+- Doc update
+- Update version to 2.0.7; enhance changelog and release notes with recent documentation, UI updates, and new links
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v2.0.9 - 2026-03-12
 
 ### Documentation and platform update
@@ -163,6 +179,7 @@ The app now centers the browser runtime with tighter template tooling, local dra
 
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 
