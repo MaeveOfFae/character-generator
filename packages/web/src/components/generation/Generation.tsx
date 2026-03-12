@@ -5,6 +5,10 @@ import { Sparkles, Zap, BookOpen, XCircle, Loader2 } from 'lucide-react';
 import type { ContentMode, GenerationComplete, Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { GETTING_STARTED_TOUR_ID } from '@/lib/help';
+import {
+  clearActiveGenerationSession,
+  loadActiveGenerationSession,
+} from '@/lib/services/generation-session';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import InlineHelpTip from '../common/InlineHelpTip';
 import { useGuidedTour } from '../common/GuidedTourContext';
@@ -20,6 +24,7 @@ export default function Generation() {
   const [template, setTemplate] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [resumeNotice, setResumeNotice] = useState<string | null>(null);
   const { isTourCompleted, restartTour, startTour } = useGuidedTour();
 
   const { data: templates = [], isLoading: templatesLoading } = useQuery({
@@ -51,14 +56,46 @@ export default function Generation() {
     }
   }, [location.state]);
 
+  useEffect(() => {
+    const session = loadActiveGenerationSession();
+    if (!session) {
+      return;
+    }
+
+    setSeed(session.seed);
+    setMode(session.mode);
+    setTemplate(session.template || '');
+    setGenerationError(null);
+    setResumeNotice('Restored an interrupted generation session.');
+    setIsGenerating(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isGenerating) {
+      return;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isGenerating]);
+
   const handleGenerate = () => {
     if (!seed.trim()) return;
+    clearActiveGenerationSession();
     setGenerationError(null);
+    setResumeNotice(null);
     setIsGenerating(true);
   };
 
   const handleComplete = useCallback((data: GenerationComplete) => {
+    clearActiveGenerationSession();
     setIsGenerating(false);
+    setResumeNotice(null);
     if (data.draft_id) {
       navigate(`/drafts/${encodeURIComponent(data.draft_id)}`);
       return;
@@ -67,11 +104,15 @@ export default function Generation() {
   }, [navigate]);
 
   const handleError = useCallback((error: string) => {
+    clearActiveGenerationSession();
     setGenerationError(error);
+    setResumeNotice(null);
     setIsGenerating(false);
   }, []);
 
   const handleCancel = useCallback(() => {
+    clearActiveGenerationSession();
+    setResumeNotice(null);
     setIsGenerating(false);
   }, []);
 
@@ -140,6 +181,12 @@ export default function Generation() {
               <div className="rounded-lg bg-destructive/10 border border-destructive/30 px-3 py-2.5 text-sm text-destructive">
                 <XCircle className="h-4 w-4 inline-flex" />
                 <span className="ml-2">{generationError}</span>
+              </div>
+            )}
+
+            {resumeNotice && !generationError && (
+              <div className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2.5 text-sm text-foreground">
+                <span>{resumeNotice}</span>
               </div>
             )}
           </div>

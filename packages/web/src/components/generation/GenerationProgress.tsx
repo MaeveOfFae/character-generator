@@ -3,6 +3,13 @@ import { CheckCircle2, Circle, Loader2, XCircle, FileText, Clock, RotateCcw, Sav
 import type { GenerationComplete, Template } from '@char-gen/shared';
 import { GenerationService } from '../../lib/services/generation.js';
 import { configManager } from '../../lib/config/manager.js';
+import {
+  clearActiveGenerationSession,
+  loadActiveGenerationSession,
+  matchesActiveGenerationSession,
+  saveActiveGenerationSession,
+  type ActiveGenerationSession,
+} from '../../lib/services/generation-session.js';
 import { inferCharacterDisplayNameForTemplate } from '../../lib/templates/browser.js';
 
 interface GenerationProgressProps {
@@ -20,6 +27,13 @@ interface AssetProgress {
   status: 'pending' | 'generating' | 'reviewing' | 'complete' | 'error';
   content?: string;
 }
+
+type ResumeAction =
+  | { type: 'idle' }
+  | { type: 'new' }
+  | { type: 'review' }
+  | { type: 'generate'; assetIndex: number; approvedAssets: Record<string, string> }
+  | { type: 'save'; approvedAssets: Record<string, string> };
 
 function sortTemplateAssets(template?: Template): string[] {
   if (!template) {
@@ -80,7 +94,9 @@ export default function GenerationProgress({
   const [characterName, setCharacterName] = useState<string | null>(null);
   const [startTime] = useState(Date.now());
   const [elapsed, setElapsed] = useState(0);
+  const [resumeAction, setResumeAction] = useState<ResumeAction>({ type: 'idle' });
   const abortControllerRef = useRef<AbortController | null>(null);
+  const restoredSessionRef = useRef<ActiveGenerationSession | null>(loadActiveGenerationSession());
 
   const selectedTemplate = useMemo(
     () => templates.find((candidate) => candidate.name === template),
@@ -174,6 +190,53 @@ export default function GenerationProgress({
     }
   }, [assetOrder, mode, onError, seed, template, updateAssetStatus]);
 
+  const saveApprovedDraft = useCallback(async (approvedAssets: Record<string, string>) => {
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    setStatus('saving');
+
+    try {
+      const { DraftStorage } = await import('../../lib/storage/draft-db.js');
+      const reviewId = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const nextCharacterName = inferCharacterDisplayNameForTemplate(approvedAssets, template);
+
+      const draft = {
+        path: reviewId,
+        metadata: {
+          review_id: reviewId,
+          seed,
+          mode: mode as 'SFW' | 'NSFW' | 'Platform-Safe',
+          model: configManager.getConfig().model,
+          created: new Date().toISOString(),
+          modified: new Date().toISOString(),
+          favorite: false,
+          template_name: template,
+          character_name: nextCharacterName,
+        },
+        assets: approvedAssets,
+      };
+
+      await DraftStorage.saveDraft(draft);
+
+      clearActiveGenerationSession();
+      setCharacterName(nextCharacterName);
+      setStatus('complete');
+      onComplete({
+        draft_path: reviewId,
+        draft_id: reviewId,
+        character_name: nextCharacterName,
+        duration_ms: Date.now() - startTime,
+      });
+    } catch (saveError) {
+      const message = saveError instanceof Error ? saveError.message : 'Failed to save draft';
+      setError(message);
+      setStatus('error');
+      clearActiveGenerationSession();
+      onError(message);
+    }
+  }, [mode, onComplete, onError, seed, startTime, template]);
+
   // Update elapsed time every second
   useEffect(() => {
     const interval = setInterval(() => {
@@ -186,19 +249,91 @@ export default function GenerationProgress({
 
   // Initialize assets from template
   useEffect(() => {
-    setAssets(assetOrder.map((name) => ({ name, status: 'pending' })));
-    setAssetDrafts({});
-    setCurrentAsset(null);
-    setEditorContent('');
+    if (assetOrder.length === 0) {
+      setAssets([]);
+      setResumeAction({ type: 'idle' });
+      return;
+    }
+
+    const storedSession = restoredSessionRef.current;
+    const canResume = storedSession
+      && matchesActiveGenerationSession(storedSession, { seed, mode, template })
+      && Object.keys(storedSession.assetDrafts).every((assetName) => assetOrder.includes(assetName));
+
+    if (!canResume) {
+      setAssets(assetOrder.map((name) => ({ name, status: 'pending' })));
+      setAssetDrafts({});
+      setCurrentAsset(null);
+      setEditorContent('');
+      setError(null);
+      setCharacterName(null);
+      setResumeAction({ type: 'new' });
+      return;
+    }
+
+    const approvedAssets = storedSession.assetDrafts;
+    const restoredCurrentAsset = storedSession.currentAsset && assetOrder.includes(storedSession.currentAsset)
+      ? storedSession.currentAsset
+      : null;
+    const restoredAssets = assetOrder.map((name) => {
+      if (approvedAssets[name]) {
+        return { name, status: 'complete' as const, content: approvedAssets[name] };
+      }
+      if (restoredCurrentAsset === name && storedSession.currentStatus === 'reviewing') {
+        return { name, status: 'reviewing' as const, content: storedSession.currentAssetContent };
+      }
+      return { name, status: 'pending' as const };
+    });
+
+    setAssets(restoredAssets);
+    setAssetDrafts(approvedAssets);
+    setCurrentAsset(restoredCurrentAsset);
+    setEditorContent(storedSession.currentStatus === 'reviewing' ? storedSession.currentAssetContent : '');
     setError(null);
-    setCharacterName(null);
-  }, [assetOrder]);
+    setCharacterName(inferCharacterDisplayNameForTemplate(approvedAssets, template));
+
+    if (storedSession.currentStatus === 'reviewing' && restoredCurrentAsset) {
+      setStatus('reviewing');
+      setResumeAction({ type: 'review' });
+      return;
+    }
+
+    if (Object.keys(approvedAssets).length >= assetOrder.length) {
+      setStatus('saving');
+      setResumeAction({ type: 'save', approvedAssets });
+      return;
+    }
+
+    const nextAssetName = restoredCurrentAsset || assetOrder[Object.keys(approvedAssets).length];
+    const nextAssetIndex = assetOrder.indexOf(nextAssetName);
+
+    setStatus('initializing');
+    setResumeAction({
+      type: 'generate',
+      assetIndex: nextAssetIndex >= 0 ? nextAssetIndex : 0,
+      approvedAssets,
+    });
+  }, [assetOrder, mode, seed, template]);
 
   // Start generation
   useEffect(() => {
+    if (resumeAction.type === 'idle' || assetOrder.length === 0) {
+      return;
+    }
+
     const timeoutId = window.setTimeout(() => {
-      if (assetOrder.length > 0) {
+      if (resumeAction.type === 'new') {
         void generateAsset(0, {});
+        return;
+      }
+
+      if (resumeAction.type === 'generate') {
+        void generateAsset(resumeAction.assetIndex, resumeAction.approvedAssets);
+        return;
+      }
+
+      if (resumeAction.type === 'save') {
+        void saveApprovedDraft(resumeAction.approvedAssets);
       }
     }, 0);
 
@@ -206,10 +341,31 @@ export default function GenerationProgress({
       window.clearTimeout(timeoutId);
       abortControllerRef.current?.abort();
     };
-  }, [assetOrder, generateAsset]);
+  }, [assetOrder.length, generateAsset, resumeAction, saveApprovedDraft]);
+
+  useEffect(() => {
+    if (status === 'complete' || status === 'error') {
+      return;
+    }
+
+    const currentStatus = status === 'reviewing' || status === 'saving' ? status : 'generating';
+    saveActiveGenerationSession({
+      version: 1,
+      seed,
+      mode,
+      template,
+      assetDrafts,
+      currentAsset,
+      currentAssetContent: currentStatus === 'reviewing' ? editorContent : '',
+      currentStatus,
+      startedAt: startTime,
+      updatedAt: Date.now(),
+    });
+  }, [assetDrafts, currentAsset, editorContent, mode, seed, startTime, status, template]);
 
   const handleCancel = useCallback(() => {
     abortControllerRef.current?.abort();
+    clearActiveGenerationSession();
     onCancel();
   }, [onCancel]);
 
@@ -229,52 +385,8 @@ export default function GenerationProgress({
       return;
     }
 
-    abortControllerRef.current?.abort();
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-    setStatus('saving');
-
-    try {
-      // Save draft using client-side DraftStorage
-      const { DraftStorage } = await import('../../lib/storage/draft-db.js');
-
-      // Generate review ID
-      const reviewId = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-
-      const characterName = inferCharacterDisplayNameForTemplate(approved, template);
-
-      const draft = {
-        path: reviewId,
-        metadata: {
-          review_id: reviewId,
-          seed,
-          mode: mode as 'SFW' | 'NSFW' | 'Platform-Safe',
-          model: configManager.getConfig().model,
-          created: new Date().toISOString(),
-          modified: new Date().toISOString(),
-          favorite: false,
-          template_name: template,
-          character_name: characterName,
-        },
-        assets: approved,
-      };
-
-      await DraftStorage.saveDraft(draft);
-
-      setStatus('complete');
-      onComplete({
-        draft_path: reviewId,
-        draft_id: reviewId,
-        character_name: characterName,
-        duration_ms: Date.now() - startTime,
-      });
-    } catch (saveError) {
-      const message = saveError instanceof Error ? saveError.message : 'Failed to save draft';
-      setError(message);
-      setStatus('error');
-      onError(message);
-    }
-  }, [assetOrder, currentAsset, editorContent, generateAsset, getApprovedAssets, mode, onComplete, onError, seed, template, updateAssetStatus, startTime]);
+    await saveApprovedDraft(approved);
+  }, [assetOrder, currentAsset, editorContent, generateAsset, getApprovedAssets, saveApprovedDraft, updateAssetStatus]);
 
   const handleRegenerate = useCallback(async () => {
     if (!currentAsset) {
