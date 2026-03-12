@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v2.0.4 - 2026-03-12
+
+### Documentation and UI update
+
+This release packages 12 recent commits focused on documentation, UI, and themes.
+
+### Highlights
+- Update version to 2.0.3; enhance changelog and release notes with recent documentation, UI updates, and export functionality improvements
+- Update version to 2.0.2 and enhance changelog with recent documentation and UI updates; refactor download functions for improved usability
+- Update version to 2.0.1 and enhance release notes with documentation and UI updates
+- Enhance release notes generation and add changelog for version 2.0.0
+- Add "What's New" page and integrate release notes; implement version check in CI
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v2.0.3 - 2026-03-12
 
 ### Documentation and UI update
@@ -67,6 +83,7 @@ The app now centers the browser runtime with tighter template tooling, local dra
 
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 
