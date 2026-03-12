@@ -6,6 +6,7 @@ interface DownloadResponse {
 
 interface SaveResult {
   saved: boolean;
+  method: 'tauri' | 'share' | 'download' | 'new-tab' | 'cancelled';
 }
 
 type ShareCapableNavigator = Navigator & {
@@ -70,14 +71,27 @@ async function shareWithBrowser(download: DownloadResponse, filename: string): P
 
   try {
     await shareNavigator.share(shareData);
-    return { saved: true };
+    return { saved: true, method: 'share' };
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
-      return { saved: false };
+      return { saved: false, method: 'cancelled' };
     }
 
     return null;
   }
+}
+
+async function openInNewTab(blob: Blob): Promise<SaveResult> {
+  const url = URL.createObjectURL(blob);
+  const popup = window.open(url, '_blank', 'noopener,noreferrer');
+
+  if (popup) {
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    return { saved: true, method: 'new-tab' };
+  }
+
+  URL.revokeObjectURL(url);
+  return { saved: false, method: 'cancelled' };
 }
 
 async function saveWithBrowser(blob: Blob, filename: string): Promise<SaveResult> {
@@ -93,7 +107,7 @@ async function saveWithBrowser(blob: Blob, filename: string): Promise<SaveResult
   document.body.removeChild(anchor);
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-  return { saved: true };
+  return { saved: true, method: 'download' };
 }
 
 async function saveWithTauri(download: DownloadResponse, filename: string): Promise<SaveResult> {
@@ -106,10 +120,10 @@ async function saveWithTauri(download: DownloadResponse, filename: string): Prom
   });
 
   if (!saved) {
-    return { saved: false };
+    return { saved: false, method: 'cancelled' };
   }
 
-  return { saved: true };
+  return { saved: true, method: 'tauri' };
 }
 
 export async function saveDownload(download: DownloadResponse, fallbackFilename: string): Promise<SaveResult> {
@@ -124,6 +138,13 @@ export async function saveDownload(download: DownloadResponse, fallbackFilename:
   const shared = await shareWithBrowser(download, filename);
   if (shared) {
     return shared;
+  }
+
+  if (isProbablyMobileBrowser()) {
+    const opened = await openInNewTab(download.blob);
+    if (opened.saved) {
+      return opened;
+    }
   }
 
   return saveWithBrowser(download.blob, filename);

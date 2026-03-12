@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X, Download, FileText, FileJson, FileCode } from 'lucide-react';
+import { X, Download, FileText, FileJson, FileCode, CheckCircle2 } from 'lucide-react';
 import type { ExportPresetSummary } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { saveDownload } from '../../utils/download';
@@ -23,6 +23,7 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
   const [includeMetadata, setIncludeMetadata] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const { data: presets, isLoading, error } = useQuery({
     queryKey: ['export-presets'],
@@ -34,6 +35,7 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
 
     setIsExporting(true);
     setErrorMessage(null);
+    setSuccessMessage(null);
     try {
       const download = await api.exportDraft({
         draft_id: draftId,
@@ -47,7 +49,25 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
       );
 
       if (result.saved) {
-        onClose();
+        switch (result.method) {
+          case 'share':
+            setSuccessMessage('Share sheet opened. Choose Save to Files, Downloads, or another app to keep the export.');
+            break;
+          case 'new-tab':
+            setSuccessMessage('Export opened in a new tab. Use the browser menu in that tab to save or share the file.');
+            break;
+          case 'download':
+            setSuccessMessage('Export sent to the browser download flow. Check your browser download tray or downloads page.');
+            break;
+          case 'tauri':
+            setSuccessMessage('Save dialog opened. Choose the filename and destination there.');
+            break;
+          default:
+            setSuccessMessage('Export prepared successfully.');
+            break;
+        }
+      } else if (result.method === 'cancelled') {
+        setErrorMessage('Export was cancelled before the browser could save or share the file.');
       }
     } catch (err) {
       console.error('Export failed:', err);
@@ -142,6 +162,10 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
             </label>
           </div>
 
+          <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            Browser exports usually do not show a filename dialog. On phones, this may open a share sheet or a new tab instead of a traditional download prompt.
+          </div>
+
           <section className="rounded-lg border border-dashed border-border bg-card/50 p-4">
             <div className="mb-3 flex items-start justify-between gap-4">
               <div>
@@ -164,6 +188,15 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
           {errorMessage && (
             <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {errorMessage}
+            </div>
+          )}
+
+          {successMessage && (
+            <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+              <div className="flex items-start gap-2">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{successMessage}</span>
+              </div>
             </div>
           )}
         </div>

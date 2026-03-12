@@ -16,9 +16,27 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
-    version: '2.0.2',
+    version: '2.0.3',
     releasedOn: '2026-03-12',
     badge: 'Current release',
+    headline: 'Documentation and UI update',
+    summary: 'This release packages 12 recent commits focused on documentation, UI, and themes.',
+    highlights: [
+      'Update version to 2.0.2 and enhance changelog with recent documentation and UI updates; refactor download functions for improved usability',
+      'Update version to 2.0.1 and enhance release notes with documentation and UI updates',
+      'Enhance release notes generation and add changelog for version 2.0.0',
+      'Add "What\'s New" page and integrate release notes; implement version check in CI',
+      'Enhance theme documentation and add new themes',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Review templates', to: '/templates' },
+    ],
+  },
+  {
+    version: '2.0.2',
+    releasedOn: '2026-03-12',
+    badge: 'Previous release',
     headline: 'Documentation and UI update',
     summary: 'This release packages 12 recent commits focused on documentation, UI, and themes.',
     highlights: [
