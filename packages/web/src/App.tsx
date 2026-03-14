@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
-import { Routes, Route } from 'react-router-dom';
+import { Link, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import {
   appRouteHelpCoverage,
@@ -60,6 +60,25 @@ function RouteFallback() {
   );
 }
 
+function RouteNotFound() {
+  return (
+    <div className="flex h-[60vh] flex-col items-center justify-center gap-4 text-center">
+      <div>
+        <h1 className="text-2xl font-semibold text-foreground">Page not found</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          The requested route does not exist in the current browser app build.
+        </p>
+      </div>
+      <Link
+        to="/"
+        className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+      >
+        Return home
+      </Link>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <Layout>
@@ -71,6 +90,7 @@ export default function App() {
           <Route path="/validation" element={<Validation />} />
           <Route path="/batch" element={<BatchGenerate />} />
           <Route path="/drafts" element={<Drafts />} />
+          <Route path="/drafts/" element={<Drafts />} />
           <Route path="/drafts/:id" element={<Review />} />
           <Route path="/templates" element={<Templates />} />
           <Route path="/blueprints" element={<Blueprints />} />
@@ -89,6 +109,7 @@ export default function App() {
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/security" element={<SecurityPage />} />
           <Route path="/code-of-conduct" element={<CodeOfConductPage />} />
+          <Route path="*" element={<RouteNotFound />} />
         </Routes>
       </Suspense>
     </Layout>
