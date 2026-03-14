@@ -61,7 +61,7 @@ export default function GuidedTourOverlay() {
 
   return (
     <>
-      <div className="fixed inset-0 z-[70] bg-black/55 backdrop-blur-sm" onClick={closeTour} />
+      <div className="fixed inset-0 z-[70] bg-black/55" onClick={closeTour} />
       <section className="fixed inset-x-3 bottom-3 z-[80] max-h-[calc(100dvh-1.5rem)] overflow-hidden rounded-3xl border border-border/60 bg-card/95 shadow-2xl shadow-black/40 backdrop-blur-md sm:inset-x-auto sm:right-4 sm:w-[28rem]">
         <div className="flex items-start justify-between gap-4 border-b border-border/50 px-5 py-4">
           <div>
