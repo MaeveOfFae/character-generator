@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v2.0.18 - 2026-03-14
+
+### Documentation and platform update
+
+This release packages 12 recent commits focused on documentation, platform, and runtime.
+
+### Highlights
+- Add logging for model loading and API key changes in Settings and API classes
+- Update version to 2.0.17; enhance changelog and release notes with recent documentation, platform updates, and new links
+- Remove unnecessary backdrop-blur class from GuidedTourOverlay component
+- Modified: packages/web/src/components/common/GuidedTourContext.tsx modified: packages/web/src/lib/help.ts
+- Update version to 2.0.16; enhance changelog and release notes with recent documentation, platform updates, and new links
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v2.0.17 - 2026-03-14
 
 ### Platform and documentation update
@@ -291,6 +307,7 @@ The app now centers the browser runtime with tighter template tooling, local dra
 
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 

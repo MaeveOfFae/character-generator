@@ -16,9 +16,27 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
-    version: '2.0.17',
+    version: '2.0.18',
     releasedOn: '2026-03-14',
     badge: 'Current release',
+    headline: 'Documentation and platform update',
+    summary: 'This release packages 12 recent commits focused on documentation, platform, and runtime.',
+    highlights: [
+      'Add logging for model loading and API key changes in Settings and API classes',
+      'Update version to 2.0.17; enhance changelog and release notes with recent documentation, platform updates, and new links',
+      'Remove unnecessary backdrop-blur class from GuidedTourOverlay component',
+      'Modified: packages/web/src/components/common/GuidedTourContext.tsx modified: packages/web/src/lib/help.ts',
+      'Update version to 2.0.16; enhance changelog and release notes with recent documentation, platform updates, and new links',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Review templates', to: '/templates' },
+    ],
+  },
+  {
+    version: '2.0.17',
+    releasedOn: '2026-03-14',
+    badge: 'Previous release',
     headline: 'Platform and documentation update',
     summary: 'This release packages 12 recent commits focused on platform, documentation, and templates.',
     highlights: [
