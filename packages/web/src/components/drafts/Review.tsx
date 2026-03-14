@@ -19,6 +19,7 @@ export default function Review() {
   const [editName, setEditName] = useState('');
   const [editingAsset, setEditingAsset] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
+  const [tourManagedExportModal, setTourManagedExportModal] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const { activeStepIndex, activeTourId, isTourCompleted, restartTour, startTour } = useGuidedTour();
   const queryClient = useQueryClient();
@@ -127,6 +128,12 @@ export default function Review() {
 
   useEffect(() => {
     if (activeTourId !== REVIEW_EXPORT_TOUR_ID) {
+      if (tourManagedExportModal && showExportModal) {
+        setShowExportModal(false);
+      }
+      if (tourManagedExportModal) {
+        setTourManagedExportModal(false);
+      }
       return;
     }
 
@@ -134,14 +141,16 @@ export default function Review() {
     const needsExportModal = activeStep?.targetId === 'export-preset-selection' || activeStep?.targetId === 'export-confirm';
 
     if (needsExportModal && !showExportModal) {
+      setTourManagedExportModal(true);
       setShowExportModal(true);
       return;
     }
 
-    if (!needsExportModal && showExportModal) {
+    if (!needsExportModal && showExportModal && tourManagedExportModal) {
       setShowExportModal(false);
+      setTourManagedExportModal(false);
     }
-  }, [activeStepIndex, activeTourId, showExportModal]);
+  }, [activeStepIndex, activeTourId, showExportModal, tourManagedExportModal]);
 
   if (isLoading) {
     return (
@@ -247,7 +256,10 @@ export default function Review() {
             {draft.metadata.favorite ? 'Favorited' : 'Favorite'}
           </button>
           <button
-            onClick={() => setShowExportModal(true)}
+            onClick={() => {
+              setTourManagedExportModal(false);
+              setShowExportModal(true);
+            }}
             data-tour-anchor="review-export"
             className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent"
           >
@@ -367,7 +379,10 @@ export default function Review() {
         <ExportModal
           draftId={decodeURIComponent(id || '')}
           characterName={draft.metadata.character_name || draft.metadata.seed}
-          onClose={() => setShowExportModal(false)}
+          onClose={() => {
+            setShowExportModal(false);
+            setTourManagedExportModal(false);
+          }}
         />
       )}
 

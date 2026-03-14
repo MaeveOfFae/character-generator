@@ -21,16 +21,16 @@ export default function GuidedTourOverlay() {
   const activeTour = activeTourId ? getGuidedTour(activeTourId) : null;
   const activeStep = activeTour?.steps[activeStepIndex] ?? null;
 
-  if (!activeTour || !activeStep) {
-    return null;
-  }
-
-  const isExpectedPage = isGuidedTourStepActive(location.pathname, activeStep);
-  const isLastStep = activeStepIndex === activeTour.steps.length - 1;
-
   useEffect(() => {
     const previousTarget = document.querySelector<HTMLElement>(ACTIVE_TOUR_TARGET_SELECTOR);
     previousTarget?.removeAttribute('data-guided-tour-active');
+
+    if (!activeStep) {
+      setTargetFound(false);
+      return;
+    }
+
+    const isExpectedPage = isGuidedTourStepActive(location.pathname, activeStep);
 
     if (!isExpectedPage || !activeStep.targetId) {
       setTargetFound(false);
@@ -50,7 +50,14 @@ export default function GuidedTourOverlay() {
     return () => {
       target.removeAttribute('data-guided-tour-active');
     };
-  }, [activeStep.targetId, isExpectedPage, location.pathname]);
+  }, [activeStep, location.pathname]);
+
+  if (!activeTour || !activeStep) {
+    return null;
+  }
+
+  const isExpectedPage = isGuidedTourStepActive(location.pathname, activeStep);
+  const isLastStep = activeStepIndex === activeTour.steps.length - 1;
 
   return (
     <>

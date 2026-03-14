@@ -79,6 +79,12 @@ pnpm build:shared
 # Build the web app and its shared dependency
 pnpm build:web
 
+# Typecheck the web app
+pnpm typecheck:web
+
+# Run the web test suite
+pnpm test:web
+
 # Build the current workspace graph
 pnpm build
 
@@ -91,9 +97,9 @@ pnpm format
 
 Notes:
 
-- The current CI path builds and lints `@char-gen/shared` and `@char-gen/web`.
+- The current CI path runs release-notes parity, lint, web typechecking, web tests, the shared/web build, and a web preview smoke test.
 - `packages/mobile` exists in the workspace, but it is not wired into the root build or lint tasks yet.
-- The root `test` pipeline exists in Turbo, but there are no package-level automated test tasks checked in right now.
+- The web package now includes a Vitest harness that covers the in-app help and guide system; run it with `pnpm test:web`.
 
 ## Generation Model
 

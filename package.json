@@ -9,6 +9,8 @@
     "dev:web:lan": "pnpm --filter @char-gen/web dev --host 0.0.0.0 --port 3000",
     "build": "turbo run build",
     "build:web": "pnpm build:shared && pnpm --filter @char-gen/web build",
+    "typecheck:web": "pnpm --filter @char-gen/web build:check",
+    "test:web": "pnpm --filter @char-gen/web test",
     "deploy:porkbun": "./tools/deploy/push-porkbun-dist.sh",
     "release:notes": "node ./tools/generation/generate-release-notes.mjs",
     "release:notes:check": "node ./tools/generation/check-release-notes-version.mjs",

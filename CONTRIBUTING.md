@@ -27,6 +27,12 @@ pnpm build:shared
 # web production build
 pnpm build:web
 
+# web typecheck
+pnpm typecheck:web
+
+# web tests
+pnpm test:web
+
 # repo lint
 pnpm lint
 
@@ -45,15 +51,16 @@ Useful commands:
 ```bash
 pnpm --filter @char-gen/shared build
 pnpm --filter @char-gen/web build
-pnpm --filter @char-gen/web exec tsc --noEmit
+pnpm typecheck:web
+pnpm test:web
 pnpm lint
 ```
 
 Notes:
 
-- CI currently covers lint plus the shared and web builds.
+- CI currently covers release-notes parity, lint, web typechecking, web tests, and the shared/web build path plus a preview smoke test.
 - `@char-gen/shared` publishes from `dist/`, so rebuild it before validating web changes that depend on updated shared exports.
-- The root Turbo pipeline includes a `test` task, but package-level automated test tasks are not currently checked in.
+- The root Turbo pipeline includes a `test` task, and `@char-gen/web` now contributes the Vitest help-system suite through `pnpm test:web`.
 - `packages/mobile` is present as a scaffold and should not be assumed to participate in CI unless you wire it up explicitly.
 
 ## Change Guidelines

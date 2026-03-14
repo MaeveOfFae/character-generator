@@ -2,6 +2,12 @@ import { lazy, Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
+import {
+  appRouteHelpCoverage,
+  guidedTourTargetCatalog,
+  validateGuidedTourConfiguration,
+  validateHelpRouteCoverage,
+} from './lib/help';
 
 const Home = lazy(() => import('./components/Home'));
 const Generation = lazy(() => import('./components/generation/Generation'));
@@ -27,6 +33,21 @@ const TermsPage = lazy(() => import('./components/info/TermsPage'));
 const PrivacyPage = lazy(() => import('./components/info/PrivacyPage'));
 const SecurityPage = lazy(() => import('./components/info/SecurityPage'));
 const CodeOfConductPage = lazy(() => import('./components/info/CodeOfConductPage'));
+
+if (import.meta.env.DEV) {
+  const helpCoverageIssues = validateHelpRouteCoverage(appRouteHelpCoverage);
+  const guidedTourIssues = validateGuidedTourConfiguration(appRouteHelpCoverage, guidedTourTargetCatalog);
+  if (helpCoverageIssues.length > 0) {
+    for (const issue of helpCoverageIssues) {
+      console.warn(`[help] ${issue}`);
+    }
+  }
+  if (guidedTourIssues.length > 0) {
+    for (const issue of guidedTourIssues) {
+      console.warn(`[help] ${issue}`);
+    }
+  }
+}
 
 function RouteFallback() {
   return (

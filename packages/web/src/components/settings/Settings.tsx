@@ -637,7 +637,7 @@ export default function Settings() {
       </div>
 
       {/* Batch Settings */}
-      <section data-tour-anchor="settings-help-tutorials" className="rounded-2xl border border-border/50 bg-card/50 p-6">
+      <section className="rounded-2xl border border-border/50 bg-card/50 p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 rounded-xl bg-gradient-to-br from-slate-600 to-slate-700">
             <Zap className="h-5 w-5 text-white" />
@@ -689,7 +689,7 @@ export default function Settings() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border/50 bg-card/50 p-6">
+      <section data-tour-anchor="settings-help-tutorials" className="rounded-2xl border border-border/50 bg-card/50 p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600">
             <BookOpen className="h-5 w-5 text-white" />

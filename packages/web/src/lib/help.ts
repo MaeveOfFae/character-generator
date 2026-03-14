@@ -67,6 +67,16 @@ export interface RouteCoverageManifestEntry {
   coverage: 'complete';
 }
 
+export interface AppRouteHelpCoverageEntry {
+  path: string;
+  pageHelpId: string;
+}
+
+export interface GuidedTourTargetCatalogEntry {
+  id: string;
+  route: string;
+}
+
 export const gettingStartedSteps: HelpGuideStep[] = [
   {
     id: 'browser-storage',
@@ -1049,6 +1059,52 @@ export const routeCoverageManifest: RouteCoverageManifestEntry[] = [
   { route: '/code-of-conduct', pageHelpId: 'code-of-conduct', coverage: 'complete' },
 ];
 
+export const appRouteHelpCoverage: AppRouteHelpCoverageEntry[] = routeCoverageManifest.map((entry) => ({
+  path: entry.route,
+  pageHelpId: entry.pageHelpId,
+}));
+
+export const guidedTourTargetCatalog: GuidedTourTargetCatalogEntry[] = [
+  { id: 'settings-api-keys', route: '/settings' },
+  { id: 'settings-model', route: '/settings' },
+  { id: 'settings-help-tutorials', route: '/settings' },
+  { id: 'generation-seed', route: '/generate' },
+  { id: 'generation-content-mode', route: '/generate' },
+  { id: 'generation-template', route: '/generate' },
+  { id: 'generation-submit', route: '/generate' },
+  { id: 'drafts-workbench', route: '/drafts' },
+  { id: 'drafts-list', route: '/drafts' },
+  { id: 'drafts-open-review', route: '/drafts' },
+  { id: 'review-actions', route: '/drafts/:id' },
+  { id: 'review-validate', route: '/drafts/:id' },
+  { id: 'review-export', route: '/drafts/:id' },
+  { id: 'review-assets', route: '/drafts/:id' },
+  { id: 'export-preset-selection', route: '/drafts/:id' },
+  { id: 'export-confirm', route: '/drafts/:id' },
+  { id: 'validation-draft-panel', route: '/validation' },
+  { id: 'validation-draft-run', route: '/validation' },
+  { id: 'validation-results', route: '/validation' },
+  { id: 'blueprints-search', route: '/blueprints' },
+  { id: 'blueprints-tools', route: '/blueprints' },
+  { id: 'blueprints-list', route: '/blueprints' },
+];
+
+function normalizeRoutePattern(path: string): string {
+  const withoutWildcard = path.replace(/\*$/, '');
+  const withoutParams = withoutWildcard.replace(/:[^/]+/g, '');
+  return withoutParams.endsWith('/') || withoutParams === '/' ? withoutParams : `${withoutParams}`;
+}
+
+function routeSupportsPath(routePath: string, stepPath: string, matchMode: 'exact' | 'prefix'): boolean {
+  const normalizedRoute = normalizeRoutePattern(routePath);
+
+  if (matchMode === 'exact') {
+    return routePath === stepPath || normalizedRoute === stepPath;
+  }
+
+  return stepPath.startsWith(normalizedRoute) || normalizedRoute.startsWith(stepPath);
+}
+
 export function resolvePageHelp(pathname: string): PageHelpEntry | null {
   const matches = pageHelpEntries.filter((entry) =>
     entry.matchMode === 'exact' ? pathname === entry.match : pathname.startsWith(entry.match)
@@ -1068,4 +1124,69 @@ export function getGuidedTour(tourId: string): GuidedTour | null {
 export function isGuidedTourStepActive(pathname: string, step: GuidedTourStep): boolean {
   const matchMode = step.matchMode ?? 'exact';
   return matchMode === 'exact' ? pathname === step.to : pathname.startsWith(step.to);
+}
+
+export function validateHelpRouteCoverage(routeEntries: readonly AppRouteHelpCoverageEntry[]): string[] {
+  const pageHelpIds = new Set(pageHelpEntries.map((entry) => entry.id));
+  const seenRoutes = new Set<string>();
+  const issues: string[] = [];
+
+  for (const entry of routeEntries) {
+    if (seenRoutes.has(entry.path)) {
+      issues.push(`Duplicate help coverage route: ${entry.path}`);
+      continue;
+    }
+
+    seenRoutes.add(entry.path);
+
+    if (!pageHelpIds.has(entry.pageHelpId)) {
+      issues.push(`Missing page help entry for route ${entry.path}: ${entry.pageHelpId}`);
+    }
+  }
+
+  for (const pageHelpEntry of pageHelpEntries) {
+    const routeExists = routeEntries.some((entry) => entry.pageHelpId === pageHelpEntry.id);
+    if (!routeExists) {
+      issues.push(`Page help entry is not mapped to an app route: ${pageHelpEntry.id}`);
+    }
+  }
+
+  return issues;
+}
+
+export function validateGuidedTourConfiguration(
+  routeEntries: readonly AppRouteHelpCoverageEntry[],
+  targetEntries: readonly GuidedTourTargetCatalogEntry[]
+): string[] {
+  const targetCatalog = new Map(targetEntries.map((entry) => [entry.id, entry.route]));
+  const issues: string[] = [];
+
+  for (const tour of guidedTours) {
+    for (const step of tour.steps) {
+      const matchMode = step.matchMode ?? 'exact';
+      const routeExists = routeEntries.some((entry) => routeSupportsPath(entry.path, step.to, matchMode));
+
+      if (!routeExists) {
+        issues.push(`Guided tour step points to an unmapped route: ${tour.id}/${step.id} -> ${step.to}`);
+      }
+
+      if (!step.targetId) {
+        continue;
+      }
+
+      const targetRoute = targetCatalog.get(step.targetId);
+      if (!targetRoute) {
+        issues.push(`Guided tour step references an unknown target anchor: ${tour.id}/${step.id} -> ${step.targetId}`);
+        continue;
+      }
+
+      if (!routeSupportsPath(targetRoute, step.to, matchMode)) {
+        issues.push(
+          `Guided tour step target route mismatch: ${tour.id}/${step.id} -> ${step.targetId} is cataloged for ${targetRoute}, step route is ${step.to}`
+        );
+      }
+    }
+  }
+
+  return issues;
 }
