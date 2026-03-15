@@ -418,7 +418,7 @@ export default function Settings() {
   const currentModel = localConfig.model || '';
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 pb-8">
+    <div className="space-y-8 pb-8">
       {/* Header */}
       <div className="text-center space-y-2 mb-8">
         <h1 className="text-3xl font-bold">Settings</h1>

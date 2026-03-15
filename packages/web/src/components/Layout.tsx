@@ -229,7 +229,7 @@ export default function Layout({ children }: LayoutProps) {
           </header>
 
           {/* Page content */}
-          <div className="mx-auto max-w-6xl p-6 lg:p-8">
+          <div className="p-6 lg:p-8">
             {pageHelp && (
               <section className="mb-6 hidden rounded-2xl border border-border/60 bg-card/60 p-4 backdrop-blur-sm lg:block">
                 <div className="flex items-start justify-between gap-4">

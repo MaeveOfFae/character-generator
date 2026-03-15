@@ -57,7 +57,7 @@ export default function Validation() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="space-y-6">
       <InlineHelpTip
         tipId="validation-before-export-tip"
         title="Validation is the last structural check before export"

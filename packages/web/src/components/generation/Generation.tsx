@@ -124,7 +124,7 @@ export default function Generation() {
   ];
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8 pb-12">
+    <div className="space-y-8 pb-12">
       {/* Header */}
       <div className="text-center space-y-3 mb-8">
         <div className="inline-flex items-center gap-3 px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-accent shadow-lg shadow-primary/20">

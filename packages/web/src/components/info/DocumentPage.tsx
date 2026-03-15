@@ -44,7 +44,7 @@ const markdownComponents = {
 
 export default function DocumentPage({ eyebrow, title, summary, markdown, children }: DocumentPageProps) {
   return (
-    <div className="mx-auto max-w-4xl space-y-8 pb-12">
+    <div className="space-y-8 pb-12">
       <section className="overflow-hidden rounded-3xl border border-border/50 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-8 py-10">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/80">{eyebrow}</p>
         <h1 className="mt-3 text-4xl font-bold text-white">{title}</h1>
